@@ -18,12 +18,14 @@ Contrato: cada collector emite `RawEvent(source_type, source_host, received_at, 
 - Garante que o pipeline nunca receba mais do que `normalization` consegue processar.
 
 ### 1.3 Normalization
-- `normalizer`: converte `RawEvent` → `CanonicalEvent` aplicando parsers por `source_type`.
+- `normalizer`: converte `ParsedEvent` → `CanonicalEvent` aplicando mapeamento por `source_type`.
 - Extensível via `parser plugins` (syslog → campo comum; apache → campo comum; etc.).
+- Saída: `CanonicalEvent` imutável (ADR-008).
 
 ### 1.4 Enrichment
 - `geo_enricher`, `asset_enricher`, `threat_intel_enricher` (IOC lookup).
-- Cada enricher retorna `Enrichment` anexado ao evento (imutável).
+- Cada enricher recebe `CanonicalEvent` e produz `EnrichedEvent` (imutável) com
+  contextos anexados (`Enrichment`).
 - Falha de enricher NUNCA derruba o pipeline (graceful degradation).
 
 ### 1.5 Correlation Engine
@@ -73,14 +75,15 @@ flowchart TB
 
 ## 3. Fluxo de um evento (exemplo didático)
 
-1. `syslog_collector` recebe linha do rsyslog.
+1. `syslog_collector` recebe linha do rsyslog → `RawEvent`.
 2. `ingestor` valida e enfileira.
-3. `normalizer` converte para `CanonicalEvent` (parser `syslog`).
-4. `enricher` anexa geo/asset/intel (se disponível).
-5. `correlation` detecta 5 falhas de login no mesmo host em 60s → `CorrelatedEvent`.
-6. `detection` regra "Múltiplas falhas de login" → `Alert` (severity high, MITRE T1110).
-7. `incident` agrupa alerta com outros do mesmo host → `Incident OPEN`.
-8. Persistido; visível na API e no Dashboard.
+3. `parser` `syslog` converte para `ParsedEvent`.
+4. `normalizer` converte para `CanonicalEvent`.
+5. `enricher` anexa geo/asset/intel (se disponível) → `EnrichedEvent`.
+6. `correlation` detecta 5 falhas de login no mesmo host em 60s → `CorrelatedEvent`.
+7. `detection` regra "Múltiplas falhas de login" → `Alert` (severity high, MITRE T1110).
+8. `incident` agrupa alerta com outros do mesmo host → `Incident OPEN`.
+9. Persistido; visível na API e no Dashboard.
 
 ## 4. Tolerância a falhas
 

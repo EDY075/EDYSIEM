@@ -100,7 +100,7 @@ class EventBus:
                 rejected.append(HandlerError(subscription.id, exc))
 
         duration = (perf_counter() - start) * 1000.0
-        published = bool(handled) or not subscriptions
+        published = bool(handled)
         return PublishResult(
             published=published,
             handled=handled,
@@ -131,9 +131,15 @@ class EventBus:
         rejected: list[HandlerError],
         cancelled: bool,
     ) -> PublishResult:
+        """Monta o resultado de uma publicação interrompida por cancelamento.
+
+        ``published`` reflete o mesmo contrato da publicação completa:
+        ``True`` somente se pelo menos um handler executou com sucesso antes
+        do cancelamento.
+        """
         duration = (perf_counter() - start) * 1000.0
         return PublishResult(
-            published=False,
+            published=bool(handled),
             handled=handled,
             rejected=rejected,
             cancelled=cancelled,

@@ -63,6 +63,15 @@ def test_load_unknown_override_fails(monkeypatch) -> None:  # type: ignore[no-un
     assert result.error.code is ErrorCode.CONFIGURATION_ERROR
 
 
+def test_load_invalid_subconfig_key_fails() -> None:
+    # Chave desconhecida DENTRO de uma sub-config era um TypeError não capturado
+    # (violava o contrato "sempre Result, nunca exceção"). Deve virar Failure.
+    result = load(overrides={"app": {"chave_inexistente": 1}})
+    assert isinstance(result, Failure)
+    assert result.error.code is ErrorCode.CONFIGURATION_ERROR
+    assert "override inválido" in result.error.message
+
+
 def test_load_invalid_port_fails() -> None:
     result = load(overrides={"app": {"port": 70000}})
     assert isinstance(result, Failure)

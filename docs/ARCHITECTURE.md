@@ -10,11 +10,15 @@ flowchart LR
     subgraph Entrada
         ES[Event Sources]
         COL[Collectors]
+        RAW[RawEvent]
         PAR[Parser]
+        PARSED[ParsedEvent]
         NORM[Normalization]
     end
     subgraph Processamento
+        CANON[CanonicalEvent]
         ENR[Enrichment]
+        ENRICHED[EnrichedEvent]
         CORR[Correlation Engine]
         DET[Detection Engine]
         INC[Incident Engine]
@@ -26,11 +30,17 @@ flowchart LR
         CLI[CLI]
     end
 
-    ES --> COL --> PAR --> NORM --> ENR --> CORR --> DET --> INC --> PERS
+    ES --> COL --> RAW --> PAR --> PARSED --> NORM --> CANON --> ENR
+    ENR --> ENRICHED --> CORR --> DET --> INC --> PERS
     PERS --> API --> UI
     PERS --> CLI
     DET --> CORR
 ```
+
+> **Pipeline oficial (ADR-008):** `Collector → RawEvent → Parser → ParsedEvent →
+> Normalizer → CanonicalEvent → Enrichment → EnrichedEvent → Correlation →
+> Detection → Alert → Incident → Case`. Cada modelo é imutável
+> (`@dataclass(frozen=True)`) e cada estágio é uma função pura de transformação.
 
 ## 2. Camadas e responsabilidade única
 
@@ -58,25 +68,48 @@ flowchart LR
 5. Cada camada é um módulo Python com API pública explícita (`__init__.py`).
 6. Dependências entre camadas usam **interfaces** (Protocol) — nunca classes concretas de outra camada.
 
-## 4. Modelo de evento canônico (visão geral)
+## 4. Modelos da pipeline (visão geral)
+
+A pipeline oficial trafega quatro modelos imutáveis (definidos em
+`src/edysiem/domain/pipeline.py`):
+
+| Modelo | Estágio de origem | Campos principais |
+|---|---|---|
+| `RawEvent` | Collector | source_type, source_host, raw_payload, received_at |
+| `ParsedEvent` | Parser | event_id, timestamp, event_type, fields, raw, trace_id |
+| `CanonicalEvent` | Normalizer | event_id, severity, user, process, ip_src, ip_dst, hostname, trace_id |
+| `EnrichedEvent` | Enrichment | CanonicalEvent + enrichments (tupla de `Enrichment`) |
 
 ```mermaid
 classDiagram
+    class RawEvent {
+        +source_type
+        +source_host
+        +raw_payload
+        +received_at
+    }
+    class ParsedEvent {
+        +event_id
+        +timestamp
+        +event_type
+        +fields
+        +trace_id
+    }
     class CanonicalEvent {
         +event_id
         +timestamp
-        +source_type
-        +source_host
-        +event_type
         +severity
         +user
         +process
         +ip_src
         +ip_dst
         +hostname
-        +raw
-        +normalized_at
+        +trace_id
     }
+    class EnrichedEvent {
+        +enrichments
+    }
+    CanonicalEvent <|-- EnrichedEvent
 ```
 
 Detalhes do schema: `docs/DATABASE.md` e `docs/API_GUIDE.md` (contrato).

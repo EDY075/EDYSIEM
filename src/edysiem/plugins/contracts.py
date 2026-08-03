@@ -7,7 +7,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol, runtime_checkable
 
-from ..domain import Alert, Notification, RawEvent
+from ..domain import (
+    Alert,
+    CanonicalEvent,
+    EnrichedEvent,
+    Notification,
+    ParsedEvent,
+    RawEvent,
+)
 from ..result import Result
 
 
@@ -21,10 +28,6 @@ class PluginType(Enum):
     EXPORTER = "exporter"
     NOTIFICATION = "notification"
     OTHER = "other"
-
-
-class PluginVersion(Protocol):
-    """Versão semântica de um plugin."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +80,11 @@ class Plugin(Protocol):
 
 
 class ParserPlugin(Protocol):
-    """Converte bloco bruto em uma lista de ``RawEvent``."""
+    """Converte um ``RawEvent`` em uma lista de ``ParsedEvent``.
+
+    Recebe o evento bruto emitido pelo Collector e produz eventos com
+    campos estruturados extraídos do payload.
+    """
 
     @property
     def name(self) -> str: ...
@@ -89,7 +96,7 @@ class ParserPlugin(Protocol):
 
     async def shutdown(self) -> None: ...
 
-    async def parse(self, raw: bytes | str) -> Result[list[RawEvent]]: ...
+    async def parse(self, event: RawEvent) -> Result[list[ParsedEvent]]: ...
 
 
 class CollectorPlugin(Protocol):
@@ -109,7 +116,7 @@ class CollectorPlugin(Protocol):
 
 
 class AnalyzerPlugin(Protocol):
-    """Analisa eventos e produz alertas."""
+    """Analisa eventos enriquecidos e produz alertas."""
 
     @property
     def name(self) -> str: ...
@@ -121,11 +128,15 @@ class AnalyzerPlugin(Protocol):
 
     async def shutdown(self) -> None: ...
 
-    async def analyze(self, event: RawEvent) -> Result[list[Alert]]: ...
+    async def analyze(self, event: EnrichedEvent) -> Result[list[Alert]]: ...
 
 
 class EnrichmentPlugin(Protocol):
-    """Enriquece um evento bruto com contexto adicional."""
+    """Enriquece um ``CanonicalEvent`` com contexto adicional.
+
+    Recebe o evento normalizado e retorna um ``EnrichedEvent`` com os
+    ``Enrichment`` anexados — nunca muta o evento de entrada.
+    """
 
     @property
     def name(self) -> str: ...
@@ -137,11 +148,13 @@ class EnrichmentPlugin(Protocol):
 
     async def shutdown(self) -> None: ...
 
-    async def enrich(self, event: RawEvent, context: dict[str, object]) -> RawEvent: ...
+    async def enrich(
+        self, event: CanonicalEvent, context: dict[str, object]
+    ) -> Result[EnrichedEvent]: ...
 
 
 class ExporterPlugin(Protocol):
-    """Exporta registros para um destino externo."""
+    """Exporta eventos normalizados para um destino externo."""
 
     @property
     def name(self) -> str: ...
@@ -153,7 +166,7 @@ class ExporterPlugin(Protocol):
 
     async def shutdown(self) -> None: ...
 
-    async def export(self, records: list[RawEvent]) -> ExportResult: ...
+    async def export(self, records: list[CanonicalEvent]) -> ExportResult: ...
 
 
 class NotificationPlugin(Protocol):
@@ -184,5 +197,4 @@ __all__ = [
     "Plugin",
     "PluginMeta",
     "PluginType",
-    "PluginVersion",
 ]

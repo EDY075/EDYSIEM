@@ -38,7 +38,6 @@ class LoggingConfig:
 
     level: str = "INFO"
     json: bool = True
-    format: str = "structured"
     path: str | None = None
     include_thread: bool = False
 

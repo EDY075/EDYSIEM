@@ -17,7 +17,6 @@ from .entities import (
     LifecycleStatus,
     Notification,
     NotificationStatus,
-    RawEvent,
     RiskScore,
     Rule,
     RuleState,
@@ -28,6 +27,7 @@ from .entities import (
     User,
     UserRole,
 )
+from .pipeline import CanonicalEvent, EnrichedEvent, Enrichment, ParsedEvent, RawEvent
 
 __all__ = [
     "IOC",
@@ -35,9 +35,12 @@ __all__ = [
     "AlertStatus",
     "Asset",
     "AssetGroup",
+    "CanonicalEvent",
     "Case",
     "CaseStatus",
     "ConfidenceLevel",
+    "EnrichedEvent",
+    "Enrichment",
     "EventType",
     "IOCKind",
     "Investigation",
@@ -46,6 +49,7 @@ __all__ = [
     "LifecycleStatus",
     "Notification",
     "NotificationStatus",
+    "ParsedEvent",
     "RawEvent",
     "RiskScore",
     "Rule",

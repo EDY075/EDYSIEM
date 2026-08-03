@@ -28,17 +28,6 @@ class PluginSpec:
     description: str = ""
 
 
-# Interface funcional exposta pela camada de plugins.
-PluginContract = (
-    Plugin
-    | ParserPlugin
-    | CollectorPlugin
-    | AnalyzerPlugin
-    | EnrichmentPlugin
-    | ExporterPlugin
-    | NotificationPlugin
-)
-
 __all__ = [
     "AnalyzerPlugin",
     "CollectorPlugin",

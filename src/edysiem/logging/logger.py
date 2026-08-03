@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from .context import ContextManager
 from .filters import LogFilter, sanitize_mapping
 from .json import to_json
 
@@ -24,7 +23,7 @@ class StructuredFormatter(logging.Formatter):
         self._use_json = use_json
 
     def format(self, record: logging.LogRecord) -> str:
-        payload = self._to_dict(record)
+        payload = self._base_dict(record)
         if self._use_json:
             return to_json(payload)
         parts: list[str] = []
@@ -45,10 +44,6 @@ class StructuredFormatter(logging.Formatter):
         if isinstance(kv, Mapping):
             data.update(kv)
         return sanitize_mapping(data)
-
-    @classmethod
-    def _to_dict(cls, record: logging.LogRecord) -> dict[str, Any]:
-        return cls._base_dict(record)
 
 
 def configure_logging(
@@ -87,7 +82,6 @@ class StructuredLogger:
         session_id: str | None = None,
     ) -> None:
         self._logger = logger or logging.getLogger("edysiem")
-        self._context_manager = ContextManager()
         self._context: dict[str, Any] = dict(context or {})
         self._correlation_id = correlation_id
         self._request_id = request_id

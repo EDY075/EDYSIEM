@@ -61,10 +61,12 @@ Regra: contexto filho depende apenas dos declarados; nunca acesso transversal n�
 
 ### 2.1 Event
 - **Responsabilidade:** representar uma ocorrência observável (canônico, imutável).
+- **Modelos da pipeline (ADR-008):** `RawEvent` → `ParsedEvent` → `CanonicalEvent` →
+  `EnrichedEvent` — cada um imutável e produzido por um estágio específico.
 - **Relacionamentos:** → Alert (evidência); ← Source; ← Asset (contexto).
 - **Lifecycle:** Raw → Parsed → Normalized → Enriched (derivados).
 - **Estados:** recebido → normalizado → enriquecido → correlacionado (não-mutável: derivados).
-- **Regras:** imutável; trace_id obrigatório; append-only.
+- **Regras:** imutável; trace_id obrigatório em produção; append-only.
 
 ### 2.2 Alert
 - **Responsabilidade:** resultado de detecção; o que aconteceu + impacto.
@@ -133,11 +135,13 @@ Regra: contexto filho depende apenas dos declarados; nunca acesso transversal n�
 
 ## 3. Event Lifecycle
 
+> Pipeline oficial (ADR-008): cada transformação produz um modelo imutável novo.
+
 ```mermaid
 flowchart TD
-    RAW[Raw Event] --> PARSED[Parsed]
-    PARSED --> NORM[Normalized]
-    NORM --> ENR[Enriched]
+    RAW[RawEvent] --> PARSED[ParsedEvent]
+    PARSED --> NORM[CanonicalEvent]
+    NORM --> ENR[EnrichedEvent]
     ENR --> CORR[Correlated]
     CORR --> DET[Detected]
     DET --> ALERT[Alert]
@@ -149,9 +153,9 @@ flowchart TD
 Etapa | Saída | Consumidor
 |---|---|---|
 | Raw | `RawEvent` | Parser |
-| Parsed | `ParsedFields` | Normalizer |
+| Parsed | `ParsedEvent` | Normalizer |
 | Normalized | `CanonicalEvent` | Enrichment |
-| Enriched | evento + `Enrichment` | Correlation |
+| Enriched | `EnrichedEvent` | Correlation |
 | Correlated | `CorrelatedEvent` | Detection |
 | Detected | `Alert` | Incident |
 | Incident | agrupamento de alertas | Case |

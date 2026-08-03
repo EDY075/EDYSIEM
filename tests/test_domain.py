@@ -127,8 +127,10 @@ def test_notification() -> None:
 
 
 def test_raw_event() -> None:
-    event = RawEvent(source="windows", raw_payload=b"4624")
-    assert event.normalized is False
+    event = RawEvent(source_type="windows", source_host="wks-01", raw_payload=b"4624")
+    assert event.event_id
+    assert event.received_at is not None
+    assert event.tags == frozenset()
     assert event.risk_score == RiskScore(0)
 
 

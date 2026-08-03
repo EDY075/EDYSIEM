@@ -15,6 +15,7 @@
 | 005 | Frontend | 🔄 Proposto | SPA TypeScript + design tokens; framework decidido na S0.5 |
 | 006 | Observabilidade e Logs | ✅ Aceito | Log estruturado JSON + trace_id + health por componente |
 | 007 | Plugin System e DI | ✅ Aceito | Registries por tipo + contêiner DI leve; plugins isolados |
+| 008 | Pipeline Oficial de Eventos | ✅ Aceito | RawEvent → ParsedEvent → CanonicalEvent → EnrichedEvent; estágios puros e imutáveis |
 
 ## Regras para novos ADRs
 

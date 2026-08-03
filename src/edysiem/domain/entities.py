@@ -3,19 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
-
-def _new_id() -> str:
-    from uuid import uuid4
-
-    return str(uuid4())
+from .._utils import new_id as _new_id
+from .._utils import utcnow as _utcnow
 
 
 class Severity(Enum):
@@ -140,9 +133,7 @@ class RiskScore:
 
     def __post_init__(self) -> None:
         if not 0 <= self.value <= 100:
-            raise ValueError(
-                f"RiskScore deve estar entre 0 e 100; recebido {self.value}"
-            )
+            raise ValueError(f"RiskScore deve estar entre 0 e 100; recebido {self.value}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -327,19 +318,6 @@ class Notification:
     sent_at: datetime | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class RawEvent:
-    """Evento bruto oriundo de uma fonte de coleta."""
-
-    source: str
-    raw_payload: bytes | str
-    id: str = field(default_factory=_new_id)
-    timestamp: datetime = field(default_factory=_utcnow)
-    normalized: bool = False
-    tags: frozenset[str] = frozenset()
-    risk_score: RiskScore = RiskScore(0)
-
-
 __all__ = [
     "IOC",
     "Alert",
@@ -357,7 +335,6 @@ __all__ = [
     "LifecycleStatus",
     "Notification",
     "NotificationStatus",
-    "RawEvent",
     "RiskScore",
     "Rule",
     "RuleState",

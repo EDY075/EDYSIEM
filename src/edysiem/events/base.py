@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Protocol, TypeVar
-from uuid import uuid4
+
+from .._utils import new_id as _new_id
+from .._utils import utcnow as _utcnow
 
 T = TypeVar("T")
 T_contra = TypeVar("T_contra", contravariant=True)
@@ -24,14 +26,6 @@ class EventPriority(Enum):
         if isinstance(other, EventPriority):
             return self.value < other.value
         return NotImplemented
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
-
-def _new_id() -> str:
-    return str(uuid4())
 
 
 @dataclass(frozen=True, slots=True)

@@ -65,13 +65,27 @@
 - **Resultado:** fundação Enterprise pronta para Sprint 1.
 - **Lições:** documentação como produto; nada de código sem contrato.
 
+### Sprint 1 — Foundation Core
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** núcleo do produto (config, events, domain, result, exceptions, logging, plugins, di, validation).
+- **Arquivos:** `src/edysiem/**` (28 arquivos), `tests/` (110 testes), `pyproject.toml`, `conftest.py`, `SPRINT1_REPORT.md`.
+- **Resultado:** 110 testes, cobertura 98.44%, mypy strict 0, ruff limpo. Commit `3876a74`, tag `v0.1.0`.
+- **Lições:** dataclasses — obrigatórios antes de defaults; EventBus com Protocol; DI manual com detecção de ciclo.
+
+### Sprint 2.1 — Foundation da Pipeline
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** saneamento técnico (dívidas da auditoria) + pipeline oficial (ADR-008) + modelos imutáveis.
+- **Arquivos:** `src/edysiem/_utils.py`, `src/edysiem/domain/pipeline.py`, `tests/test_pipeline_models.py`, `examples/pipeline_models_demo.py`, contratos de plugins, docs de arquitetura (ARCHITECTURE, DATAFLOW, SYSTEM_DESIGN, DOMAIN_MODEL, ADR-008).
+- **Resultado:** 142 testes, cobertura 98.53%, mypy strict 0, ruff check+format limpos.
+- **Lições:** `dataclasses.replace` não deriva subclasse com campos novos (usar `asdict` + construção); `unable`→`enable` com erros consistentes; `TypeError` de override → `ConfigurationException` (contrato Result).
+
 ## Próximas sprints (planejadas)
 
-- **S1.1** — Núcleo: `core` (modelos, erros, contratos, logging, config) + testes.
-- **S1.2** — Persistência: SQLite, migrações, repositórios + testes.
-- **S1.3** — Pipeline: ingestion, normalization (parser syslog) + testes.
-- **S1.4** — Enrichment: enricher base + asset/intel + testes.
-- **S1.5** — Correlation/Detection: rule engine + MITRE + testes.
-- **S1.6** — Incident engine + ciclo de vida.
-- **S1.7** — API v1 + CLI + health.
-- **S1.8** — UI v0: shell + tokens + tela Events/Alerts.
+- **Sprint 2.2** — Ingestão e Normalização: ingestor + parser syslog + normalizer (pipeline asyncio + backpressure).
+- **Sprint 2.3** — Enrichment: enricher base + asset/intel + testes.
+- **Sprint 2.4** — Correlation/Detection: rule engine + MITRE + testes.
+- **Sprint 2.5** — Incident engine + ciclo de vida.
+- **Sprint 2.6** — API v1 + CLI + health.
+- **Sprint 2.7** — UI v0: shell + tokens + tela Events/Alerts.

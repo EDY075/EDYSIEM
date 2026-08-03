@@ -82,9 +82,7 @@ class ConfigLoader:
         """
         try:
             base = SiemConfig(
-                environment=_env_enum(
-                    f"{self._prefix}ENV", Environment, Environment.DEVELOPMENT
-                ),
+                environment=_env_enum(f"{self._prefix}ENV", Environment, Environment.DEVELOPMENT),
                 app=AppConfig(
                     host=_env_str(f"{self._prefix}HOST", "127.0.0.1"),
                     port=_env_int(f"{self._prefix}PORT", 8080),
@@ -94,11 +92,8 @@ class ConfigLoader:
                 logging=LoggingConfig(
                     level=_env_str(f"{self._prefix}LOG_LEVEL", "INFO"),
                     json=_env_bool(f"{self._prefix}LOG_JSON", True),
-                    format=_env_str(f"{self._prefix}LOG_FORMAT", "structured"),
                     path=_env_str(f"{self._prefix}LOG_PATH", "") or None,
-                    include_thread=_env_bool(
-                        f"{self._prefix}LOG_INCLUDE_THREAD", False
-                    ),
+                    include_thread=_env_bool(f"{self._prefix}LOG_INCLUDE_THREAD", False),
                 ),
                 event_bus=EventBusConfig(
                     max_queue=_env_int(f"{self._prefix}EVENT_QUEUE", 10_000),
@@ -109,11 +104,7 @@ class ConfigLoader:
                 plugin=PluginConfig(
                     directory=_env_str(f"{self._prefix}PLUGIN_DIR", "plugins"),
                     enabled_plugins=tuple(
-                        p
-                        for p in _env_str(
-                            f"{self._prefix}PLUGIN_ENABLED", ""
-                        ).split(",")
-                        if p
+                        p for p in _env_str(f"{self._prefix}PLUGIN_ENABLED", "").split(",") if p
                     ),
                     autoload=_env_bool(f"{self._prefix}PLUGIN_AUTOLOAD", True),
                 ),
@@ -122,16 +113,10 @@ class ConfigLoader:
                 ),
                 security=SecurityConfig(
                     secret_key_len=_env_int(f"{self._prefix}SECRET_KEY_LEN", 32),
-                    token_ttl_seconds=_env_int(
-                        f"{self._prefix}TOKEN_TTL_SECONDS", 900
-                    ),
+                    token_ttl_seconds=_env_int(f"{self._prefix}TOKEN_TTL_SECONDS", 900),
                     require_2fa=_env_bool(f"{self._prefix}REQUIRE_2FA", False),
                     allowed_origins=tuple(
-                        o
-                        for o in _env_str(f"{self._prefix}ALLOWED_ORIGINS", "*").split(
-                            ","
-                        )
-                        if o
+                        o for o in _env_str(f"{self._prefix}ALLOWED_ORIGINS", "*").split(",") if o
                     ),
                 ),
             )
@@ -141,9 +126,7 @@ class ConfigLoader:
         except ConfigurationException as exc:
             return Failure[SiemConfig](exc.to_error())
 
-    def _apply_overrides(
-        self, base: SiemConfig, overrides: Mapping[str, Any]
-    ) -> SiemConfig:
+    def _apply_overrides(self, base: SiemConfig, overrides: Mapping[str, Any]) -> SiemConfig:
         if not overrides:
             return base
 
@@ -159,17 +142,17 @@ class ConfigLoader:
 
         for key, value in overrides.items():
             if key == "app":
-                app = replace(app, **dict(value))
+                app = self._replace_subconfig(app, value, "app")
             elif key == "logging":
-                logging_config = replace(logging_config, **dict(value))
+                logging_config = self._replace_subconfig(logging_config, value, "logging")
             elif key == "event_bus":
-                event_bus = replace(event_bus, **dict(value))
+                event_bus = self._replace_subconfig(event_bus, value, "event_bus")
             elif key == "plugin":
-                plugin = replace(plugin, **dict(value))
+                plugin = self._replace_subconfig(plugin, value, "plugin")
             elif key == "storage":
-                storage = replace(storage, **dict(value))
+                storage = self._replace_subconfig(storage, value, "storage")
             elif key == "security":
-                security = replace(security, **dict(value))
+                security = self._replace_subconfig(security, value, "security")
             elif key == "project_name":
                 project_name = str(value)
             elif key == "version":
@@ -180,9 +163,7 @@ class ConfigLoader:
                 else:
                     environment = value
             else:
-                raise ConfigurationException(
-                    f"campo de override desconhecido: {key!r}"
-                )
+                raise ConfigurationException(f"campo de override desconhecido: {key!r}")
 
         return SiemConfig(
             project_name=project_name,
@@ -197,24 +178,32 @@ class ConfigLoader:
         )
 
     @staticmethod
+    def _replace_subconfig(target: Any, updates: Mapping[str, Any], name: str) -> Any:  # noqa: ANN401 — fronteira dinâmica (overrides de config)
+        """Aplica ``replace`` tipado e converte erro de override em erro de config.
+
+        Se o override contém uma chave desconhecida ou um tipo incompatível,
+        ``dataclasses.replace`` levanta ``TypeError``. Para honrar o contrato
+        "sempre retorna ``Result``, nunca exceção" do ``build``, o erro é
+        normalizado para ``ConfigurationException``.
+        """
+        try:
+            return replace(target, **dict(updates))
+        except TypeError as exc:
+            raise ConfigurationException(
+                f"override inválido para {name}: {exc}", cause=exc
+            ) from exc
+
+    @staticmethod
     def _validate(config: SiemConfig) -> None:
         """Valida invariantes numéricos e de enum da configuração."""
         if not 1 <= config.app.port <= 65535:
-            raise ConfigurationException(
-                f"porta inválida: {config.app.port}; esperado 1..65535"
-            )
+            raise ConfigurationException(f"porta inválida: {config.app.port}; esperado 1..65535")
         if config.event_bus.max_queue <= 0:
-            raise ConfigurationException(
-                "event_bus.max_queue deve ser > 0"
-            )
+            raise ConfigurationException("event_bus.max_queue deve ser > 0")
         if config.security.secret_key_len < 16:
-            raise ConfigurationException(
-                "security.secret_key_len deve ser >= 16"
-            )
+            raise ConfigurationException("security.secret_key_len deve ser >= 16")
         if config.security.token_ttl_seconds <= 0:
-            raise ConfigurationException(
-                "security.token_ttl_seconds deve ser > 0"
-            )
+            raise ConfigurationException("security.token_ttl_seconds deve ser > 0")
         if config.logging.level not in {
             "DEBUG",
             "INFO",
@@ -222,9 +211,7 @@ class ConfigLoader:
             "ERROR",
             "CRITICAL",
         }:
-            raise ConfigurationException(
-                f"logging.level inválido: {config.logging.level!r}"
-            )
+            raise ConfigurationException(f"logging.level inválido: {config.logging.level!r}")
 
 
 def load(

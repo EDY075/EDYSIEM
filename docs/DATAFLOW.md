@@ -8,10 +8,14 @@
 ```mermaid
 flowchart TB
     SRC[Sources] --> COL[Collectors]
-    COL --> PARSER[Parser]
-    PARSER --> NORM[Normalizer]
-    NORM --> ENR[Enrichment]
-    ENR --> CORR[Correlation Engine]
+    COL --> RAW[RawEvent]
+    RAW --> PARSER[Parser]
+    PARSER --> PARSED[ParsedEvent]
+    PARSED --> NORM[Normalizer]
+    NORM --> CANON[CanonicalEvent]
+    CANON --> ENR[Enrichment]
+    ENR --> ENRICHED[EnrichedEvent]
+    ENRICHED --> CORR[Correlation Engine]
     CORR --> DET[Detection Engine]
     DET --> INC[Incident Engine]
     INC --> STORE[(Storage)]
@@ -20,13 +24,17 @@ flowchart TB
     API --> CLI[CLI]
 ```
 
+> **Pipeline oficial (ADR-008):** `Collector → RawEvent → Parser → ParsedEvent →
+> Normalizer → CanonicalEvent → Enrichment → EnrichedEvent → Correlation →
+> Detection → Alert → Incident → Case`
+
 ## 2. Etapas e responsabilidades
 
 ### 2.1 Sources
 Fontes externas: syslog (RFC 3164/5424), arquivos de log (Linux/Windows), API, ingestão manual.
 **Entregam:** eventos brutos (linhas/payloads).
 
-### 2.2 Collectors (`app/collectors`)
+### 2.2 Collectors (`src/edysiem/collectors`)
 **Responsabilidade:** conectar à fonte e emitir `RawEvent`.
 **Contrato:**
 ```python
@@ -34,18 +42,32 @@ Fontes externas: syslog (RFC 3164/5424), arquivos de log (Linux/Windows), API, i
 class RawEvent:
     source_type: str
     source_host: str
+    raw_payload: bytes | str  # conteúdo bruto
+    event_id: str
     received_at: datetime
-    payload: str  # conteúdo bruto
 ```
 **Regras:** não normaliza; não persiste; tolerante a falha de conexão (reconexão).
 
-### 2.3 Parser (`app/parsers`)
-**Responsabilidade:** extrair campos estruturados do payload bruto por `source_type`.
-**Contrato:** `parse(source_type, payload) -> ParsedFields`.
-**Regras:** parser é função pura; novo formato = novo parser registrado no registry.
+### 2.3 Parser (`src/edysiem/parsers`)
+**Responsabilidade:** extrair campos estruturados do `RawEvent` e produzir `ParsedEvent`.
+**Contrato:**
+```python
+@dataclass(frozen=True)
+class ParsedEvent:
+    event_id: str
+    timestamp: datetime
+    source_type: str
+    source_host: str
+    event_type: str
+    fields: dict[str, Any]   # campos estruturados extraídos
+    raw: str | bytes
+    trace_id: str
+```
+**Regras:** parser é função pura; novo formato = novo parser registrado no registry;
+erro → `Result` (nunca `None`).
 
-### 2.4 Normalizer (`app/normalization`)
-**Responsabilidade:** converter `ParsedFields` em `CanonicalEvent` (modelo canônico).
+### 2.4 Normalizer (`src/edysiem/normalization`)
+**Responsabilidade:** converter `ParsedEvent` em `CanonicalEvent` (modelo canônico).
 **Contrato:**
 ```python
 @dataclass(frozen=True)
@@ -66,12 +88,26 @@ class CanonicalEvent:
     trace_id: str
     normalized_at: datetime
 ```
-**Regras:** evento é **imutável**; validação de schema; falha → log estruturado + drop controlado.
+**Regras:** evento é **imutável**; validação de schema; falha → `Result` + drop controlado;
+`trace_id` preenchido obrigatoriamente pela pipeline.
 
-### 2.5 Enrichment (`app/enrichment`)
-**Responsabilidade:** anexar contexto (asset, geo, threat intel) como `Enrichment` derivado.
-**Contrato:** enricher recebe `CanonicalEvent` e retorna `Enrichment | None`.
-**Regras:** nunca muta o evento; timeout; falha degrada graciosamente (dado opcional).
+### 2.5 Enrichment (`src/edysiem/enrichment`)
+**Responsabilidade:** anexar contexto (asset, geo, threat intel) e produzir `EnrichedEvent`.
+**Contrato:**
+```python
+@dataclass(frozen=True)
+class Enrichment:
+    kind: str          # "asset" | "geo" | "intel" | ...
+    provider: str
+    data: dict[str, Any]
+    created_at: datetime
+
+@dataclass(frozen=True)
+class EnrichedEvent(CanonicalEvent):
+    enrichments: tuple[Enrichment, ...]
+```
+**Regras:** nunca muta o evento (cria derivado); timeout; falha degrada graciosamente
+(dado opcional); enriquecimento produz `EnrichedEvent` — não altera o `CanonicalEvent`.
 
 ### 2.6 Correlation Engine (`app/correlation`)
 **Responsabilidade:** agregar eventos relacionados em `CorrelatedEvent`.

@@ -3,7 +3,9 @@
 Plataforma profissional de Security Information and Event Management (SIEM).
 Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
 
-> **Status:** Fase de fundação (Sprint 0). Nenhuma funcionalidade implementada ainda.
+> **Status:** Sprint 1 (Foundation Core) concluída — tag `v0.1.0`. Sprint 2.1
+> (Foundation da Pipeline) em andamento: modelos `RawEvent → ParsedEvent →
+> CanonicalEvent → EnrichedEvent` implementados.
 > **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
 
 ## Documentação
@@ -24,13 +26,15 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 ## Visão do fluxo
 
 ```
-Event Sources -> Collectors -> Normalization -> Enrichment -> Correlation
--> Detection -> Incident -> Persistence -> REST API -> Dashboard/CLI
+Event Sources -> Collectors -> RawEvent -> Parser -> ParsedEvent
+-> Normalizer -> CanonicalEvent -> Enrichment -> EnrichedEvent
+-> Correlation -> Detection -> Incident -> Persistence
+-> REST API -> Dashboard/CLI
 ```
 
 ## Roadmap resumido
 
-- **S0:** Fundação (docs, ADRs, UX, design system, estrutura) ✅/📋
-- **S1:** Núcleo (core, persistence, pipeline, regras, incidentes, API, CLI, UI v0)
+- **S0:** Fundação (docs, ADRs, UX, design system, estrutura) ✅
+- **S1:** Núcleo (core, persistence, pipeline, regras, incidentes, API, CLI, UI v0) — Core ✅
 - **S2:** Operação SOC (dashboard, investigação, regras UI, intel, assets, incident UI)
 - **S3:** Escala (fila externa, storage alternativo, auth, hunting)

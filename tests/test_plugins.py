@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
-from edysiem.domain import RawEvent
+import asyncio
+from dataclasses import asdict
+from datetime import UTC, datetime
+
+from edysiem.domain import (
+    CanonicalEvent,
+    EnrichedEvent,
+    Enrichment,
+    ParsedEvent,
+    RawEvent,
+    Severity,
+)
 from edysiem.plugins import (
     ExportResult,
     NotifyResult,
@@ -16,8 +27,45 @@ from edysiem.plugins import (
 from edysiem.result import ok
 
 
+def _enriched_from_canonical(
+    event: CanonicalEvent, enrichments: tuple[Enrichment, ...]
+) -> EnrichedEvent:
+    """Deriva um ``EnrichedEvent`` de um ``CanonicalEvent`` sem mutação.
+
+    ``dataclasses.replace`` não funciona para subclasses com campos novos a
+    partir da instância base; usamos ``asdict`` + construção explícita.
+    """
+    return EnrichedEvent(**asdict(event), enrichments=enrichments)
+
+
+def _parsed_from_raw(event: RawEvent) -> ParsedEvent:
+    """Constrói um ``ParsedEvent`` derivado de um ``RawEvent`` de teste."""
+    return ParsedEvent(
+        event_id=event.event_id,
+        timestamp=datetime.now(UTC),
+        source_type=event.source_type,
+        source_host=event.source_host,
+        event_type="logon",
+        fields={"user": "admin"},
+        raw=event.raw_payload,
+        trace_id="trace-test",
+    )
+
+
+def _canonical() -> CanonicalEvent:
+    return CanonicalEvent(
+        event_id="evt-1",
+        timestamp=datetime.now(UTC),
+        source_type="windows",
+        source_host="wks-01",
+        event_type="logon",
+        severity=Severity.MEDIUM,
+        trace_id="trace-test",
+    )
+
+
 class DummyParser:
-    """Implementação de teste de um ParserPlugin."""
+    """Implementação de teste de um ``ParserPlugin`` (novo contrato)."""
 
     @property
     def name(self) -> str:
@@ -37,8 +85,36 @@ class DummyParser:
     async def shutdown(self) -> None:
         return None
 
-    async def parse(self, raw: bytes | str) -> object:
-        return ok([RawEvent(source="dummy", raw_payload=raw)])
+    async def parse(self, event: RawEvent) -> object:
+        return ok([_parsed_from_raw(event)])
+
+
+class DummyEnricher:
+    """Implementação de teste de um ``EnrichmentPlugin`` (novo contrato)."""
+
+    @property
+    def name(self) -> str:
+        return "dummy-enricher"
+
+    @property
+    def version(self) -> str:
+        return "1.0.0"
+
+    @property
+    def meta(self) -> PluginMeta:
+        return PluginMeta(name="dummy-enricher", version="1.0.0", plugin_type=PluginType.ENRICHMENT)
+
+    async def setup(self) -> None:
+        return None
+
+    async def shutdown(self) -> None:
+        return None
+
+    async def enrich(self, event: CanonicalEvent, context: dict[str, object]) -> object:
+        enrichment = Enrichment(
+            kind="asset", provider="asset-db", data={"owner": context.get("owner", "")}
+        )
+        return ok(_enriched_from_canonical(event, (enrichment,)))
 
 
 def test_plugin_type_values() -> None:
@@ -81,6 +157,27 @@ def test_runtime_checkable_protocol() -> None:
     assert callable(parser.setup)
     assert callable(parser.shutdown)
     assert callable(parser.parse)
+
+
+def test_parser_contract_accepts_raw_event() -> None:
+    raw = RawEvent(source_type="windows", source_host="wks-01", raw_payload=b"4624")
+    parsed = _parsed_from_raw(raw)
+    assert parsed.event_id == raw.event_id
+    assert parsed.source_type == raw.source_type
+    assert parsed.event_type == "logon"
+    assert parsed.raw == b"4624"
+
+
+def test_enricher_contract_accepts_canonical_event() -> None:
+    enricher = DummyEnricher()
+    canonical = _canonical()
+    result = asyncio.run(enricher.enrich(canonical, {"owner": "sec"}))
+    enriched = result.unwrap()
+    assert isinstance(enriched, EnrichedEvent)
+    assert enriched.event_id == canonical.event_id
+    assert len(enriched.enrichments) == 1
+    assert enriched.enrichments[0].data == {"owner": "sec"}
+    assert enricher.meta.plugin_type is PluginType.ENRICHMENT
 
 
 def test_plugin_spec() -> None:

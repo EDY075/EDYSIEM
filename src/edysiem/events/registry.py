@@ -96,12 +96,22 @@ class EventRegistry:
         bucket[handler] = updated
         return updated
 
-    def unable(self, event_type: str, handler: ElementHandler[Any]) -> EventSubscription:
-        """Reabilita uma assinatura desabilitada."""
+    def enable(self, handler: ElementHandler[Any], event_type: str) -> EventSubscription:
+        """Reabilita uma assinatura desabilitada.
+
+        Par simétrico de ``disable``: mesma ordem de argumentos e mesma
+        semântica de erros.
+
+        Raises:
+            PluginException: se o handler não estiver registrado para o tipo.
+            DomainException: se a assinatura já estiver habilitada.
+        """
         bucket = self._subscriptions.get(event_type)
         if bucket is None or handler not in bucket:
-            raise KeyError(f"handler não encontrado para {event_type!r}")
+            raise PluginException(f"handler não encontrado para {event_type!r}")
         current = bucket[handler]
+        if current.enabled:
+            raise DomainException("assinatura já está habilitada")
         updated = EventSubscription(
             priority=current.priority,
             id=current.id,

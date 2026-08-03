@@ -111,12 +111,12 @@ def test_registry_disable_enable() -> None:
     disabled = registry.disable(handler, "a.b")
     assert disabled.enabled is False
     assert registry.handlers_for("a.b") == []
-    enabled = registry.unable("a.b", handler)
+    enabled = registry.enable(handler, "a.b")
     assert enabled.enabled is True
     assert len(registry.handlers_for("a.b")) == 1
 
 
-def test_registry_disable_missing_and_already_disabled() -> None:
+def test_registry_disable_enable_errors() -> None:
     registry = EventRegistry()
     handler = RecordingHandler()
     with pytest.raises(PluginException):
@@ -125,8 +125,13 @@ def test_registry_disable_missing_and_already_disabled() -> None:
     registry.disable(handler, "a.b")
     with pytest.raises(DomainException):
         registry.disable(handler, "a.b")
-    with pytest.raises(KeyError):
-        registry.unable("nope", handler)
+    # ``enable`` usa PluginException para handler não encontrado (consistente com disable).
+    with pytest.raises(PluginException):
+        registry.enable(handler, "nope")
+    registry.enable(handler, "a.b")
+    # ``enable`` em assinatura já habilitada -> DomainException (simétrico a disable).
+    with pytest.raises(DomainException):
+        registry.enable(handler, "a.b")
 
 
 def test_bus_publish_orders_by_priority() -> None:
@@ -183,6 +188,12 @@ def test_bus_publish_captures_handler_errors() -> None:
 
 
 def test_bus_publish_respects_cancel_token() -> None:
+    """Cancelamento interrompe a fila, mas ``published`` reflete handlers OK.
+
+    Contrato: ``published`` é True sempre que pelo menos um handler executou
+    com sucesso — mesmo que a publicação tenha sido cancelada em seguida.
+    """
+
     async def inner() -> PublishResult:
         bus = EventBus(EventRegistry())
         first = RecordingHandler("first")
@@ -201,16 +212,21 @@ def test_bus_publish_respects_cancel_token() -> None:
 
     result = asyncio.run(inner())
     assert result.cancelled
+    assert result.published  # o handler CRITICAL executou antes do cancelamento
+    assert len(result.handled) == 1
     assert result.duration_ms >= 0
 
 
 def test_bus_publish_no_subscribers() -> None:
+    """Sem subscribers, ``published`` é False (nada foi entregue)."""
+
     async def inner() -> PublishResult:
         bus = EventBus(EventRegistry())
         return await bus.publish(make_event())
 
     result = asyncio.run(inner())
     assert result.handled == []
+    assert result.published is False
     assert not result.rejected
     assert result.cancelled is False
 
