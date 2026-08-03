@@ -1,8 +1,14 @@
-"""Contratos (protocolos) da camada de plugins do EDY SIEM."""
+"""Contratos (protocolos) da camada de plugins do EDY SIEM.
+
+O contrato oficial de ``CollectorPlugin`` vive em
+``edysiem.ingestion.collectors.base`` (Enterprise: ``start``/``stop``/
+``read``/``health``/``capabilities``). Este módulo re-exporta o contrato para
+preservar a API da camada de plugins — nenhum collector real implementa o
+protocolo antigo (``setup``/``shutdown``/``collect``).
+"""
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol, runtime_checkable
@@ -15,6 +21,7 @@ from ..domain import (
     ParsedEvent,
     RawEvent,
 )
+from ..ingestion.collectors.base import CollectorPlugin
 from ..result import Result
 
 
@@ -97,22 +104,6 @@ class ParserPlugin(Protocol):
     async def shutdown(self) -> None: ...
 
     async def parse(self, event: RawEvent) -> Result[list[ParsedEvent]]: ...
-
-
-class CollectorPlugin(Protocol):
-    """Coleta ``RawEvent`` de uma fonte externa."""
-
-    @property
-    def name(self) -> str: ...
-
-    @property
-    def meta(self) -> PluginMeta: ...
-
-    async def setup(self) -> None: ...
-
-    async def shutdown(self) -> None: ...
-
-    def collect(self) -> AsyncIterator[RawEvent]: ...
 
 
 class AnalyzerPlugin(Protocol):

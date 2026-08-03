@@ -81,11 +81,19 @@
 - **Resultado:** 142 testes, cobertura 98.53%, mypy strict 0, ruff check+format limpos.
 - **Lições:** `dataclasses.replace` não deriva subclasse com campos novos (usar `asdict` + construção); `unable`→`enable` com erros consistentes; `TypeError` de override → `ConfigurationException` (contrato Result).
 
+### Sprint 2.2 — Infraestrutura de Ingestão Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** infraestrutura de ingestão reutilizável e desacoplada (ADR-009) — sem parsers reais.
+- **Arquivos:** `src/edysiem/ingestion/` (collectors/base, queue, backpressure, retry, dead_letter, rate_limiter, health, metrics), `tests/test_ingestion_*.py` (8 arquivos), `docs/PIPELINE.md`, `docs/adr/ADR-009-ingestion-infrastructure.md`.
+- **Resultado:** 254 testes, cobertura 98.26%, mypy strict 0 (40 arquivos), ruff check+format limpos.
+- **Lições:** fila thread-safe + async-ready com `deque`+Lock+`asyncio.Event` lazy (single-loop); `put_nowait` não consulta backpressure (produtor síncrono usa `can_accept`); `ErrorCode.QUEUE_FULL` adicionado.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.2** — Ingestão e Normalização: ingestor + parser syslog + normalizer (pipeline asyncio + backpressure).
-- **Sprint 2.3** — Enrichment: enricher base + asset/intel + testes.
-- **Sprint 2.4** — Correlation/Detection: rule engine + MITRE + testes.
-- **Sprint 2.5** — Incident engine + ciclo de vida.
-- **Sprint 2.6** — API v1 + CLI + health.
-- **Sprint 2.7** — UI v0: shell + tokens + tela Events/Alerts.
+- **Sprint 2.3** — Ingestão e Normalização: parser syslog (RFC 3164/5424) + normalizer real + testes de integração.
+- **Sprint 2.4** — Enrichment: enricher base + asset/intel + testes.
+- **Sprint 2.5** — Correlation/Detection: rule engine + MITRE + testes.
+- **Sprint 2.6** — Incident engine + ciclo de vida.
+- **Sprint 2.7** — API v1 + CLI + health.
+- **Sprint 2.8** — UI v0: shell + tokens + tela Events/Alerts.

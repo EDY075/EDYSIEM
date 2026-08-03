@@ -19,6 +19,7 @@ class ErrorCode(Enum):
     CONFLICT = "conflict"
     INTERNAL_ERROR = "internal_error"
     TIMEOUT = "timeout"
+    QUEUE_FULL = "queue_full"
     PLUGIN_ERROR = "plugin_error"
     INFRASTRUCTURE_ERROR = "infrastructure_error"
     UNKNOWN = "unknown"

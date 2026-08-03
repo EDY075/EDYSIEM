@@ -16,6 +16,7 @@
 | 006 | Observabilidade e Logs | ✅ Aceito | Log estruturado JSON + trace_id + health por componente |
 | 007 | Plugin System e DI | ✅ Aceito | Registries por tipo + contêiner DI leve; plugins isolados |
 | 008 | Pipeline Oficial de Eventos | ✅ Aceito | RawEvent → ParsedEvent → CanonicalEvent → EnrichedEvent; estágios puros e imutáveis |
+| 009 | Infraestrutura de Ingestão Enterprise | ✅ Aceito | Pacote `ingestion` desacoplado: CollectorPlugin, RawEventQueue, backpressure, retry, dead letter, rate limit, health, metrics |
 
 ## Regras para novos ADRs
 

@@ -46,11 +46,11 @@ flowchart LR
 
 | Camada | Responsabilidade | Proibido |
 |---|---|---|
-| `collectors` | Conectar a fontes (syslog, arquivos, API) e emitir eventos brutos | Normalizar, persistir |
-| `parsers` | Extrair campos estruturados do payload bruto por source_type | Correlacionar |
-| `ingestion` | Receber eventos, validar esquema bruto, aplicar backpressure | Correlacionar |
-| `normalization` | Converter evento bruto para o **modelo de evento canônico** | Enriquecer |
-| `enrichment` | Adicionar contexto (geo, WHOIS, asset, threat intel) | Persistir |
+| `collectors` | Conectar a fontes (syslog, arquivos, API) e emitir `RawEvent` via `CollectorPlugin` | Normalizar, persistir |
+| `ingestion` | Fila FIFO + backpressure + retry + dead letter + rate limit + health + métricas | Conhecer parsers |
+| `parsers` | Extrair campos estruturados do `RawEvent` → `ParsedEvent` | Correlacionar |
+| `normalization` | Converter `ParsedEvent` para o **modelo de evento canônico** (`CanonicalEvent`) | Enriquecer |
+| `enrichment` | Adicionar contexto (geo, WHOIS, asset, threat intel) → `EnrichedEvent` | Persistir |
 | `correlation` | Agregar eventos relacionados (janela, identidade) | Detectar sozinho |
 | `detection` | Aplicar detection rules e gerar alertas (MITRE) | Resolver incidentes |
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
@@ -58,6 +58,10 @@ flowchart LR
 | `api` | Expor contratos REST estáveis | Acessar UI |
 | `ui` | Experiência do operador (consultas, triagem, investigação) | Acessar persistência direto |
 | `cli` | Operações via terminal (ingestão manual, consultas, admin) | Acessar UI |
+
+> A infraestrutura de ingestão (`src/edysiem/ingestion/`) é **desacoplada**
+> (ADR-009): fila, backpressure, retry, dead letter, rate limit, health e
+> métricas são reutilizáveis por qualquer coletor. Ver `docs/PIPELINE.md`.
 
 ## 3. Regras de dependência (obrigatórias)
 

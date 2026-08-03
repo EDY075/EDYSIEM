@@ -26,5 +26,6 @@ def test_public_api_present() -> None:
         "User",
         "ParserPlugin",
         "DomainException",
+        "ingestion",
     ):
         assert hasattr(edysiem, name), f"falta API pública: {name}"

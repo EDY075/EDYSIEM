@@ -25,6 +25,7 @@
 
 | Grupo | Métricas |
 |---|---|
+| **Ingestion** (ADR-009) | queue_size, throughput, processing_time_ms, drops, retries, dead_letters, latency_ms, errors (por collector via `MetricsRegistry`) |
 | **Pipeline** | eventos_ingested, normalized, enriched, correlated, detected; erros por etapa |
 | **Alerts** | alertas_created, deduplicados, por severidade, por regra |
 | **Incidents** | incidentes_created, abertos, resolvidos |

@@ -5,9 +5,30 @@ Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado] — Sprint 2.1 (Foundation da Pipeline)
+## [Não publicado]
 
-### Saneamento técnico
+### Sprint 2.2 — Infraestrutura de Ingestão Enterprise (ADR-009)
+
+#### Adicionado
+- Pacote `src/edysiem/ingestion/` **desacoplado e reutilizável**:
+  - `collectors/base.py`: `CollectorPlugin` Enterprise (start/stop/read/health/metadata/capabilities)
+  - `queue.py`: `RawEventQueue` FIFO thread-safe e async-ready (drop policy + timeout)
+  - `backpressure.py`: `BackpressureController` (HIGH/LOW water marks, NORMAL/PAUSED)
+  - `retry.py`: `RetryPolicy` (backoff exponencial + jitter) + `run_with_retry`
+  - `dead_letter.py`: `DeadLetterQueue` — eventos inválidos nunca descartados em silêncio
+  - `rate_limiter.py`: `TokenBucketRateLimiter` (events/sec + burst)
+  - `health.py`: `HealthMonitor` + `CollectorHealth` por collector
+  - `metrics.py`: `MetricsRegistry` (contadores/gauges/timers, sem dependência externa)
+- `ErrorCode.QUEUE_FULL` adicionado ao `result` (contrato da fila).
+- `plugins/contracts.py` re-exporta o novo `CollectorPlugin` (protocolo antigo substituído).
+- Docs: `PIPELINE.md` criado; ARCHITECTURE, OBSERVABILITY, PERFORMANCE_DESIGN, SPRINT_BOOK atualizados; ADR-009.
+
+#### Melhorado
+- Testes: 254 (cobertura 98.26%), mypy strict 0 (40 arquivos), ruff check+format limpos.
+
+### Sprint 2.1 — Foundation da Pipeline
+
+#### Saneamento técnico
 - Removida duplicação de `_utcnow()`/`_new_id()` (extraído para `src/edysiem/_utils.py`).
 - Corrigida semântica de `published` no `EventBus` (falso quando não há handlers executados;
   `_finish` respeita handlers já executados antes de cancelamento).

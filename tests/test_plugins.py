@@ -15,6 +15,7 @@ from edysiem.domain import (
     Severity,
 )
 from edysiem.plugins import (
+    CollectorPlugin,
     ExportResult,
     NotifyResult,
     ParserPlugin,
@@ -147,6 +148,23 @@ def test_plugin_contracts_list() -> None:
     assert Plugin in contracts
     assert ParserPlugin in contracts
     assert len(contracts) == 7
+
+
+def test_collector_plugin_is_enterprise_contract() -> None:
+    """O ``CollectorPlugin`` re-exportado é o contrato Enterprise de ingestion.
+
+    Sprint 2.2 removeu o protocolo antigo (setup/shutdown/collect) e passou a
+    re-exportar ``edysiem.ingestion.collectors.base.CollectorPlugin``.
+    """
+    from edysiem.ingestion.collectors.base import CollectorPlugin as EnterpriseCollector
+
+    assert CollectorPlugin is EnterpriseCollector
+    assert hasattr(CollectorPlugin, "metadata")
+    assert hasattr(CollectorPlugin, "start")
+    assert hasattr(CollectorPlugin, "stop")
+    assert hasattr(CollectorPlugin, "read")
+    assert hasattr(CollectorPlugin, "health")
+    assert hasattr(CollectorPlugin, "capabilities")
 
 
 def test_runtime_checkable_protocol() -> None:

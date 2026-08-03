@@ -9,6 +9,7 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
+from . import ingestion
 from .config import (
     AppConfig,
     ConfigLoader,
@@ -242,6 +243,7 @@ __all__ = [
     "err",
     "from_exc",
     "in_range",
+    "ingestion",
     "is_email",
     "is_hash",
     "is_hostname",

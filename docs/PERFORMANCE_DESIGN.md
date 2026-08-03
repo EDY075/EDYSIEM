@@ -31,6 +31,11 @@
 - Nº de workers configurável; worker com timeout e retry.
 - Falha de worker → log + retry (dead-letter opcional).
 
+> **Implementado (Sprint 2.2, ADR-009):** `RawEventQueue` (FIFO thread-safe e
+> async-ready, drop policy, timeout), `BackpressureController` (HIGH/LOW water
+> marks com histerese), `RetryPolicy` (backoff exponencial + jitter),
+> `DeadLetterQueue` (eventos nunca descartados em silêncio). Ver `docs/PIPELINE.md`.
+
 ## 4. Async Jobs
 
 | Job | Gatilho | Pode falhar? |
@@ -79,6 +84,10 @@
 - Protege API e ingestão de picos abusivos.
 - Token bucket por IP/api key.
 - Resposta `429` + `Retry-After`.
+
+> **Ingestão (Sprint 2.2, ADR-009):** `TokenBucketRateLimiter` — token bucket
+> thread-safe por collector (events/sec + burst). Cada coletor pode ser limitado
+> de forma independente antes de enfileirar.
 
 ## 11. Performance Targets (v1)
 
