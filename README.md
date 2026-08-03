@@ -1,0 +1,36 @@
+# EDY SIEM
+
+Plataforma profissional de Security Information and Event Management (SIEM).
+Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
+
+> **Status:** Fase de fundação (Sprint 0). Nenhuma funcionalidade implementada ainda.
+> **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [PRODUCT_VISION.md](docs/PRODUCT_VISION.md) | Visão, público, objetivos |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitetura e fluxo |
+| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Componentes e modelagem |
+| [DECISIONS.md](docs/DECISIONS.md) | Índice de ADRs |
+| [ROADMAP.md](docs/ROADMAP.md) | Sprints planejadas |
+| [STUDY_GUIDE.md](docs/STUDY_GUIDE.md) | O que é SIEM (didático) |
+| [STYLE_GUIDE.md](docs/STYLE_GUIDE.md) | Design system |
+| [CODING_STANDARD.md](docs/CODING_STANDARD.md) | Padrão de código |
+
+Índice completo: [docs/](docs/)
+
+## Visão do fluxo
+
+```
+Event Sources -> Collectors -> Normalization -> Enrichment -> Correlation
+-> Detection -> Incident -> Persistence -> REST API -> Dashboard/CLI
+```
+
+## Roadmap resumido
+
+- **S0:** Fundação (docs, ADRs, UX, design system, estrutura) ✅/📋
+- **S1:** Núcleo (core, persistence, pipeline, regras, incidentes, API, CLI, UI v0)
+- **S2:** Operação SOC (dashboard, investigação, regras UI, intel, assets, incident UI)
+- **S3:** Escala (fila externa, storage alternativo, auth, hunting)
