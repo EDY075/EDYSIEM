@@ -1,0 +1,56 @@
+# ─────────────────────────────────────────────
+# EDY SIEM — .gitignore
+# Arquivos que NUNCA devem entrar no versionamento.
+# ─────────────────────────────────────────────
+
+# Python — bytecode e caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ferramentas de qualidade (caches locais)
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.pytest_cache
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Build / distribuição
+build/
+dist/
+*.egg-info/
+*.egg
+.python-version
+
+# Segredos (nunca versionar)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# IDE / editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs locais
+*.log
+logs/

@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "edy-siem"
+version = "0.1.0"
+description = "EDY SIEM — plataforma profissional de Security Information and Event Management"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "EDY SIEM" }]
+
+# Runtime: intencionalmente vazio — núcleo 100% stdlib (ADR-001)
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
+    "mypy==2.3.0",
+    "ruff==0.16.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/edysiem"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=edysiem --cov-report=term-missing --cov-fail-under=95"
+
+[tool.coverage.run]
+source = ["edysiem"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 95
+exclude_lines = ["pragma: no cover", "@overload", "raise NotImplementedError"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+disallow_untyped_defs = true
+ignore_missing_imports = false
+warn_unused_ignores = true
+files = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = ["docs", "archive"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ANN", "YTT", "S", "B008", "RUF", "PT"]
+# UP046/UP047/UP040: modernização para PEP 695 (type parameters) é opcional;
+# o código já é estritamente tipado via typing.Generic/TypeAlias e validado por mypy.
+ignore = ["UP046", "UP047", "UP040"]
+
+[tool.ruff.lint.per-file-ignores]
+# Fronteiras dinâmicas (serialização, extras de log, coerção numérica) usam Any de forma intencional.
+"src/edysiem/logging/json.py" = ["ANN401"]
+"src/edysiem/logging/logger.py" = ["ANN401"]
+"src/edysiem/validation/validators.py" = ["ANN401"]
+"tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN401", "S101", "S104", "S105", "S106"]
