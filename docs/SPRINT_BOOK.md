@@ -144,10 +144,18 @@
 - **Resultado:** `Case` (workspace completo) + `TimelineEngine` (append-only auto-registro) + `EvidenceEngine` (9 tipos de evidencia) + `CommentEngine` (markdown) + `TaskEngine` (criar/concluir/reabrir) + `OwnerEngine` (transferencia) + `AttachmentEngine` + `Playbook` (estrutura); 687 testes, cobertura 95.39%, mypy strict 0.
 - **Lições:** sub-engines compartilham um `TimelineEngine` unico para auto-registro; `dataclasses.replace` para reconstruir Case imutavel; hooks de registry com isolamento (S112 intencional).
 
+### Sprint 2.10 — API v1 + CLI + Health
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** transformar os engines em plataforma utilização (API REST, CLI, health, metrics, version) - sem Dashboard.
+- **Arquivos:** `src/edysiem/container.py` (ApplicationContainer), `src/edysiem/bootstrap.py`, `src/edysiem/api/` (app, routes, middleware, errors, schemas, deps), `src/edysiem/cli/` (main), testes.
+- **Resultado:** FastAPI v1 (GET /health, /version, /metrics; POST /pipeline/run, /alerts, /incidents, /cases) + OpenAPI/Swagger + RequestID + HTTP logging + error handlers + CLI (`health`, `version`, `config`, `validate-config`, `run-pipeline`, `ingest`, `demo`); 713 testes, cobertura 95.27%, mypy strict 0.
+- **Lições:** container unico (DI) alimenta API e CLI; lifespan inicializa engines; `container` no app.state para TestClient; Depends() no argument default e padrao FastAPI (B008 ignorado).
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.10** — API v1 + CLI + health (orquestração dos engines).
-- **Sprint 2.11** — Dashboard v0 (KPIs, alertas criticos).
+- **Sprint 2.11** — Persistência (SQLite) para Alert/Incident/Case contexts.
+- **Sprint 2.12** — Dashboard v0 (KPIs, alertas criticos).
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

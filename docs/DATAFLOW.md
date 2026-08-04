@@ -167,7 +167,13 @@ class Alert:
 > por tipo, comentarios markdown, tarefas com prazo/prioridade, transferencia de owner, playbook
 > (estrutura). Sem automacao de playbook ainda. Ver `src/edysiem/cases/README.md`.
 
-### 2.11 Case Management + Dashboard (futuro)
+### 2.11 API v1 + CLI (`app/api`, `app/cli`)
+**Responsabilidade:** orquestrar os engines via REST e linha de comando.
+
+> **Implementado (Sprint 2.10):** FastAPI v1 (health/version/metrics/pipeline/alerts/incidents/cases),
+> CLI Enterprise, container DI unico. Sem banco/autenticacao/frontend ainda.
+
+### 2.12 Persistência + Dashboard (futuro)
 **Responsabilidade:** agrupar alertas em incidentes e gerir ciclo de vida.
 **Regras:** agrupamento por entidade/regra; status (open/investigating/resolved/false_positive);
 timeline de ações; notas; auditoria.

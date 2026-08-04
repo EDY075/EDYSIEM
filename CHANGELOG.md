@@ -7,6 +7,26 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.10 — API v1 + CLI + Health
+
+#### Adicionado
+- `src/edysiem/container.py`: `ApplicationContainer` — container DI único conectando todos os engines (normalizer, enrichment, correlation, detection, alerts, incidents, cases).
+- `src/edysiem/bootstrap.py`: carregamento de config + build do container + logging.
+- `src/edysiem/api/`: FastAPI v1:
+  - Rotas: `GET /health`, `GET /version`, `GET /metrics`, `POST /pipeline/run`, `POST /alerts`, `POST /incidents`, `POST /cases`
+  - `middleware.py`: RequestID (`X-Request-ID`) + HTTP logging
+  - `errors.py`: error handler global + validation handler (422) + handlers de domínio
+  - `schemas.py`: modelos Pydantic de request/response
+  - `app.py`: factory com lifespan (startup/shutdown), OpenAPI/Swagger (`/docs`) e ReDoc (`/redoc`)
+- `src/edysiem/cli/main.py`: CLI Enterprise (`health`, `version`, `config`, `validate-config`, `run-pipeline`, `ingest`, `demo`).
+- `[project.scripts] edysiem` entry point + optional-deps `api` (fastapi/uvicorn/pydantic).
+- Testes: `test_container.py`, `test_api.py`, `test_cli.py`.
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, README, CHANGELOG.
+
+#### Corrigido
+- `StrategyNormalizer.register` aceitava apenas `Result[CanonicalEvent]`; relaxado para `Result[object]` (estratégias do registry retornam `Result[object]`).
+- `EnrichmentEngine.enrich` é async — `await` nos fluxos da API/CLI.
+
 ### Sprint 2.9 — Investigation Workspace + Case Engine
 
 #### Adicionado

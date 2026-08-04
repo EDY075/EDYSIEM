@@ -67,6 +67,12 @@ flowchart LR
 > Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 
+> **Implementado (Sprint 2.10):** `src/edysiem/container.py` (``ApplicationContainer``) conecta todos os
+> engines em um container DI unico. `src/edysiem/api/` expoe FastAPI v1: GET /health, /version, /metrics;
+> POST /pipeline/run, /alerts, /incidents, /cases; OpenAPI/Swagger (/docs), RequestID, HTTP logging e
+> error handlers. `src/edysiem/cli/` fornece comandos (health, version, config, validate-config,
+> run-pipeline, ingest, demo). Sem banco/autenticacao/frontend ainda.
+
 > **Implementado (Sprint 2.9):** `src/edysiem/cases/` - ``CaseEngine`` e o workspace do analista SOC:
 > ``TimelineEngine`` (auto-registro append-only), ``EvidenceEngine`` (logs/hashes/IPs/domains/arquivos/
 > prints/JSON/IOC/links), ``CommentEngine`` (markdown), ``TaskEngine``, ``OwnerEngine``, ``AttachmentEngine``

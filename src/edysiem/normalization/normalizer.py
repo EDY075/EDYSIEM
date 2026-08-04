@@ -15,7 +15,7 @@ sua propria estrategia de normalizacao, registrada no
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, cast
 
 from ..domain import CanonicalEvent, ParsedEvent, Severity
 from ..result import Error, ErrorCode, Failure, Result, ok
@@ -68,10 +68,12 @@ class StrategyNormalizer:
     """
 
     def __init__(self) -> None:
-        self._strategies: dict[str, Callable[[ParsedEvent], Result[CanonicalEvent]]] = {}
+        self._strategies: dict[str, Callable[[ParsedEvent], Result[object]]] = {}
 
     def register(
-        self, source_type: str, strategy: Callable[[ParsedEvent], Result[CanonicalEvent]]
+        self,
+        source_type: str,
+        strategy: Callable[[ParsedEvent], Result[object]],
     ) -> None:
         """Registra uma estrategia para um source_type."""
         self._strategies[source_type] = strategy
@@ -90,7 +92,7 @@ class StrategyNormalizer:
         """
         strategy = self._strategies.get(parsed.source_type)
         if strategy is not None:
-            return strategy(parsed)
+            return cast(Result[CanonicalEvent], strategy(parsed))
         return self._default_normalize(parsed)
 
     def _default_normalize(self, parsed: ParsedEvent) -> Result[CanonicalEvent]:

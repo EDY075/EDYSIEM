@@ -22,6 +22,14 @@ dev = [
     "mypy==2.3.0",
     "ruff==0.16.1",
 ]
+api = [
+    "fastapi>=0.141",
+    "uvicorn>=0.52",
+    "pydantic>=2.13",
+]
+
+[project.scripts]
+edysiem = "edysiem.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/edysiem"]
@@ -77,4 +85,8 @@ ignore = ["UP046", "UP047", "UP040"]
 "src/edysiem/incidents/registry.py" = ["S112"]
 # Case Engine: hooks isolados com try-except-continue.
 "src/edysiem/cases/registry.py" = ["S112"]
+# API: Depends() em argument default e o padrao FastAPI; resolve/CLI usam Any intencional.
+"src/edysiem/api/routes/*.py" = ["B008"]
+"src/edysiem/container.py" = ["ANN401"]
+"src/edysiem/cli/main.py" = ["ANN401"]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN401", "S101", "S104", "S105", "S106"]

@@ -49,8 +49,9 @@
 | 2.7 | Alert Engine Enterprise (risk/fingerprint/dedup/lifecycle) | ✅ Concluída |
 | 2.8 | Incident Engine Enterprise (grouping/correlator/lifecycle) | ✅ Concluída |
 | 2.9 | Investigation Workspace + Case Engine | ✅ Concluída |
-| 2.10 | API v1 + CLI + health | ⏳ Próxima |
-| 2.11 | Dashboard v0 (KPIs, alertas criticos) | planejada |
+| 2.10 | API v1 + CLI + Health (FastAPI, OpenAPI, Swagger) | ✅ Concluída |
+| 2.11 | Persistência SQLite | ⏳ Próxima |
+| 2.12 | Dashboard v0 (KPIs, alertas criticos) | planejada |
 | 2.9 | API v1 + CLI + health | planejada |
 | 2.10 | UI v0 (shell + tokens + Events/Alerts) | planejada |
 
