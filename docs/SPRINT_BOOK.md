@@ -136,10 +136,18 @@
 - **Resultado:** `Incident` (id, titulo, severidade, prioridade, risco, status, occurrences, alerts, assets, users, iocs, mitre, timeline, owner, fingerprint) + `GroupingEngine` (criterios configuraveis: asset/user/ioc/rule/fingerprint/janela/MITRE) + `IncidentBuilder` (agrega alertas) + `IncidentCorrelator` (NEW/DEDUP/NO_GROUP) + `LifecycleManager` (OPEN->TRIAGE->INVESTIGATING->CONTAINED->RESOLVED->CLOSED->REOPENED); 646 testes, cobertura 95.09%, mypy strict 0.
 - **Lições:** repetido o bug do Sprint 2.7 (`context or Default()` com `__len__`) no `IncidentCorrelator` - corrigido; criterios de agrupamento com pesos (RULE/ASSET/USER/IOC/FINGERPRINT/TIME/MITRE) normalizados 0-100 com min_score configuravel.
 
+### Sprint 2.9 — Investigation Workspace + Case Engine
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** workspace operacional do analista SOC (timeline, evidencias, notas, tarefas, ownership, anexos, playbook).
+- **Arquivos:** `src/edysiem/cases/` (models, timeline, evidence, notes, tasks, owners, attachments, builder, engine, registry, context, exceptions, base, README), 4 arquivos de teste.
+- **Resultado:** `Case` (workspace completo) + `TimelineEngine` (append-only auto-registro) + `EvidenceEngine` (9 tipos de evidencia) + `CommentEngine` (markdown) + `TaskEngine` (criar/concluir/reabrir) + `OwnerEngine` (transferencia) + `AttachmentEngine` + `Playbook` (estrutura); 687 testes, cobertura 95.39%, mypy strict 0.
+- **Lições:** sub-engines compartilham um `TimelineEngine` unico para auto-registro; `dataclasses.replace` para reconstruir Case imutavel; hooks de registry com isolamento (S112 intencional).
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.9** — Case Management: investigação, notas, atribuição + Dashboard v0.
-- **Sprint 2.10** — API v1 + CLI + health.
+- **Sprint 2.10** — API v1 + CLI + health (orquestração dos engines).
+- **Sprint 2.11** — Dashboard v0 (KPIs, alertas criticos).
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

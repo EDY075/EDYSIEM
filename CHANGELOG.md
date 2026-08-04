@@ -7,6 +7,23 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.9 — Investigation Workspace + Case Engine
+
+#### Adicionado
+- Pacote `src/edysiem/cases/` (workspace do analista SOC):
+  - `models.py`: `Case` (id, title, description, owner, status, severity, priority, risk_score, incident_id, alerts, assets, users, iocs, mitre, timeline, comments, attachments, tasks, evidences, playbook, resolution), `CaseStatus` (OPEN→IN_PROGRESS→ON_HOLD→RESOLVED→CLOSED→REOPENED), `CaseEvidence`/`CaseEvidenceKind` (9 tipos), `CaseComment`, `CaseTask`, `CaseAttachment`, `CaseOwner`, `Playbook`/`PlaybookStep`, `CaseMetrics`
+  - `timeline.py`: `TimelineEngine` — auto-registro append-only (criado, alerta, status, comentário, anexo, tarefa, owner, resolução, reabertura)
+  - `evidence.py`: `EvidenceEngine` — logs/hashes/IPs/domains/arquivos/prints/JSON/IOC/links
+  - `notes.py`: `CommentEngine` — notas markdown com autor/data
+  - `tasks.py`: `TaskEngine` — criar/concluir/reabrir, prioridade, responsável, prazo
+  - `owners.py`: `OwnerEngine` — transferência de responsável (registrada na timeline)
+  - `attachments.py`: `AttachmentEngine` — anexos
+  - `builder.py`: `CaseBuilder` — Case a partir de Incident
+  - `engine.py`: `CaseEngine` — orquestra todos os sub-engines + métricas
+  - `registry.py`, `context.py`, `exceptions.py`, `base.py`, `README.md`
+- Testes: 4 arquivos, +41 casos (models, sub-engines, workspace completo).
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, README, CHANGELOG.
+
 ### Sprint 2.8 — Incident Engine Enterprise
 
 #### Adicionado

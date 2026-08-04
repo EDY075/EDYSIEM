@@ -67,6 +67,11 @@ flowchart LR
 > Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 
+> **Implementado (Sprint 2.9):** `src/edysiem/cases/` - ``CaseEngine`` e o workspace do analista SOC:
+> ``TimelineEngine`` (auto-registro append-only), ``EvidenceEngine`` (logs/hashes/IPs/domains/arquivos/
+> prints/JSON/IOC/links), ``CommentEngine`` (markdown), ``TaskEngine``, ``OwnerEngine``, ``AttachmentEngine``
+> e ``Playbook`` (estrutura, sem automacao). Ver `src/edysiem/cases/README.md`.
+
 > **Implementado (Sprint 2.8):** `src/edysiem/incidents/` - ``IncidentEngine`` agrupa Alertas em
 > Incidentes: ``GroupingEngine`` (criterios configuraveis: asset/user/ioc/rule/fingerprint/janela/MITRE),
 > ``IncidentCorrelator`` (NEW/DEDUP/NO_GROUP), ``IncidentBuilder`` (agregacao), ``LifecycleManager``

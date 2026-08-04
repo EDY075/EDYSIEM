@@ -160,7 +160,14 @@ class Alert:
 > fingerprint; lifecycle OPEN->TRIAGE->INVESTIGATING->CONTAINED->RESOLVED->CLOSED->REOPENED.
 > Sem Case Management ainda. Ver `src/edysiem/incidents/README.md`.
 
-### 2.10 Case Management (`app/cases`) (futuro)
+### 2.10 Case Engine (`app/cases`)
+**Responsabilidade:** workspace operacional do analista (timeline, evidencias, notas, tarefas, ownership, anexos).
+
+> **Implementado (Sprint 2.9):** `src/edysiem/cases/` - timeline append-only auto-registrada, evidencias
+> por tipo, comentarios markdown, tarefas com prazo/prioridade, transferencia de owner, playbook
+> (estrutura). Sem automacao de playbook ainda. Ver `src/edysiem/cases/README.md`.
+
+### 2.11 Case Management + Dashboard (futuro)
 **Responsabilidade:** agrupar alertas em incidentes e gerir ciclo de vida.
 **Regras:** agrupamento por entidade/regra; status (open/investigating/resolved/false_positive);
 timeline de ações; notas; auditoria.
