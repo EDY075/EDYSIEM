@@ -35,13 +35,14 @@ def _raw(**overrides: object) -> RawEvent:
 def _parsed(**overrides: object) -> ParsedEvent:
     values: dict[str, object] = {
         "event_id": "evt-1",
+        "trace_id": "trace-1",
         "timestamp": _now(),
         "source_type": "windows",
         "source_host": "wks-01",
-        "event_type": "logon",
+        "event_category": "auth",
+        "event_action": "logon",
         "fields": {"user": "admin"},
         "raw": "payload original",
-        "trace_id": "trace-1",
     }
     values.update(overrides)
     return ParsedEvent(**values)  # type: ignore[arg-type]
@@ -50,10 +51,13 @@ def _parsed(**overrides: object) -> ParsedEvent:
 def _canonical(**overrides: object) -> CanonicalEvent:
     values: dict[str, object] = {
         "event_id": "evt-1",
+        "trace_id": "trace-1",
         "timestamp": _now(),
+        "received_at": _now(),
         "source_type": "windows",
         "source_host": "wks-01",
-        "event_type": "logon",
+        "event_category": "auth",
+        "event_action": "logon",
         "severity": Severity.MEDIUM,
     }
     values.update(overrides)
@@ -148,7 +152,7 @@ def test_parsed_event_full_creation() -> None:
     assert event.timestamp == _now()
     assert event.source_type == "windows"
     assert event.source_host == "wks-01"
-    assert event.event_type == "logon"
+    assert event.event_category == "auth"
     assert event.fields == {"user": "admin", "ip": "10.0.0.5"}
     assert event.raw == b"raw-bytes"
     assert event.trace_id == "trace-1"
@@ -157,19 +161,12 @@ def test_parsed_event_full_creation() -> None:
 def test_parsed_event_immutable() -> None:
     event = _parsed()
     with pytest.raises(FrozenInstanceError):
-        event.event_type = "network"  # type: ignore[misc]
+        event.event_category = "network"  # type: ignore[misc]
 
 
 def test_parsed_event_requires_source_type() -> None:
     with pytest.raises(ValueError, match="source_type não pode ser vazio"):
         _parsed(source_type="")
-
-
-def test_parsed_event_requires_event_type() -> None:
-    with pytest.raises(ValueError, match="event_type não pode ser vazio"):
-        _parsed(event_type="")
-    with pytest.raises(ValueError, match="event_type não pode ser vazio"):
-        _parsed(event_type="   ")
 
 
 def test_parsed_event_requires_trace_id() -> None:
@@ -185,19 +182,22 @@ def test_parsed_event_requires_trace_id() -> None:
 def test_canonical_event_full_creation() -> None:
     event = CanonicalEvent(
         event_id="evt-1",
+        trace_id="trace-1",
         timestamp=_now(),
+        received_at=_now(),
         source_type="windows",
         source_host="wks-01",
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         severity=Severity.HIGH,
         user="admin",
         process="lsass.exe",
+        command_line="lsass.exe -s",
         ip_src="10.0.0.5",
         ip_dst="10.0.0.1",
         hostname="wks-01.corp",
-        payload={"src_port": 4624},
-        raw="payload original",
-        trace_id="trace-1",
+        metadata={"src_port": 4624},
+        event_original="payload original",
         normalized_at=_now(),
     )
     assert event.user == "admin"
@@ -205,8 +205,8 @@ def test_canonical_event_full_creation() -> None:
     assert event.ip_src == "10.0.0.5"
     assert event.ip_dst == "10.0.0.1"
     assert event.hostname == "wks-01.corp"
-    assert event.payload == {"src_port": 4624}
-    assert event.raw == "payload original"
+    assert event.metadata == {"src_port": 4624}
+    assert event.event_original == "payload original"
     assert event.trace_id == "trace-1"
     assert event.normalized_at == _now()
 
@@ -218,10 +218,13 @@ def test_canonical_event_defaults() -> None:
     assert event.ip_src is None
     assert event.ip_dst is None
     assert event.hostname is None
-    assert event.payload == {}
-    assert event.raw == ""
+    assert event.metadata == {}
+    assert event.event_original == ""
     # trace_id vazio é permitido por default; a pipeline preenche em produção.
-    assert event.trace_id == ""
+    assert event.normalized_fields == frozenset()
+    assert event.tags == frozenset()
+    assert event.confidence == 1.0
+    assert event.schema_version == "1.0.0"
     assert event.normalized_at is not None
     assert event.normalized_at.tzinfo is UTC
 
@@ -234,7 +237,7 @@ def test_canonical_event_immutable() -> None:
 
 @pytest.mark.parametrize(
     "field_name",
-    ["event_id", "source_type", "source_host", "event_type"],
+    ["event_id", "source_type", "source_host"],
 )
 def test_canonical_event_requires_required_fields(field_name: str) -> None:
     with pytest.raises(ValueError, match="não pode ser vazio"):
@@ -292,9 +295,12 @@ def test_enriched_event_inheritance_creation() -> None:
         timestamp=_now(),
         source_type="windows",
         source_host="wks-01",
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         severity=Severity.CRITICAL,
         user="admin",
+        trace_id="trace-1",
+        received_at=_now(),
         enrichments=(enrichment,),
     )
     assert isinstance(event, CanonicalEvent)
@@ -302,7 +308,7 @@ def test_enriched_event_inheritance_creation() -> None:
     assert event.event_id == "evt-1"
     assert event.source_type == "windows"
     assert event.source_host == "wks-01"
-    assert event.event_type == "logon"
+    assert event.event_category == "auth"
     assert event.severity is Severity.CRITICAL
     assert event.user == "admin"
     assert event.enrichments == (enrichment,)
@@ -314,8 +320,11 @@ def test_enriched_event_empty_enrichments_default() -> None:
         timestamp=_now(),
         source_type="windows",
         source_host="wks-01",
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         severity=Severity.LOW,
+        trace_id="trace-1",
+        received_at=_now(),
     )
     assert event.enrichments == ()
 
@@ -326,8 +335,11 @@ def test_enriched_event_immutable() -> None:
         timestamp=_now(),
         source_type="windows",
         source_host="wks-01",
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         severity=Severity.LOW,
+        trace_id="trace-1",
+        received_at=_now(),
         enrichments=(_enrichment(),),
     )
     with pytest.raises(FrozenInstanceError):
@@ -340,19 +352,25 @@ def test_enriched_event_inherits_validation() -> None:
     with pytest.raises(ValueError, match="event_id não pode ser vazio"):
         EnrichedEvent(
             event_id="",
+            trace_id="trace-1",
             timestamp=_now(),
+            received_at=_now(),
             source_type="windows",
             source_host="wks-01",
-            event_type="logon",
+            event_category="auth",
+            event_action="logon",
             severity=Severity.LOW,
         )
     with pytest.raises(ValueError, match="source_type não pode ser vazio"):
         EnrichedEvent(
             event_id="evt-1",
+            trace_id="trace-1",
             timestamp=_now(),
+            received_at=_now(),
             source_type="",
             source_host="wks-01",
-            event_type="logon",
+            event_category="auth",
+            event_action="logon",
             severity=Severity.LOW,
         )
 
@@ -365,20 +383,23 @@ def test_pipeline_models_flow_from_collector_to_enrichment() -> None:
         timestamp=raw.received_at,
         source_type=raw.source_type,
         source_host=raw.source_host,
-        event_type="auth",
+        event_category="auth",
+        event_action="logon",
         fields={"user": "admin"},
-        raw=raw.raw_payload,
+        raw="accepted",
         trace_id="trace-1",
     )
     canonical = CanonicalEvent(
         event_id=parsed.event_id,
+        trace_id=parsed.trace_id,
         timestamp=parsed.timestamp,
+        received_at=raw.received_at,
         source_type=parsed.source_type,
         source_host=parsed.source_host,
-        event_type=parsed.event_type,
+        event_category=parsed.event_category,
+        event_action=parsed.event_action,
         severity=Severity.MEDIUM,
         user=parsed.fields["user"],
-        trace_id=parsed.trace_id,
     )
     enrichment = Enrichment(kind="intel", provider="feodo", data={"confidence": 0.9})
     enriched = EnrichedEvent(**asdict(canonical), enrichments=(enrichment,))

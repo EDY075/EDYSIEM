@@ -18,6 +18,7 @@ dependencies = []
 dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
+    "pytest-asyncio==0.25.3",
     "mypy==2.3.0",
     "ruff==0.16.1",
 ]
@@ -28,6 +29,7 @@ packages = ["src/edysiem"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --cov=edysiem --cov-report=term-missing --cov-fail-under=95"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["edysiem"]
@@ -61,4 +63,7 @@ ignore = ["UP046", "UP047", "UP040"]
 "src/edysiem/logging/json.py" = ["ANN401"]
 "src/edysiem/logging/logger.py" = ["ANN401"]
 "src/edysiem/validation/validators.py" = ["ANN401"]
+# Providers externos (asset_db, geo, intel, user) são adapters Any intencionais;
+# degradação graciosa de provider usa try-except-pass.
+"src/edysiem/enrichment/context.py" = ["ANN401", "S110"]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN401", "S101", "S104", "S105", "S106"]

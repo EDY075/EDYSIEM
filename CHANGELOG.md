@@ -7,6 +7,29 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.4 — Enrichment Engine (Arquitetura Enterprise)
+
+#### Adicionado
+- Pacote `src/edysiem/enrichment/` **desacoplado e extensível** (framework, sem enriquecedores reais):
+  - `base.py`: `EnrichmentPlugin` (Protocol) + `PluginMetadata` + `PluginPriority` + `PluginResult`
+  - `registry.py`: `EnrichmentRegistry` — ordenação topológica por prioridade + dependências, detecção de ciclos
+  - `engine.py`: `EnrichmentEngine` + `EnrichmentMetrics` — timeout por plugin, isolamento de falhas, batch, health
+  - `context.py`: `EnrichmentContext` — asset/geo/intel/user providers, cache TTL, métricas hit/miss
+  - `models.py`: `Enrichment`, `EnrichmentKind`, `CachePolicy`, `EnrichmentResult`
+  - `exceptions.py`: hierarquia de erros do framework
+  - `plugins/README.md`: guia de desenvolvimento de plugins
+- Testes: 8 arquivos, +82 casos (metadados, registry, context, providers, engine, modelos).
+- Suporte `pytest-asyncio` (asyncio_mode=auto) adicionado ao `pyproject.toml`.
+
+### Sprint 2.3 — Canonical Pipeline + Parser Enterprise
+
+#### Adicionado
+- `src/edysiem/parsers/`: Syslog RFC3164 + RFC5424 (structured-data) — parsers puros que retornam `Result`.
+- `src/edysiem/normalization/`: `StrategyNormalizer` + `Registry` (Strategy pattern + plugin discovery).
+- `CanonicalEvent` v2: campos `event_category`/`event_action`, `command_line`, `vendor`, `product`,
+  `event_original`, `normalized_fields`, `confidence`, `metadata`, `schema_version`.
+- Testes: parsers (19), normalizer (10), pipeline models atualizados.
+
 ### Sprint 2.2 — Infraestrutura de Ingestão Enterprise (ADR-009)
 
 #### Adicionado

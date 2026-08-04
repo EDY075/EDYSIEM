@@ -78,73 +78,119 @@ class ParsedEvent:
         timestamp: Carimbo de tempo (UTC) do evento na fonte.
         source_type: Tipo da fonte (ex.: ``"windows"``).
         source_host: Host/equipamento de origem.
-        event_type: Categoria do evento (ex.: ``"logon"``, ``"network"``).
+        event_category: Categoria ampla do evento (ex.: ``"auth"``,
+            ``"network"``, ``"process"``, ``"file"``).
+        event_action: Ação específica (ex.: ``"logon"``, ``"create"``,
+            ``"delete"``, ``"connect"``).
         fields: Dicionário de campos estruturados extraídos do payload.
         raw: Payload original recebido pelo parser.
         trace_id: Identificador de rastreabilidade da pipeline.
+        vendor: Fabricante/origem do log (ex.: ``"microsoft"``,
+            ``"cisco"``, ``"linux"``).
+        product: Produto específico que gerou o log (ex.: ``"winlog"``,
+            ``"ios"``, ``"sshd"``).
+        confidence: Nível de confiança da extração (0.0-1.0).
     """
 
     event_id: str
     timestamp: datetime
     source_type: str
     source_host: str
-    event_type: str
+    event_category: str
+    event_action: str
     fields: dict[str, Any]
     raw: str | bytes
     trace_id: str
+    vendor: str | None = None
+    product: str | None = None
+    confidence: float = 1.0
 
     def __post_init__(self) -> None:
         if not self.source_type or not self.source_type.strip():
             raise ValueError("source_type não pode ser vazio")
-        if not self.event_type or not self.event_type.strip():
-            raise ValueError("event_type não pode ser vazio")
+        if not self.event_category or not self.event_category.strip():
+            raise ValueError("event_category não pode ser vazio")
+        if not self.event_action or not self.event_action.strip():
+            raise ValueError("event_action não pode ser vazio")
         if not self.trace_id or not self.trace_id.strip():
             raise ValueError("trace_id não pode ser vazio")
+        if not (0.0 <= self.confidence <= 1.0):
+            raise ValueError(f"confidence deve estar entre 0.0 e 1.0; recebido {self.confidence}")
+
+
+SCHEMA_VERSION = "1.0.0"
 
 
 @dataclass(frozen=True, slots=True)
 class CanonicalEvent:
-    """Modelo canônico de evento normalizado (espelha DATAFLOW.md §2.4).
+    """Modelo canônico de evento normalizado — contrato central da pipeline.
 
-    Representa o evento já normalizado, com campos de segurança comuns
-    preenchidos (usuário, processo, IPs, hostname) e severidade classificada.
-    É o modelo central da pipeline — consumido por exporters e pelo
-    enrichment.
+    Representa o evento totalmente normalizado, com campos de segurança
+    universais preenchidos. É o modelo central consumido por enrichment,
+    correlation, detection e exporters. Projetado para ser vendor-neutral,
+    imutável e versionado.
+
+    O design incorpora lições de ECS (Elastic), CIM (Splunk) e CES
+    (Sentinel) sem copiar nenhum deles: campos são semânticos e
+    independentes de vendor, o schema é versionado, e o raw é
+    preservado para re-parsing.
 
     Attributes:
         event_id: Identificador único do evento.
+        trace_id: Rastreabilidade ponta a ponta da pipeline.
         timestamp: Carimbo de tempo (UTC) do evento na fonte.
-        source_type: Tipo da fonte.
+        received_at: Carimbo de tempo (UTC) em que a plataforma recebeu.
+        source_type: Tipo da fonte (ex.: ``"syslog"``, ``"windows"``).
         source_host: Host/equipamento de origem.
-        event_type: Categoria do evento normalizado.
+        hostname: Hostname resolvido do equipamento de origem.
+        event_category: Categoria ampla (``"auth"``, ``"network"``,
+            ``"process"``, ``"file"``, ``"system"``, ``"threat"``).
+        event_action: Ação específica (``"logon"``, ``"create"``,
+            ``"delete"``, ``"connect"``, ``"disconnect"``).
         severity: Severidade classificada pelo normalizer.
         user: Usuário associado ao evento, se houver.
         process: Processo associado ao evento, se houver.
+        command_line: Linha de comando do processo, se aplicável.
         ip_src: Endereço IP de origem, se houver.
         ip_dst: Endereço IP de destino, se houver.
-        hostname: Hostname associado ao evento, se houver.
-        payload: Campos adicionais enriquecidos durante a normalização.
-        raw: Payload original (texto) preservado para auditoria.
-        trace_id: Identificador de rastreabilidade; a pipeline preenche
-            obrigatoriamente em produção. Não é validado aqui para permitir
-            construção simples em testes e ferramentas locais.
+        vendor: Fabricante do produto que gerou o log.
+        product: Nome do produto específico.
+        event_original: Linha raw original preservada para auditoria e
+            re-parsing.
+        normalized_fields: Conjunto dos nomes dos campos que foram
+            normalizados pelo parser/normalizer (auditoria).
+        tags: Tags de contextualização herdadas da coleta.
+        confidence: Nível de confiança da normalização
+            (0.0-1.0).
+        metadata: Campos arbitrários de extensibilidade (vendor-specific
+            que não se encaixam nos campos canônicos).
+        schema_version: Versão do schema canônico (ex.: ``"1.0.0"``).
         normalized_at: Carimbo de tempo (UTC) da normalização.
     """
 
     event_id: str
+    trace_id: str
     timestamp: datetime
+    received_at: datetime
     source_type: str
     source_host: str
-    event_type: str
-    severity: Severity
+    hostname: str | None = None
+    event_category: str = ""
+    event_action: str = ""
+    severity: Severity = Severity.INFO
     user: str | None = None
     process: str | None = None
+    command_line: str | None = None
     ip_src: str | None = None
     ip_dst: str | None = None
-    hostname: str | None = None
-    payload: dict[str, Any] = field(default_factory=dict)
-    raw: str = ""
-    trace_id: str = ""
+    vendor: str | None = None
+    product: str | None = None
+    event_original: str = ""
+    normalized_fields: frozenset[str] = frozenset()
+    tags: frozenset[str] = frozenset()
+    confidence: float = 1.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+    schema_version: str = SCHEMA_VERSION
     normalized_at: datetime = field(default_factory=_utcnow)
 
     def __post_init__(self) -> None:
@@ -154,8 +200,12 @@ class CanonicalEvent:
             raise ValueError("source_type não pode ser vazio")
         if not self.source_host or not self.source_host.strip():
             raise ValueError("source_host não pode ser vazio")
-        if not self.event_type or not self.event_type.strip():
-            raise ValueError("event_type não pode ser vazio")
+        if not (0.0 <= self.confidence <= 1.0):
+            raise ValueError(f"confidence deve estar entre 0.0 e 1.0; recebido {self.confidence}")
+        if self.schema_version != SCHEMA_VERSION:
+            raise ValueError(
+                f"schema_version deve ser {SCHEMA_VERSION!r}; recebido {self.schema_version!r}"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +253,7 @@ class EnrichedEvent(CanonicalEvent):
 
 
 __all__ = [
+    "SCHEMA_VERSION",
     "CanonicalEvent",
     "EnrichedEvent",
     "Enrichment",

@@ -46,7 +46,8 @@ def _parsed_from_raw(event: RawEvent) -> ParsedEvent:
         timestamp=datetime.now(UTC),
         source_type=event.source_type,
         source_host=event.source_host,
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         fields={"user": "admin"},
         raw=event.raw_payload,
         trace_id="trace-test",
@@ -56,12 +57,14 @@ def _parsed_from_raw(event: RawEvent) -> ParsedEvent:
 def _canonical() -> CanonicalEvent:
     return CanonicalEvent(
         event_id="evt-1",
+        trace_id="trace-test",
         timestamp=datetime.now(UTC),
+        received_at=datetime.now(UTC),
         source_type="windows",
         source_host="wks-01",
-        event_type="logon",
+        event_category="auth",
+        event_action="logon",
         severity=Severity.MEDIUM,
-        trace_id="trace-test",
     )
 
 
@@ -182,7 +185,7 @@ def test_parser_contract_accepts_raw_event() -> None:
     parsed = _parsed_from_raw(raw)
     assert parsed.event_id == raw.event_id
     assert parsed.source_type == raw.source_type
-    assert parsed.event_type == "logon"
+    assert parsed.event_category == "auth"
     assert parsed.raw == b"4624"
 
 
