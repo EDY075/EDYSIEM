@@ -112,10 +112,18 @@
 - **Resultado:** `CorrelationRule` Protocol + Registry ordenado + Engine com janelas temporais (contexto), isolamento de falhas, timeout e métricas; regra DEMO `ThresholdByIpRule`; 435 testes, cobertura 95.19%, mypy strict 0.
 - **Lições:** filtro de `required_fields` no engine deve pular regras que exigem campo AUSENTE (não presentes); janela temporal precisa ser robusta a inserções fora de ordem.
 
+### Sprint 2.6 — Rule Engine + Detection Framework
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** camada de interpretação de regras de detecção sobre eventos correlacionados (sem regras reais, sem Sigma/MITRE).
+- **Arquivos:** `src/edysiem/detection/` (base, registry, rule_engine, engine, context, models, dsl, exceptions, plugins/), 7 arquivos de teste.
+- **Resultado:** `DetectionRule` Protocol + `RuleMetadata` (severidade, confiança, risco) + `RuleEngine` (carregar/registrar/validar/executar) + `DetectionEngine` (produz DetectionOutcome/DetectionDecision) + DSL declarativa (WHEN/AND/THEN); regra DEMO `LoginFailuresRule`; 538 testes, cobertura 95.08%, mypy strict 0.
+- **Lições:** `RuleExpression.evaluate` precisa despachar entre RuleCondition (escalar) e RuleExpression (mapa); comparação de severidade exige rank ordinal (string não ordena); DSL de valores dinâmicos usa Any intencional.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.6** — Detection Engine: regras reais de detecção + MITRE + Alert generation sobre o Correlation Engine.
-- **Sprint 2.7** — Incident engine + ciclo de vida.
+- **Sprint 2.7** — Alert Engine: gerar `Alert` a partir de DetectionFindings + dedupe por fingerprint.
+- **Sprint 2.8** — Incident engine + ciclo de vida.
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

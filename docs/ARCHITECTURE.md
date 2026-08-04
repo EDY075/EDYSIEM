@@ -59,6 +59,12 @@ flowchart LR
 > de falhas, timeout por regra, metricas). Regras declarativas, sem hardcode. Ver
 > `docs/PIPELINE.md` e `src/edysiem/correlation/plugins/README.md`.
 | `detection` | Aplicar detection rules e gerar alertas (MITRE) | Resolver incidentes |
+
+> **Implementado (Sprint 2.6):** `src/edysiem/detection/` - ``DetectionRule`` Protocol + ``RuleMetadata``
+> declarativos (severidade, confianca, risco), ``RuleEngine`` (carregar/registrar/validar/executar regras
+> com isolamento de falhas e timeout), ``DetectionEngine`` (produz ``DetectionOutcome``/``DetectionDecision``
+> a partir de ``CorrelatedEvent``) e DSL declarativa (``WHEN ... AND ... THEN``). Sem Alert ainda.
+> Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 | `persistence` | Armazenar eventos, alertas, incidentes, regras | Aplicar regras |
 | `api` | Expor contratos REST estáveis | Acessar UI |

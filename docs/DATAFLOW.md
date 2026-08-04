@@ -137,6 +137,10 @@ class Alert:
     first_seen: datetime
     last_seen: datetime
 ```
+> **Implementado (Sprint 2.6):** `src/edysiem/detection/` - ``RuleEngine`` (interpreta ``DetectionRule``
+> com DSL declarativa), ``DetectionEngine`` (recebe ``CorrelatedEvent`` e produz ``DetectionOutcome``/
+> ``DetectionDecision``). Alert generation e sprint futura. Detalhes: `src/edysiem/detection/plugins/README.md`.
+
 **Regras:** regras declarativas com MITRE; sem execução arbitrária; deduplicação por fingerprint.
 
 ### 2.8 Incident Engine (`app/incident`)

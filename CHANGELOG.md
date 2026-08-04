@@ -7,6 +7,27 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.6 — Rule Engine + Detection Framework
+
+#### Adicionado
+- Pacote `src/edysiem/detection/` (camada de interpretação de regras sobre CorrelatedEvents):
+  - `base.py`: `DetectionRule` (Protocol) + `RuleMetadata` + `DetectionPriority` + `DetectionFinding` + `DetectionReason` + `DetectionDecision`
+  - `dsl.py`: `RuleCondition`, `RuleExpression`, `RuleOperator`, `RuleLogicalOp` + parser mínimo (`WHEN ... AND ... THEN`) + `evaluate_expression`
+  - `registry.py`: `DetectionRegistry` — ordenação topológica por prioridade + dependências, detecção de ciclos
+  - `rule_engine.py`: `RuleEngine` — carregar/registrar/validar/executar regras, isolamento de falhas, timeout, prioridade, métricas
+  - `engine.py`: `DetectionEngine` + `DetectionOutcome` + `DetectionSummary` (sem Alert ainda)
+  - `context.py`: `DetectionContext` — buffers temporais + cache compartilhado
+  - `models.py`: `DetectionResult`, `DetectionOutcome`, `DetectionMetrics`
+  - `exceptions.py`: hierarquia de erros
+  - `plugins/demo.py`: **regra DEMO** `LoginFailuresRule` (mais de N falhas de login em X minutos)
+  - `plugins/README.md`: guia de desenvolvimento de regras
+- Testes: 7 arquivos, +103 casos (DSL, base, registry, rule_engine, detection engine, demo, coverage).
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, README, CHANGELOG.
+
+#### Corrigido
+- `RuleExpression.evaluate` passa a despachar corretamente entre `RuleCondition` (valor escalar) e `RuleExpression` (mapa field→valor).
+- Comparação de severidade na DSL usa rank ordinal (info<low<medium<high<critical) em vez de comparação de string.
+
 ### Sprint 2.5 — Correlation Engine Framework
 
 #### Adicionado

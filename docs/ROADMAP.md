@@ -45,10 +45,11 @@
 | 2.3 | Canonical Pipeline + Parser Enterprise (RFC3164/RFC5424 + normalizer) | ✅ Concluída |
 | 2.4 | Enrichment Engine (framework Enterprise) | ✅ Concluída |
 | 2.5 | Correlation Engine Framework (regras declarativas + janelas) | ✅ Concluída |
-| 2.6 | Detection Engine (regras reais + MITRE + Alert) | ⏳ Próxima |
-| 2.7 | Incident Engine + ciclo de vida | planejada |
-| 2.8 | API v1 + CLI + health | planejada |
-| 2.9 | UI v0 (shell + tokens + Events/Alerts) | planejada |
+| 2.6 | Rule Engine + Detection Framework (DSL + DetectionRule) | ✅ Concluída |
+| 2.7 | Alert Engine (Alert + dedupe por fingerprint) | ⏳ Próxima |
+| 2.8 | Incident Engine + ciclo de vida | planejada |
+| 2.9 | API v1 + CLI + health | planejada |
+| 2.10 | UI v0 (shell + tokens + Events/Alerts) | planejada |
 
 ## Fase 3 — Escala
 
