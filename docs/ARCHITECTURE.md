@@ -67,6 +67,12 @@ flowchart LR
 > Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 
+> **Implementado (Sprint 2.8):** `src/edysiem/incidents/` - ``IncidentEngine`` agrupa Alertas em
+> Incidentes: ``GroupingEngine`` (criterios configuraveis: asset/user/ioc/rule/fingerprint/janela/MITRE),
+> ``IncidentCorrelator`` (NEW/DEDUP/NO_GROUP), ``IncidentBuilder`` (agregacao), ``LifecycleManager``
+> (OPEN->TRIAGE->INVESTIGATING->CONTAINED->RESOLVED->CLOSED->REOPENED). Sem Case Management ainda.
+> Ver `src/edysiem/incidents/README.md`.
+
 > **Implementado (Sprint 2.7):** `src/edysiem/alerts/` - ``AlertEngine`` orquestra o ciclo de vida completo:
 > ``RiskEngine`` (fatores), ``FingerprintEngine`` (SHA-256 deterministico), ``AlertBuilder``,
 > ``DedupEngine`` (occurrences+1), ``LifecycleManager`` (OPEN->TRIAGE->INVESTIGATING->RESOLVED/FALSE_POSITIVE).

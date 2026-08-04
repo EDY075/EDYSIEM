@@ -154,6 +154,14 @@ class Alert:
 
 ### 2.9 Incident Engine (`app/incident`)
 **Responsabilidade:** agrupar alertas em incidentes e gerir ciclo de vida.
+
+> **Implementado (Sprint 2.8):** `src/edysiem/incidents/` - agrupamento por criterios configuraveis
+> (asset, user, ioc, rule, fingerprint, janela temporal, MITRE) com pontuacao minima; dedupe por
+> fingerprint; lifecycle OPEN->TRIAGE->INVESTIGATING->CONTAINED->RESOLVED->CLOSED->REOPENED.
+> Sem Case Management ainda. Ver `src/edysiem/incidents/README.md`.
+
+### 2.10 Case Management (`app/cases`) (futuro)
+**Responsabilidade:** agrupar alertas em incidentes e gerir ciclo de vida.
 **Regras:** agrupamento por entidade/regra; status (open/investigating/resolved/false_positive);
 timeline de ações; notas; auditoria.
 

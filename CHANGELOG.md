@@ -7,6 +7,23 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.8 — Incident Engine Enterprise
+
+#### Adicionado
+- Pacote `src/edysiem/incidents/` (agrupamento de Alertas em Incidentes):
+  - `models.py`: `Incident` (id, title, description, severity, priority, risk_score, confidence, status, first_seen, last_seen, closed_at, occurrences, alerts, assets, users, iocs, mitre, tactics, techniques, tags, timeline, owner, fingerprint, reason, evidence), `IncidentStatus` (OPEN→TRIAGE→INVESTIGATING→CONTAINED→RESOLVED→CLOSED→REOPENED), `IncidentSeverity`, `IncidentPriority`, `IncidentFingerprint`, `IncidentEvidence`, `IncidentReason`, `IncidentMetrics`
+  - `grouping.py`: `GroupingConfig` + `GroupingEngine` — critérios configuráveis (asset, user, ioc, rule, fingerprint, janela temporal, MITRE) com pesos e pontuação mínima
+  - `correlator.py`: `IncidentCorrelator` — decisão NEW/DEDUP/NO_GROUP
+  - `builder.py`: `IncidentBuilder` — agrega múltiplos Alert em um Incident
+  - `lifecycle.py`: `IncidentLifecycleManager` — transições validadas
+  - `engine.py`: `IncidentEngine` — orquestra correlator→builder→dedup→lifecycle
+  - `registry.py`, `context.py`, `exceptions.py`, `base.py`, `README.md`
+- Testes: 4 arquivos, +56 casos (inclui DEMO: 5 alertas de brute force → 1 incidente).
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, README, CHANGELOG.
+
+#### Corrigido
+- `IncidentCorrelator.__init__` usava `context or IncidentContext()` (mesmo bug do Sprint 2.7 com `__len__`). Corrigido para `context if context is not None else IncidentContext()`.
+
 ### Sprint 2.7 — Alert Engine Enterprise
 
 #### Adicionado

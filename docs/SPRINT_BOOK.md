@@ -128,10 +128,18 @@
 - **Resultado:** `Alert` operacional (id, titulo, severidade, prioridade, risco, confianca, occurrences, timeline, fingerprint) + `RiskEngine` (fatores) + `FingerprintEngine` (SHA-256 deterministico) + `DedupEngine` (occurrences+1) + `LifecycleManager` (OPEN->TRIAGE->INVESTIGATING->RESOLVED/FALSE_POSITIVE) + `AlertEngine`; 590 testes, cobertura 95.13%, mypy strict 0.
 - **Lições:** `AlertContext.__len__` torna instancia vazia falsy - usar `context if context is not None else AlertContext()` (NUNCA `or`); Enum não expõe atributo dict interno (`_TRANSITIONS`) - mover mapa para nivel de modulo.
 
+### Sprint 2.8 — Incident Engine Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** agrupar Alertas relacionados em Incidentes (sem Case Management/Dashboard).
+- **Arquivos:** `src/edysiem/incidents/` (models, grouping, correlator, builder, lifecycle, registry, context, engine, exceptions, base, README), 4 arquivos de teste.
+- **Resultado:** `Incident` (id, titulo, severidade, prioridade, risco, status, occurrences, alerts, assets, users, iocs, mitre, timeline, owner, fingerprint) + `GroupingEngine` (criterios configuraveis: asset/user/ioc/rule/fingerprint/janela/MITRE) + `IncidentBuilder` (agrega alertas) + `IncidentCorrelator` (NEW/DEDUP/NO_GROUP) + `LifecycleManager` (OPEN->TRIAGE->INVESTIGATING->CONTAINED->RESOLVED->CLOSED->REOPENED); 646 testes, cobertura 95.09%, mypy strict 0.
+- **Lições:** repetido o bug do Sprint 2.7 (`context or Default()` com `__len__`) no `IncidentCorrelator` - corrigido; criterios de agrupamento com pesos (RULE/ASSET/USER/IOC/FINGERPRINT/TIME/MITRE) normalizados 0-100 com min_score configuravel.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.8** — Incident Engine: agrupar alertas em incidentes + ciclo de vida (Cases).
-- **Sprint 2.9** — API v1 + CLI + health.
+- **Sprint 2.9** — Case Management: investigação, notas, atribuição + Dashboard v0.
+- **Sprint 2.10** — API v1 + CLI + health.
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

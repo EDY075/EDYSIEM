@@ -3,12 +3,13 @@
 Plataforma profissional de Security Information and Event Management (SIEM).
 Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
 
-> **Status:** Sprint 1 (Foundation Core) concluída — tag `v0.1.0`. Sprints 2.1–2.7
+> **Status:** Sprint 1 (Foundation Core) concluída — tag `v0.1.0`. Sprints 2.1–2.8
 > concluídas: pipeline oficial (ADR-008), infraestrutura de ingestão (ADR-009),
 > parsers + normalizer, Enrichment Engine, Correlation Engine, Rule/Detection
-> Framework (DSL declarativa) e Alert Engine Enterprise (risk/fingerprint/dedup/
-> lifecycle) — frameworks desacoplados com regras declarativas, janelas
-> temporais, isolamento de falhas e métricas.
+> Framework (DSL declarativa), Alert Engine Enterprise (risk/fingerprint/dedup/
+> lifecycle) e Incident Engine Enterprise (grouping/correlator/lifecycle) —
+> frameworks desacoplados com regras declarativas, janelas temporais,
+> isolamento de falhas e métricas.
 > **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
 
 ## Documentação
