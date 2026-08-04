@@ -1,13 +1,12 @@
 /**
  * Topbar (UI 3.3)
  * Barra superior: Breadcrumb + Global Search + Theme Switch + UserMenu + Notifications.
- * Sem lógica — apenas estrutura.
  */
-import { colors, motion, spacing, typography } from "../design-system";
+import { colors, spacing } from "../design-system/tokens";
 import { Breadcrumb } from "./Breadcrumb";
 import { GlobalSearch } from "./GlobalSearch";
 import { UserMenu } from "./UserMenu";
-import { Notifications } from "./Notifications";
+import { Notifications } from "./UserMenu";
 import { ThemeSwitch } from "./ThemeSwitch";
 
 export function Topbar() {
@@ -26,7 +25,6 @@ export function Topbar() {
         zIndex: 200,
       }}
     >
-      {/* Breadcrumb */}
       <div style={{ flex: "0 0 auto" }}>
         <Breadcrumb
           items={[
@@ -36,22 +34,18 @@ export function Topbar() {
         />
       </div>
 
-      {/* Global Search */}
       <div style={{ flex: 1, maxWidth: 480, marginLeft: spacing["4"] }}>
         <GlobalSearch />
       </div>
 
-      {/* Theme Switch */}
       <div style={{ flex: "0 0 auto" }}>
         <ThemeSwitch />
       </div>
 
-      {/* Notifications */}
       <div style={{ marginLeft: spacing["3"] }}>
         <Notifications />
       </div>
 
-      {/* User Menu */}
       <div style={{ marginLeft: spacing["3"] }}>
         <UserMenu />
       </div>

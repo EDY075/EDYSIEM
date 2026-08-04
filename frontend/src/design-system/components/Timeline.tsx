@@ -2,7 +2,6 @@
  * Timeline e Activity Feed (UI 3.4)
  * Timeline vertical de eventos + feed de atividade (notas, tarefas, auditoria).
  */
-import { ReactNode } from "react";
 import { colors, spacing, typography } from "../tokens";
 import { SeverityColor } from "../tokens/colors";
 

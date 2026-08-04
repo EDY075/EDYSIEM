@@ -1,21 +1,15 @@
 /**
  * Security Donut Chart / Timeline Chart / Heatmap (UI 3.5)
- * Wrappers próprios — Recharts interno para Donut/Time, CSS Grid para Heatmap.
  */
-import { CSSProperties } from "react";
-import {
+ import {
   PieChart,
   Pie,
   Cell,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
 } from "recharts";
-import { colors, radii, spacing, typography } from "../tokens";
+import { SecurityAreaChart } from "./basic";
+ import { colors, typography } from "../design-system/tokens";
 
 type ChartDataItem = Record<string, number | string>;
 
@@ -41,7 +35,15 @@ export function SecurityDonutChart({ data, nameKey, valueKey, height = 200, inne
             <Cell key={i} fill={palette[i % palette.length]} />
           ))}
         </Pie>
-        <Tooltip contentStyle={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 6, fontFamily: typography.family.mono, fontSize: 12 }} />
+        <Tooltip
+          contentStyle={{
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 6,
+            fontFamily: typography.family.mono,
+            fontSize: 12,
+          }}
+        />
       </PieChart>
     </ResponsiveContainer>
   );
@@ -60,8 +62,6 @@ export function SecurityTimelineChart({ data, xKey, yKeys, height = 200 }: Secur
   return <SecurityAreaChart data={data} xKey={xKey} yKeys={yKeys} height={height} />;
 }
 
-import { LineChart as RLineChart, Line, AreaChart as RAreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-
 /* --------------------------- Security Heatmap ---------------------------- */
 
 export interface HeatmapCell {
@@ -74,12 +74,13 @@ export interface SecurityHeatmapProps {
   rows: string[];
   cols: string[];
   cells: HeatmapCell[];
-  height?: number;
 }
 
-export function SecurityHeatmap({ rows, cols, cells, height = 200 }: SecurityHeatmapProps) {
+export function SecurityHeatmap({ rows, cols, cells }: SecurityHeatmapProps) {
   const cellMap: Record<string, number> = {};
-  cells.forEach((c) => { cellMap[`${c.row}::${c.col}`] = c.value; });
+  cells.forEach((c) => {
+    cellMap[`${c.row}::${c.col}`] = c.value;
+  });
   const max = Math.max(...cells.map((c) => c.value), 1);
 
   return (
@@ -89,14 +90,18 @@ export function SecurityHeatmap({ rows, cols, cells, height = 200 }: SecurityHea
           <tr>
             <th />
             {cols.map((c) => (
-              <th key={c} style={{ color: colors.textMuted, padding: 4, textAlign: "center" }}>{c}</th>
+              <th key={c} style={{ color: colors.textMuted, padding: 4, textAlign: "center" }}>
+                {c}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r}>
-              <td style={{ color: colors.textSecondary, padding: 4, textAlign: "right" }}>{r}</td>
+              <td style={{ color: colors.textSecondary, padding: 4, textAlign: "right" }}>
+                {r}
+              </td>
               {cols.map((c) => {
                 const v = cellMap[`${r}::${c}`] ?? 0;
                 const intensity = v / max;

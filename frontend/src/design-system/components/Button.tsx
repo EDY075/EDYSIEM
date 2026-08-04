@@ -13,6 +13,7 @@ export interface ButtonProps {
   disabled?: boolean;
   onClick?: () => void;
   style?: CSSProperties;
+  title?: string;
 }
 
 const variants: Record<Variant, CSSProperties> = {
@@ -35,11 +36,12 @@ const variants: Record<Variant, CSSProperties> = {
   },
 };
 
-export function Button({ children, variant = "primary", disabled, onClick, style }: ButtonProps) {
+export function Button({ children, variant = "primary", disabled, onClick, style, title }: ButtonProps) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
+      title={title}
       style={{
         fontFamily: typography.family.ui,
         fontSize: typography.size.sm,

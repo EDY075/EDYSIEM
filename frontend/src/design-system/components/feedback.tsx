@@ -2,7 +2,7 @@
  * Feedback — Toolbar, Empty State e Loading Skeleton (UI 3.4)
  */
 import { CSSProperties, ReactNode } from "react";
-import { colors, motion, radii, spacing, typography } from "../tokens";
+import { colors, radii, spacing, typography } from "../tokens";
 
 /* ------------------------------ Toolbar --------------------------------- */
 

@@ -1,22 +1,8 @@
 /**
  * Security Line Chart / Area Chart / Bar Chart (UI 3.5)
- * Wrappers próprios do projeto — Recharts apenas internamente.
  */
-import { CSSProperties } from "react";
-import {
-  LineChart as RLineChart,
-  Line,
-  AreaChart as RAreaChart,
-  Area,
-  BarChart as RBarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { colors, radii, typography } from "../tokens";
+import { LineChart as RLineChart, Line, AreaChart as RAreaChart, Area, BarChart as RBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { colors, typography } from "../design-system/tokens";
 
 type ChartDataItem = Record<string, number | string>;
 
@@ -108,7 +94,7 @@ export function SecurityBarChart({ data, xKey, yKeys, height = 240 }: SecurityBa
         <YAxis {...axisStyle} />
         <Tooltip contentStyle={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: 6, fontFamily: typography.family.mono, fontSize: 12 }} />
         {yKeys.map((key, i) => (
-          <Bar key={key} dataKey={key} fill={palette[i % palette.length]} radius={[radii.sm, radii.sm, 0, 0]} />
+          <Bar key={key} dataKey={key} fill={palette[i % palette.length]} radius={[4, 4, 0, 0]} />
         ))}
       </RBarChart>
     </ResponsiveContainer>

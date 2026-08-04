@@ -5,7 +5,7 @@
  * Wrapper do projeto — páginas usam apenas este componente.
  */
 import { CSSProperties, ReactNode } from "react";
-import { colors, density, motion, radii, spacing, typography } from "../tokens";
+import { colors, density, motion, spacing, typography } from "../tokens";
 import { EmptyState, LoadingSkeleton } from "./feedback";
 
 export interface DataColumn {

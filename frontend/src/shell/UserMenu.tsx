@@ -3,7 +3,7 @@
  * Menu de perfil e notificações no topbar. Estrutura sem dados reais.
  */
 import { useState } from "react";
-import { colors, motion, radii, spacing, typography } from "../tokens";
+import { colors, radii, spacing, typography } from "../design-system/tokens";
 
 /* ------------------------------ UserMenu -------------------------------- */
 

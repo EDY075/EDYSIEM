@@ -3,7 +3,7 @@
  * Shell de 3 zonas: Sidebar + (Topbar + Conteúdo) + Footer.
  * Responsivo: sidebar colapsa em telas pequenas. Rota aninhada via <Outlet/>.
  */
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { colors } from "../design-system";
 import { Sidebar } from "./Sidebar";

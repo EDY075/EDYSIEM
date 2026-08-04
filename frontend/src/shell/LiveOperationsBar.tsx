@@ -4,7 +4,7 @@
  * Mostra status do sistema em tempo real: status, EPS, alertas, casos, ingestão, DB, latência.
  */
 import { useState, useEffect } from "react";
-import { colors, motion, spacing, typography } from "../design-system";
+import { colors, spacing, typography } from "../design-system/tokens";
 
 interface LiveOpsData {
   systemStatus: "online" | "degraded" | "offline";
@@ -30,17 +30,27 @@ export function LiveOperationsBar() {
   const [data, setData] = useState<LiveOpsData>(MOCK_DATA);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Simular atualizações em tempo real (em produção viria via WebSocket/SSE)
   useEffect(() => {
     const interval = setInterval(() => {
-      // Simular pequenas variações nos dados
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        eventsPerSecond: Math.max(0, prev.eventsPerSecond + Math.floor((Math.random() - 0.5) * 50)),
-        activeAlerts: Math.max(0, prev.activeAlerts + Math.floor((Math.random() - 0.3) * 5)),
-        openCases: Math.max(0, prev.openCases + Math.floor((Math.random() - 0.4) * 2)),
-        apiLatencyMs: Math.max(5, Math.min(200, prev.apiLatencyMs + Math.floor((Math.random() - 0.5) * 20))),
-      });
+        eventsPerSecond: Math.max(
+          0,
+          prev.eventsPerSecond + Math.floor((Math.random() - 0.5) * 50),
+        ),
+        activeAlerts: Math.max(
+          0,
+          prev.activeAlerts + Math.floor((Math.random() - 0.3) * 5),
+        ),
+        openCases: Math.max(
+          0,
+          prev.openCases + Math.floor((Math.random() - 0.4) * 2),
+        ),
+        apiLatencyMs: Math.max(
+          5,
+          Math.min(200, prev.apiLatencyMs + Math.floor((Math.random() - 0.5) * 20)),
+        ),
+      }));
       setLastUpdate(new Date());
     }, 3000);
 
@@ -53,25 +63,7 @@ export function LiveOperationsBar() {
     offline: colors.status.offline,
   };
 
-  const statusLabels = {
-    online: "Sistema Online",
-    degraded: "Degradado",
-    offline: "Offline",
-  };
-
-  const ingestionLabels = {
-    online: "Ingestão Normal",
-    degraded: "Ingestão Lenta",
-    offline: "Ingestão Offline",
-  };
-
-  const dbLabels = {
-    online: "Banco Online",
-    degraded: "Banco Lento",
-    offline: "Banco Offline",
-  };
-
-  const formatNumber = (num: number) => {
+  const formatNumber = (num: number): string => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
     if (num >= 1000) return (num / 1000).toFixed(1) + "K";
     return String(num);
@@ -108,7 +100,7 @@ export function LiveOperationsBar() {
             color: statusColors[data.systemStatus],
           }}
         >
-          {statusLabels[data.systemStatus]}
+          {data.systemStatus === "online" ? "Sistema Online" : data.systemStatus === "degraded" ? "Degradado" : "Offline"}
         </span>
       </div>
 
@@ -219,7 +211,7 @@ export function LiveOperationsBar() {
             color: statusColors[data.ingestionStatus],
           }}
         >
-          {ingestionLabels[data.ingestionStatus]}
+          {data.ingestionStatus === "online" ? "Ingestão Normal" : data.ingestionStatus === "degraded" ? "Ingestão Lenta" : "Ingestão Offline"}
         </span>
       </div>
 
@@ -249,7 +241,7 @@ export function LiveOperationsBar() {
             color: statusColors[data.dbStatus],
           }}
         >
-          {dbLabels[data.dbStatus]}
+          {data.dbStatus === "online" ? "Banco Online" : data.dbStatus === "degraded" ? "Banco Lento" : "Banco Offline"}
         </span>
       </div>
 
@@ -288,34 +280,4 @@ export function LiveOperationsBar() {
       </span>
     </div>
   );
-};
-
-const statusColors = {
-  online: colors.status.online,
-  degraded: colors.status.degraded,
-  offline: colors.status.offline,
-};
-
-const statusLabels = {
-  online: "Sistema Online",
-  degraded: "Degradado",
-  offline: "Offline",
-};
-
-const ingestionLabels = {
-  online: "Ingestão Normal",
-  degraded: "Ingestão Lenta",
-  offline: "Ingestão Offline",
-};
-
-const dbLabels = {
-  online: "Banco Online",
-  degraded: "Banco Lento",
-  offline: "Banco Offline",
-};
-
-const statusColors = {
-  online: colors.status.online,
-  degraded: colors.status.degraded,
-  offline: colors.status.offline,
-};
+}

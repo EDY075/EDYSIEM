@@ -2,7 +2,7 @@
  * Footer discreto (UI 3.3)
  * Barra inferior com informações de sistema. Discreta, sem distração.
  */
-import { colors, spacing, typography } from "../tokens";
+import { colors, spacing, typography } from "../design-system/tokens";
 
 export function Footer() {
   return (
