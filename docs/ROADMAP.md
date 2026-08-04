@@ -53,7 +53,10 @@
 | 2.11 | Persistence Foundation + Engine + Event Store | ✅ Concluída |
 | 2.12 | Search Engine + Audit Trail | ✅ Concluída |
 | 2.13 | Engines + persistência + pipeline E2E | ⏳ Próxima |
-| 2.14 | Dashboard v0 (KPIs, alertas criticos) | planejada |
+| UI 3.0 | UX Benchmark (6 SIEMs) | ✅ Concluída |
+| UI 3.1 | Design System (tokens + componentes base) | ✅ Concluída |
+| UI 3.2 | React Shell (sidebar/topbar/routing/theme/state) | ✅ Concluída |
+| 2.14 | Dashboard v0 (KPIs, alertas criticos) | ⏳ Próxima |
 | 2.9 | API v1 + CLI + health | planejada |
 | 2.10 | UI v0 (shell + tokens + Events/Alerts) | planejada |
 

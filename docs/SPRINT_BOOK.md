@@ -168,6 +168,14 @@
 - **Resultado:** `SearchEngine` (busca por term/ioc/asset/user/hostname/ip/hash/mitre/rule/severity/status com paginacao, ordenacao, parcial e exata) + `AuditEngine`/`AuditRepository` (criacao, atualizacao, delete, status, owner, comentarios, evidencias, playbooks - nada perdido); 755 testes, cobertura 95.17%, mypy strict 0.
 - **Lições:** term search so no title (filtros AND); `Page` precisa de total/offset/limit; StrEnum para AuditAction (UP042).
 
+### Sprint UI 3.0/3.1/3.2 — UX Benchmark + Design System + React Shell
+- **Status:** Concluída
+- **Data:** 2026-08-04
+- **Objetivo:** benchmark UX de 6 SIEMs, design system definitivo (dark SOC) e estrutura React (shell, routing, theme, estado global).
+- **Arquivos:** `docs/ENTERPRISE_UX_BENCHMARK.md`, `frontend/` (design-system tokens + componentes base; shell Sidebar/Topbar/AppShell; routing; theme; estado global).
+- **Resultado:** decisões de UX documentadas (dark default, severidade semântica, IA por workflow, master-detail, entidade-cêntrico) + design system novo (tokens cores/spacing/typography/icons/motion/shadows + Button/Badge/Card/Input/Table) + estrutura React sem lógica (AppShell, Sidebar, Topbar, Layout, Routing, ThemeProvider, AppState, responsividade).
+- **Lições:** benchmark define tokens semânticos de severidade (low=azul, medium=âmbar, high=laranja, critical=vermelho); dark theme default; navegação por workflow (Overview->Triage->Investigate->Respond->Manage).
+
 ## Próximas sprints (planejadas)
 
 - **Sprint 2.12** — Conectar engines à persistência (repos nos contexts) + pipeline E2E persistido.

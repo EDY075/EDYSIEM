@@ -30,6 +30,15 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 
 Índice completo: [docs/](docs/)
 
+## Frontend (React)
+
+- `frontend/` — Design System (tokens + componentes base) e estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global).
+- Benchmark UX: [docs/ENTERPRISE_UX_BENCHMARK.md](docs/ENTERPRISE_UX_BENCHMARK.md).
+
+```bash
+cd frontend && npm install && npm run dev
+```
+
 ## Visão do fluxo
 
 ```
