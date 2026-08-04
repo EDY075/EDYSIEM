@@ -7,6 +7,27 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.7 — Alert Engine Enterprise
+
+#### Adicionado
+- Pacote `src/edysiem/alerts/` (ciclo de vida completo de alertas SOC):
+  - `models.py`: `Alert` (id, title, description, severity, priority, risk_score, confidence, first_seen, last_seen, occurrences, status, source, rule, mitre, asset, user, ioc, tags, timeline, fingerprint), `AlertSeverity`, `AlertPriority`, `AlertLifecycle` (state machine), `AlertFingerprint`, `AlertReason`, `AlertTimelineEntry`, `AlertMetrics`
+  - `risk.py`: `RiskEngine` + `RiskFactor` (severidade, confiança, asset criticality, threat intel)
+  - `fingerprint.py`: `FingerprintEngine` — hash SHA-256 determinístico de campos-chave
+  - `builder.py`: `AlertBuilder` — DetectionFinding → Alert
+  - `dedupe.py`: `DedupEngine` + `DedupDecision` — occurrences+1 / last_seen atualizado
+  - `lifecycle.py`: `LifecycleManager` — OPEN→TRIAGE→INVESTIGATING→RESOLVED/FALSE_POSITIVE
+  - `registry.py`: `AlertRegistry` — hooks on_created/on_updated/on_status_changed
+  - `context.py`: `AlertContext` — storage in-memory + índice de fingerprints
+  - `engine.py`: `AlertEngine` — orquestra Risk→Fingerprint→Builder→Dedup→Lifecycle
+  - `exceptions.py`, `base.py`, `README.md`
+- Testes: 5 arquivos, +52 casos.
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, README, CHANGELOG.
+
+#### Corrigido
+- `AlertContext.__len__` torna instância vazia falsy — `context or AlertContext()` criava contexto novo. Corrigido para `context if context is not None else AlertContext()`.
+- Enum `AlertLifecycle` não expõe atributo dict interno — mapa de transições movido para nível de módulo.
+
 ### Sprint 2.6 — Rule Engine + Detection Framework
 
 #### Adicionado

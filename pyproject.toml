@@ -69,4 +69,8 @@ ignore = ["UP046", "UP047", "UP040"]
 # DSL de detecção: valores dinâmicos (Any) são intencionais para regras declarativas.
 "src/edysiem/detection/dsl.py" = ["ANN401"]
 "src/edysiem/detection/context.py" = ["ANN401"]
+# Alert Engine: finding/target/lifecycle dinâmicos (Any) vêm de outros frameworks.
+"src/edysiem/alerts/builder.py" = ["ANN401"]
+"src/edysiem/alerts/engine.py" = ["ANN401"]
+"src/edysiem/alerts/registry.py" = ["S112"]
 "tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN401", "S101", "S104", "S105", "S106"]

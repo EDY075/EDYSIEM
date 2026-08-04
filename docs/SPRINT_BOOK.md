@@ -120,10 +120,18 @@
 - **Resultado:** `DetectionRule` Protocol + `RuleMetadata` (severidade, confiança, risco) + `RuleEngine` (carregar/registrar/validar/executar) + `DetectionEngine` (produz DetectionOutcome/DetectionDecision) + DSL declarativa (WHEN/AND/THEN); regra DEMO `LoginFailuresRule`; 538 testes, cobertura 95.08%, mypy strict 0.
 - **Lições:** `RuleExpression.evaluate` precisa despachar entre RuleCondition (escalar) e RuleExpression (mapa); comparação de severidade exige rank ordinal (string não ordena); DSL de valores dinâmicos usa Any intencional.
 
+### Sprint 2.7 — Alert Engine Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** ciclo de vida completo de um alerta SOC (Risk, Fingerprint, Builder, Dedup, Lifecycle) - sem Cases/Dashboard.
+- **Arquivos:** `src/edysiem/alerts/` (base, models, risk, fingerprint, builder, dedupe, lifecycle, registry, context, engine, exceptions, README), 5 arquivos de teste.
+- **Resultado:** `Alert` operacional (id, titulo, severidade, prioridade, risco, confianca, occurrences, timeline, fingerprint) + `RiskEngine` (fatores) + `FingerprintEngine` (SHA-256 deterministico) + `DedupEngine` (occurrences+1) + `LifecycleManager` (OPEN->TRIAGE->INVESTIGATING->RESOLVED/FALSE_POSITIVE) + `AlertEngine`; 590 testes, cobertura 95.13%, mypy strict 0.
+- **Lições:** `AlertContext.__len__` torna instancia vazia falsy - usar `context if context is not None else AlertContext()` (NUNCA `or`); Enum não expõe atributo dict interno (`_TRANSITIONS`) - mover mapa para nivel de modulo.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.7** — Alert Engine: gerar `Alert` a partir de DetectionFindings + dedupe por fingerprint.
-- **Sprint 2.8** — Incident engine + ciclo de vida.
+- **Sprint 2.8** — Incident Engine: agrupar alertas em incidentes + ciclo de vida (Cases).
+- **Sprint 2.9** — API v1 + CLI + health.
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

@@ -66,6 +66,11 @@ flowchart LR
 > a partir de ``CorrelatedEvent``) e DSL declarativa (``WHEN ... AND ... THEN``). Sem Alert ainda.
 > Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
+
+> **Implementado (Sprint 2.7):** `src/edysiem/alerts/` - ``AlertEngine`` orquestra o ciclo de vida completo:
+> ``RiskEngine`` (fatores), ``FingerprintEngine`` (SHA-256 deterministico), ``AlertBuilder``,
+> ``DedupEngine`` (occurrences+1), ``LifecycleManager`` (OPEN->TRIAGE->INVESTIGATING->RESOLVED/FALSE_POSITIVE).
+> ``Alert`` operacional pronto para SOC. Ver `src/edysiem/alerts/README.md`.
 | `persistence` | Armazenar eventos, alertas, incidentes, regras | Aplicar regras |
 | `api` | Expor contratos REST estáveis | Acessar UI |
 | `ui` | Experiência do operador (consultas, triagem, investigação) | Acessar persistência direto |

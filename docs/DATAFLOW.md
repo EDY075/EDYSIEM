@@ -143,7 +143,16 @@ class Alert:
 
 **Regras:** regras declarativas com MITRE; sem execução arbitrária; deduplicação por fingerprint.
 
-### 2.8 Incident Engine (`app/incident`)
+### 2.8 Alert Engine (`app/alerts`)
+**Responsabilidade:** transformar `DetectionFinding` em `Alert` operacional e gerir o ciclo de vida.
+**Componentes:** `RiskEngine`, `FingerprintEngine`, `AlertBuilder`, `DedupEngine`, `LifecycleManager`, `AlertEngine`.
+**Fluxo:** DetectionFinding -> Risk -> Fingerprint -> Builder -> Dedup -> Lifecycle -> Alert.
+
+> **Implementado (Sprint 2.7):** `src/edysiem/alerts/` - dedupe por fingerprint deterministico
+> (occurrences+1, last_seen atualizado), lifecycle OPEN->TRIAGE->INVESTIGATING->RESOLVED/FALSE_POSITIVE.
+> Sem Cases/Dashboard ainda. Ver `src/edysiem/alerts/README.md`.
+
+### 2.9 Incident Engine (`app/incident`)
 **Responsabilidade:** agrupar alertas em incidentes e gerir ciclo de vida.
 **Regras:** agrupamento por entidade/regra; status (open/investigating/resolved/false_positive);
 timeline de ações; notas; auditoria.
