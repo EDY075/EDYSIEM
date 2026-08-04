@@ -9,6 +9,7 @@ import { colors } from "../design-system";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Footer } from "./Footer";
+import { LiveOperationsBar } from "./LiveOperationsBar";
 
 export function AppShell() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -18,6 +19,7 @@ export function AppShell() {
       {sidebarVisible && <Sidebar />}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Topbar />
+        <LiveOperationsBar />
         <main style={{ flex: 1, padding: 24, minWidth: 0 }}>
           <Outlet />
         </main>
