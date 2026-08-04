@@ -7,6 +7,19 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.11.4 — Search Engine
+
+#### Adicionado
+- `src/edysiem/persistence/search.py`: `SearchEngine` + `SearchResults` — busca desacoplada por Alert/Incident/Case com filtros (ioc/asset/user/hostname/ip/hash/mitre/rule/severity/status), paginação, ordenação, busca parcial (LIKE) e exata.
+- `SchemaV3`: tabela `audit_entries` com índices.
+
+### Sprint 2.11.5 — Audit Trail
+
+#### Adicionado
+- `src/edysiem/persistence/audit.py`: `AuditEngine` + `AuditEntry` + `AuditRepository` — registros automáticos para criação, atualização, delete lógico, mudança de status, owner, comentários, evidências, playbooks, attachments, tarefas, resolução e reabertura.
+- `AuditAction` (StrEnum): CREATE, UPDATE, DELETE, STATUS_CHANGE, OWNER_CHANGE, COMMENT, EVIDENCE, PLAYBOOK, ATTACHMENT, TASK, RESOLUTION, REOPEN.
+- Testes: `test_search_audit.py` (+13 casos).
+
 ### Sprint 2.11 — Persistence Foundation + Engine + Event Store
 
 #### Adicionado

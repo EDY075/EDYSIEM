@@ -8,9 +8,10 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 > parsers + normalizer, Enrichment Engine, Correlation Engine, Rule/Detection
 > Framework (DSL declarativa), Alert Engine Enterprise (risk/fingerprint/dedup/
 > lifecycle), Incident Engine Enterprise (grouping/correlator/lifecycle), Case
-> Engine (Investigation Workspace), API v1 + CLI Enterprise (FastAPI) e
+> Engine (Investigation Workspace), API v1 + CLI Enterprise (FastAPI),
 > Persistence Foundation + Engine + Event Store (SQLite, repos por agregado,
-> UnitOfWork, pipeline persistida) — frameworks desacoplados com regras
+> UnitOfWork, pipeline persistida) e Search Engine + Audit Trail (busca
+> desacoplada, auditoria completa) — frameworks desacoplados com regras
 > declarativas, janelas temporais, isolamento de falhas e métricas.
 > **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
 

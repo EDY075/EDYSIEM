@@ -9,6 +9,7 @@
 - Repositorios: ``AlertRepository``, ``IncidentRepository``, ``CaseRepository``
 """
 
+from .audit import AuditAction, AuditEngine, AuditEntry, AuditRepository
 from .connection import ConnectionManager
 from .event_store import EventRepository, EventStore, PipelineStage, StoredEvent
 from .exceptions import (
@@ -22,10 +23,15 @@ from .migrations import Migration, MigrationRunner
 from .query import Page, QueryFilter, QueryOp, SortOrder
 from .repository import GenericRepository, Repository
 from .schema import ALL_MIGRATIONS
+from .search import SearchEngine, SearchResults
 from .transactions import Transaction, TransactionManager, UnitOfWork
 
 __all__ = [
     "ALL_MIGRATIONS",
+    "AuditAction",
+    "AuditEngine",
+    "AuditEntry",
+    "AuditRepository",
     "ConnectionError",
     "ConnectionManager",
     "EventRepository",
@@ -41,6 +47,8 @@ __all__ = [
     "QueryOp",
     "RecordNotFoundError",
     "Repository",
+    "SearchEngine",
+    "SearchResults",
     "SortOrder",
     "StoredEvent",
     "Transaction",

@@ -160,6 +160,14 @@
 - **Resultado:** `ConnectionManager` (WAL/foreign keys) + `TransactionManager`/`UnitOfWork` + `GenericRepository` (CRUD + paginacao/ordenacao/filtros) + `AlertRepository`/`IncidentRepository`/`CaseRepository` (busca por id/fingerprint/status/severidade/data) + `EventRepository`/`EventStore` (persiste RawEvent/Canonical/Enriched/Correlated/DetectionFinding/Alert/Incident/Case com UUID+timestamp+correlation+stage+version+source); 742 testes, cobertura 95.17%, mypy strict 0.
 - **Lições:** repos nao committam internamente (UoW controla atomicidade); filtros declarativos via QueryFilter (sem SQL espalhado); schema versionado com MigrationRunner.
 
+### Sprint 2.11.4/2.11.5 — Search Engine + Audit Trail
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** busca desacoplada sobre Alert/Incident/Case + audit trail persistente.
+- **Arquivos:** `src/edysiem/persistence/search.py`, `audit.py`, `schema.py` (SchemaV3), testes.
+- **Resultado:** `SearchEngine` (busca por term/ioc/asset/user/hostname/ip/hash/mitre/rule/severity/status com paginacao, ordenacao, parcial e exata) + `AuditEngine`/`AuditRepository` (criacao, atualizacao, delete, status, owner, comentarios, evidencias, playbooks - nada perdido); 755 testes, cobertura 95.17%, mypy strict 0.
+- **Lições:** term search so no title (filtros AND); `Page` precisa de total/offset/limit; StrEnum para AuditAction (UP042).
+
 ## Próximas sprints (planejadas)
 
 - **Sprint 2.12** — Conectar engines à persistência (repos nos contexts) + pipeline E2E persistido.

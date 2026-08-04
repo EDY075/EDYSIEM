@@ -130,6 +130,25 @@ CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 """
 
 
+_CREATE_AUDIT = """
+CREATE TABLE IF NOT EXISTS audit_entries (
+    entry_id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    previous TEXT,
+    current TEXT,
+    details TEXT NOT NULL DEFAULT '{}',
+    correlation_id TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_entries(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_entries(action);
+CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_entries(timestamp);
+"""
+
+
 class SchemaV1(Migration):
     """Versao 1 do schema: alerts, incidents, cases."""
 
@@ -152,6 +171,16 @@ class SchemaV2(Migration):
         conn.executescript(_CREATE_EVENTS)
 
 
-ALL_MIGRATIONS: list[Migration] = [SchemaV1(), SchemaV2()]
+class SchemaV3(Migration):
+    """Versao 3 do schema: audit trail."""
 
-__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2"]
+    version = 3
+    description = "audit trail: tabela audit_entries"
+
+    def up(self, conn: sqlite3.Connection) -> None:
+        conn.executescript(_CREATE_AUDIT)
+
+
+ALL_MIGRATIONS: list[Migration] = [SchemaV1(), SchemaV2(), SchemaV3()]
+
+__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3"]
