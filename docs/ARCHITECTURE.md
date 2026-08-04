@@ -52,6 +52,12 @@ flowchart LR
 | `normalization` | Converter `ParsedEvent` para o **modelo de evento canônico** (`CanonicalEvent`) | Enriquecer |
 | `enrichment` | Adicionar contexto (geo, WHOIS, asset, threat intel) → `EnrichedEvent` | Persistir |
 | `correlation` | Agregar eventos relacionados (janela, identidade) | Detectar sozinho |
+
+> **Implementado (Sprint 2.5):** `src/edysiem/correlation/` - ``CorrelationRule`` Protocol com
+> metadata declarativos, ``CorrelationRegistry`` (ordenacao topologica por prioridade +
+> dependencias), ``CorrelationEngine`` (janelas temporais via ``CorrelationContext``, isolamento
+> de falhas, timeout por regra, metricas). Regras declarativas, sem hardcode. Ver
+> `docs/PIPELINE.md` e `src/edysiem/correlation/plugins/README.md`.
 | `detection` | Aplicar detection rules e gerar alertas (MITRE) | Resolver incidentes |
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 | `persistence` | Armazenar eventos, alertas, incidentes, regras | Aplicar regras |

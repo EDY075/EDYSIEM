@@ -89,11 +89,34 @@
 - **Resultado:** 254 testes, cobertura 98.26%, mypy strict 0 (40 arquivos), ruff check+format limpos.
 - **Lições:** fila thread-safe + async-ready com `deque`+Lock+`asyncio.Event` lazy (single-loop); `put_nowait` não consulta backpressure (produtor síncrono usa `can_accept`); `ErrorCode.QUEUE_FULL` adicionado.
 
+### Sprint 2.3 — Canonical Pipeline + Parser Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** parsers reais + normalizer com Strategy pattern sobre a pipeline (ADR-008).
+- **Arquivos:** `src/edysiem/parsers/` (syslog RFC3164, rfc5424), `src/edysiem/normalization/` (normalizer, registry), `src/edysiem/domain/pipeline.py` (CanonicalEvent v2), testes.
+- **Resultado:** parsers e normalizer consolidados; 361 testes, cobertura 95.14%.
+
+### Sprint 2.4 — Enrichment Engine (Arquitetura Enterprise)
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** framework de enrichment desacoplado e extensível, sem enriquecedores reais.
+- **Arquivos:** `src/edysiem/enrichment/` (base, registry, engine, context, models, exceptions, plugins/README.md), 8 testes.
+- **Resultado:** `EnrichmentPlugin` Protocol + Registry com ordenação topológica + Engine com isolamento de falhas/timeout; 361 testes, cobertura 95.14%, mypy strict 0.
+- **Lições:** `EnrichmentMetrics` não pode ser frozen (muta em record_execution); dois tipos de `Enrichment` (domain vs models) exigem conversão explícita; `unwrap_err()` não existe na API do Result.
+
+### Sprint 2.5 — Correlation Engine Framework
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** framework de correlacao desacoplado e extensível, com regras declarativas (sem hardcode).
+- **Arquivos:** `src/edysiem/correlation/` (base, registry, engine, context, models, exceptions, plugins/), 5 testes de framework + demo.
+- **Resultado:** `CorrelationRule` Protocol + Registry ordenado + Engine com janelas temporais (contexto), isolamento de falhas, timeout e métricas; regra DEMO `ThresholdByIpRule`; 435 testes, cobertura 95.19%, mypy strict 0.
+- **Lições:** filtro de `required_fields` no engine deve pular regras que exigem campo AUSENTE (não presentes); janela temporal precisa ser robusta a inserções fora de ordem.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.3** — Ingestão e Normalização: parser syslog (RFC 3164/5424) + normalizer real + testes de integração.
-- **Sprint 2.4** — Enrichment: enricher base + asset/intel + testes.
-- **Sprint 2.5** — Correlation/Detection: rule engine + MITRE + testes.
-- **Sprint 2.6** — Incident engine + ciclo de vida.
+- **Sprint 2.6** — Detection Engine: regras reais de detecção + MITRE + Alert generation sobre o Correlation Engine.
+- **Sprint 2.7** — Incident engine + ciclo de vida.
+- **Sprint 2.8** — API v1 + CLI + health.
+- **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.
 - **Sprint 2.8** — UI v0: shell + tokens + tela Events/Alerts.

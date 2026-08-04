@@ -7,6 +7,25 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.5 — Correlation Engine Framework
+
+#### Adicionado
+- Pacote `src/edysiem/correlation/` **desacoplado e extensível** (framework de regras, sem regras hardcoded):
+  - `base.py`: `CorrelationRule` (Protocol) + `CorrelationMetadata` + `CorrelationPriority` + `CorrelationMatch` + `CorrelationReason` + `CorrelationDecision`
+  - `registry.py`: `CorrelationRegistry` — ordenação topológica por prioridade + dependências, detecção de ciclos
+  - `engine.py`: `CorrelationEngine` + `CorrelationMetrics` — execução por prioridade, isolamento de falhas, timeout por regra, métricas
+  - `context.py`: `CorrelationContext` — janelas temporais por `(rule_id, identity_key)` com TTL
+  - `models.py`: `CorrelationResult`, `CorrelatedEvent`, `CorrelationMetrics`
+  - `exceptions.py`: hierarquia de erros do framework
+  - `plugins/README.md`: guia de desenvolvimento de regras
+  - `plugins/demo.py`: **regra DEMO** `ThresholdByIpRule` (mesmo IP gerou N eventos em X minutos)
+- Testes: 5 arquivos, +74 casos (base, context, registry, engine, plugins demo, coverage).
+- Docs sincronizados: ARCHITECTURE, DATAFLOW, ROADMAP, SPRINT_BOOK, CHANGELOG.
+
+#### Corrigido
+- Filtro de `required_fields` no engine: regra é pulada quando o evento **não tem** o campo exigido (lógica invertida).
+- Janela temporal do `CorrelationContext` robusta a inserções fora de ordem.
+
 ### Sprint 2.4 — Enrichment Engine (Arquitetura Enterprise)
 
 #### Adicionado

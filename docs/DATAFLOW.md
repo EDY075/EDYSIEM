@@ -114,6 +114,13 @@ class EnrichedEvent(CanonicalEvent):
 **Critérios:** identidade (host/user/IP) + janela temporal + agregação (count/distinct/sum).
 **Regras:** correlation rules declarativas (YAML); idempotente; janelas configuráveis.
 
+> **Implementado (Sprint 2.5):** `src/edysiem/correlation/` - ``CorrelationRule`` Protocol +
+> ``CorrelationMetadata`` declarativos (id, prioridade, required_fields, window_seconds),
+> ``CorrelationRegistry`` (ordenação topológica + detecção de ciclos),
+> ``CorrelationEngine`` (execução por prioridade, isolamento de falhas, timeout, métricas),
+> ``CorrelationContext`` (janelas temporais com TTL). Regra DEMO: ``ThresholdByIpRule``
+> (mesmo IP gerou N eventos em X minutos). Detalhes: `src/edysiem/correlation/plugins/README.md`.
+
 ### 2.7 Detection Engine (`app/detection`)
 **Responsabilidade:** aplicar detection rules e gerar `Alert`.
 **Contrato:**
