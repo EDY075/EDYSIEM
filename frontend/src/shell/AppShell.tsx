@@ -1,6 +1,6 @@
 /**
- * AppShell + Layout (UI 3.2)
- * Shell de 3 zonas: Sidebar + (Topbar + Conteúdo).
+ * AppShell + Layout (UI 3.3)
+ * Shell de 3 zonas: Sidebar + (Topbar + Conteúdo) + Footer.
  * Responsivo: sidebar colapsa em telas pequenas. Rota aninhada via <Outlet/>.
  */
 import { ReactNode, useState } from "react";
@@ -8,6 +8,7 @@ import { Outlet } from "react-router-dom";
 import { colors } from "../design-system";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { Footer } from "./Footer";
 
 export function AppShell() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -15,13 +16,12 @@ export function AppShell() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {sidebarVisible && <Sidebar />}
-
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Topbar />
-
         <main style={{ flex: 1, padding: 24, minWidth: 0 }}>
           <Outlet />
         </main>
+        <Footer />
       </div>
 
       {/* Responsividade: toggle da sidebar em telas pequenas */}
@@ -41,7 +41,7 @@ export function AppShell() {
           cursor: "pointer",
         }}
       >
-        ☰
+        \u2630
       </button>
 
       <style>{`
@@ -54,7 +54,7 @@ export function AppShell() {
 }
 
 /** Layout simples de conteúdo (ex.: master-detail). */
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>{children}</div>
   );

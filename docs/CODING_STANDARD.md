@@ -58,3 +58,33 @@ def funcao(...) -> ...: ...
 ## 8. Commits
 - Convenção: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`, `build:`.
 - Mensagens objetivas; commit atômico por mudança.
+
+## 9. Frontend — Regra de Wrappers (PERMANENTE)
+> **Nenhuma biblioteca React pode ser usada diretamente em páginas.**
+
+Toda dependência externa de UI (tabelas, gráficos, badges, modais, drawers, timelines, etc.)
+deve ser **encapsulada em um componente próprio do EDY SIEM** (`frontend/src/design-system/`
+ou `frontend/src/charts/`). Páginas consomem **apenas** os wrappers do projeto.
+
+### Exemplos
+```
+❌ <LineChart /> de Recharts direto na página
+✅ <SecurityLineChart /> criado pelo EDY SIEM (usa Recharts internamente)
+
+❌ <table> crua com dados
+✅ <DataTable /> do EDY SIEM
+
+❌ <Modal /> de biblioteca
+✅ <Modal /> do EDY SIEM (wrapping interno)
+```
+
+### Vantagens
+- Identidade visual consistente em todo o sistema;
+- Facilidade para trocar de biblioteca no futuro (ex.: Recharts → outro) sem tocar em páginas;
+- Menos dependência externa exposta;
+- Componentes reutilizáveis em todo o produto.
+
+### Regras
+- Páginas importam de `@/design-system` e `@/charts` — nunca direto de `recharts`, `react-router`, etc.
+- Wrapper = componente próprio com API tipada; a biblioteca externa fica no interior.
+- Novo componente externo usado → criar wrapper antes de usar em qualquer página.
