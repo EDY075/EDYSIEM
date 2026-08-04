@@ -67,6 +67,12 @@ flowchart LR
 > Ver `src/edysiem/detection/plugins/README.md`.
 | `incident` | Agrupar alertas em incidentes e gerir ciclo de vida | Normalizar |
 
+> **Implementado (Sprint 2.11):** `src/edysiem/persistence/` - SQLite com ``ConnectionManager`` (WAL),
+> ``MigrationRunner`` (schema versionado v1/v2), ``GenericRepository`` (CRUD + paginacao/ordenacao/filtros),
+> repositorios por agregado (Alert/Incident/Case), ``UnitOfWork`` (transacoes atomicas) e ``EventStore``
+> (persiste toda a pipeline: RawEvent->Canonical->Enriched->Correlated->DetectionFinding->Alert->Incident->Case).
+> Nenhum SQL espalhado; troca de motor via Protocol (PostgreSQL futuro).
+
 > **Implementado (Sprint 2.10):** `src/edysiem/container.py` (``ApplicationContainer``) conecta todos os
 > engines em um container DI unico. `src/edysiem/api/` expoe FastAPI v1: GET /health, /version, /metrics;
 > POST /pipeline/run, /alerts, /incidents, /cases; OpenAPI/Swagger (/docs), RequestID, HTTP logging e

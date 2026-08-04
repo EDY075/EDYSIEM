@@ -7,6 +7,21 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
+### Sprint 2.11 — Persistence Foundation + Engine + Event Store
+
+#### Adicionado
+- Pacote `src/edysiem/persistence/` (100% stdlib, SQLite — ADR-002):
+  - `connection.py`: `ConnectionManager` (WAL, foreign keys, pool por thread)
+  - `migrations.py`: `Migration` + `MigrationRunner` (schema versionado via `schema_migrations`)
+  - `schema.py`: `SchemaV1` (alerts/incidents/cases) + `SchemaV2` (events) com índices básicos
+  - `query.py`: `QueryFilter`, `QueryOp`, `SortOrder`, `Page` (filtros declarativos sem SQL espalhado)
+  - `repository.py`: `Repository` (Protocol) + `GenericRepository` (CRUD + paginação/ordenação/filtros)
+  - `transactions.py`: `TransactionManager` + `UnitOfWork` (transações atômicas)
+  - `event_store.py`: `EventStore`/`EventRepository` — persiste a pipeline (RawEvent, CanonicalEvent, EnrichedEvent, CorrelatedEvent, DetectionFinding, Alert, Incident, Case) com UUID, timestamp, correlation_id, pipeline_stage, version e source
+  - `repos/`: `AlertRepository`, `IncidentRepository`, `CaseRepository` — CRUD completo + busca por id/fingerprint/status/severidade/data
+- Testes: `test_persistence.py`, `test_persistence_engine.py`.
+- ADR-002 atualizado com a implementação; docs sincronizados.
+
 ### Sprint 2.10 — API v1 + CLI + Health
 
 #### Adicionado

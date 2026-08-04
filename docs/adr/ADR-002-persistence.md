@@ -24,3 +24,16 @@ trocar o motor no futuro (PostgreSQL) sem tocar nas camadas superiores.
 
 ## Critério "daqui a um ano"
 A camada `persistence` expõe interfaces estáveis; o motor é detalhe interno.
+
+## Implementacao (Sprint 2.11)
+
+- **SQLite (stdlib)**: `src/edysiem/persistence/` - `ConnectionManager` (WAL, foreign keys ON).
+- **Schema versionado**: `MigrationRunner` + `schema_migrations`; v1 (alerts/incidents/cases), v2 (events).
+- **Repositorios por agregado**: `GenericRepository` + `AlertRepository`/`IncidentRepository`/`CaseRepository`
+  com CRUD completo, paginacao, ordenacao e filtros declarativos (`QueryFilter` - sem SQL espalhado).
+- **Transacoes atomicas**: `TransactionManager` + `UnitOfWork` (repos nao committam internamente).
+- **Event Store**: `EventRepository`/`EventStore` persiste a pipeline
+  (RawEvent->Canonical->Enriched->Correlated->DetectionFinding->Alert->Incident->Case)
+  com UUID, timestamp, correlation_id, pipeline_stage, version e source.
+- **Prepared statements** em todo SQL; indices basicos (rule/severity/created, status, correlation, timestamp).
+- Troca de motor (PostgreSQL) via Protocol, sem tocar nas camadas superiores.

@@ -152,10 +152,18 @@
 - **Resultado:** FastAPI v1 (GET /health, /version, /metrics; POST /pipeline/run, /alerts, /incidents, /cases) + OpenAPI/Swagger + RequestID + HTTP logging + error handlers + CLI (`health`, `version`, `config`, `validate-config`, `run-pipeline`, `ingest`, `demo`); 713 testes, cobertura 95.27%, mypy strict 0.
 - **Lições:** container unico (DI) alimenta API e CLI; lifespan inicializa engines; `container` no app.state para TestClient; Depends() no argument default e padrao FastAPI (B008 ignorado).
 
+### Sprint 2.11.1/2.11.2/2.11.3 — Persistence Foundation + Engine + Event Store
+- **Status:** Concluída
+- **Data:** 2026-08-03
+- **Objetivo:** persistência SQLite (ADR-002) + repositorios por agregado + Event Store da pipeline.
+- **Arquivos:** `src/edysiem/persistence/` (connection, migrations, schema v1/v2, query, repository, transactions, event_store, repos/), 2 arquivos de teste.
+- **Resultado:** `ConnectionManager` (WAL/foreign keys) + `TransactionManager`/`UnitOfWork` + `GenericRepository` (CRUD + paginacao/ordenacao/filtros) + `AlertRepository`/`IncidentRepository`/`CaseRepository` (busca por id/fingerprint/status/severidade/data) + `EventRepository`/`EventStore` (persiste RawEvent/Canonical/Enriched/Correlated/DetectionFinding/Alert/Incident/Case com UUID+timestamp+correlation+stage+version+source); 742 testes, cobertura 95.17%, mypy strict 0.
+- **Lições:** repos nao committam internamente (UoW controla atomicidade); filtros declarativos via QueryFilter (sem SQL espalhado); schema versionado com MigrationRunner.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.11** — Persistência (SQLite) para Alert/Incident/Case contexts.
-- **Sprint 2.12** — Dashboard v0 (KPIs, alertas criticos).
+- **Sprint 2.12** — Conectar engines à persistência (repos nos contexts) + pipeline E2E persistido.
+- **Sprint 2.13** — Dashboard v0 (KPIs, alertas criticos).
 - **Sprint 2.8** — API v1 + CLI + health.
 - **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
 - **Sprint 2.7** — API v1 + CLI + health.

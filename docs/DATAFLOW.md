@@ -179,6 +179,10 @@ class Alert:
 timeline de ações; notas; auditoria.
 
 ### 2.9 Storage (`app/persistence`)
+**Responsabilidade:** persistir eventos, alertas, incidentes, cases com repositorios por agregado.
+
+> **Implementado (Sprint 2.11):** SQLite (stdlib) - Event Store (append-only da pipeline) + repositorios
+> por agregado (Alert/Incident/Case) com CRUD, filtros, paginacao e transacoes atomicas (UnitOfWork).
 **Responsabilidade:** persistir eventos, alertas, incidentes, regras, IOCs, assets, audit.
 **Regras:** repositórios por agregado via `Protocol`; eventos append-only; SQL parametrizado;
 migrações versionadas.
