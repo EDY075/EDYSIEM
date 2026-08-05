@@ -9,6 +9,7 @@
   ResponsiveContainer,
 } from "recharts";
 import { SecurityAreaChart } from "./basic";
+import { SecurityTooltip } from "./basic";
  import { colors, typography } from "../design-system/tokens";
 
 type ChartDataItem = Record<string, number | string>;
@@ -36,13 +37,12 @@ export function SecurityDonutChart({ data, nameKey, valueKey, height = 200, inne
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 6,
-            fontFamily: typography.family.mono,
-            fontSize: 12,
-          }}
+          content={
+            <SecurityTooltip
+              valueFormatter={(v) => String(v)}
+              labelFormatter={() => "Severidade"}
+            />
+          }
         />
       </PieChart>
     </ResponsiveContainer>

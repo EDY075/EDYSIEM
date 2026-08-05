@@ -34,7 +34,7 @@
 - S2.5 Incident UI (triagem, ciclo de vida, auditoria).
 - S2.6 Collectors syslog/file + Windows Event (futuro).
 
-## Pipeline (Fase 1.5 — em andamento)
+## Pipeline (Fase 1.5)
 
 > Pipeline de eventos oficial (ADR-008). Sprints implementadas sobre o núcleo.
 
@@ -52,13 +52,18 @@
 | 2.10 | API v1 + CLI + Health (FastAPI, OpenAPI, Swagger) | ✅ Concluída |
 | 2.11 | Persistence Foundation + Engine + Event Store | ✅ Concluída |
 | 2.12 | Search Engine + Audit Trail | ✅ Concluída |
-| 2.13 | Engines + persistência + pipeline E2E | ⏳ Próxima |
+| 2.13 | **Estabilização do Projeto** (código ↔ Git ↔ docs, checkpoint v0.2.0) | ✅ Concluída |
 | UI 3.0 | UX Benchmark (6 SIEMs) | ✅ Concluída |
 | UI 3.1 | Design System (tokens + componentes base) | ✅ Concluída |
 | UI 3.2 | React Shell (sidebar/topbar/routing/theme/state) | ✅ Concluída |
-| 2.14 | Dashboard v0 (KPIs, alertas criticos) | ⏳ Próxima |
-| 2.9 | API v1 + CLI + health | planejada |
-| 2.10 | UI v0 (shell + tokens + Events/Alerts) | planejada |
+| UI 3.3 | Layout Enterprise (breadcrumb, global search, theme switch, user menu, notificações, footer) | ✅ Concluída |
+| UI 3.4 | Biblioteca de componentes (KPI Card, DataTable, Toolbar, base, Activity Feed) | ✅ Concluída |
+| UI 3.6/3.7 | Live Operations Bar + Global Search Universal | ✅ Concluída |
+| UI 3.8/3.9 | Alert Center + Detail Drawer | ✅ Concluída |
+| UI 4.0 | API Client central + hooks (metrics/alerts/incidents/cases/health) | ✅ Concluída |
+| UI 4.1 | Dashboard v0 (KPIs, série temporal, severidade, alertas, saúde) | ✅ Concluída |
+| UI 4.2 | War Room (tela única de comando operacional) | ✅ Concluída |
+| 2.14 | Integração E2E Pipeline → Alert → Incident → Case + Operação SOC | ⏳ Próxima |
 
 ## Fase 3 — Escala
 

@@ -25,7 +25,7 @@ def test_load_defaults() -> None:
     assert isinstance(result, Success)
     config = result.value
     assert config.project_name == "EDY SIEM"
-    assert config.version == "0.1.0"
+    assert config.version == "0.2.0"
     assert config.environment is Environment.DEVELOPMENT
     assert config.app.port == 8080
     assert config.logging.level == "INFO"

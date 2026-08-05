@@ -15,28 +15,51 @@ export interface CardProps {
 export function Card({ children, title, style }: CardProps) {
   return (
     <section
+      className="lumina-card-fade"
       style={{
+        position: "relative",
+        overflow: "hidden",
         background: colors.surface,
         border: `1px solid ${colors.border}`,
         borderRadius: radii.lg,
-        padding: spacing["4"],
         ...style,
       }}
     >
+      {/* micro borda superior com gradiente accent */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 1,
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(47,129,247,0.5) 50%, transparent 100%)",
+          opacity: 0.5,
+        }}
+      />
       {title ? (
-        <h3
-          style={{
-            margin: 0,
-            marginBottom: spacing["3"],
-            fontSize: typography.size.lg,
-            fontWeight: typography.weight.semibold,
-            color: colors.textPrimary,
-          }}
-        >
-          {title}
-        </h3>
+        <div style={{ padding: `${spacing["3"]} ${spacing["4"]}`, borderBottom: `1px solid ${colors.borderSubtle}` }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: typography.size.lg,
+              fontWeight: typography.weight.semibold,
+              color: colors.textPrimary,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {title}
+          </h3>
+        </div>
       ) : null}
-      {children}
+      <div style={{ padding: spacing["4"] }}>{children}</div>
+      <style>
+        {`@keyframes luminaCardFade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+          .lumina-card-fade { animation: luminaCardFade 200ms cubic-bezier(0.2, 0, 0, 1) both; }
+          @media (prefers-reduced-motion: reduce) { .lumina-card-fade { animation: none !important; } }`}
+      </style>
     </section>
   );
 }

@@ -5,7 +5,33 @@ Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Não publicado]
+## [2.13 / v0.2.0] - 2026-08-05 — Sprint 2.13 (Estabilização do Projeto)
+
+> Objetivo da sprint: NÃO criar funcionalidade nova. Tornar o projeto consistente
+> entre **código, Git e documentação** antes da Sprint 2.14.
+
+#### Adicionado (formalização das entregas de UI que já estavam no código e não documentadas)
+- **UI 4.0 — API Client central**: `frontend/src/api/client.ts` — base URL por env (`VITE_API_URL`), timeout (10s), retry (2×, backoff 300ms), erro estruturado e tipos TS alinhados aos schemas Pydantic do backend (`/health`, `/version`, `/metrics`, `/alerts`, `/incidents`, `/cases`).
+- **UI 4.0 — Hooks de dados**: `frontend/src/hooks/` — `useMetrics`, `useAlerts`, `useIncidents`, `useCases`, `useHealth` (loading/error/usingMock/refetch).
+- **UI 4.1 — Dashboard v0**: `frontend/src/pages/DashboardOverview.tsx` — visão geral do SOC (6 KPIs, série temporal de eventos, gráficos de severidade, tabela de alertas, saúde do sistema, empty states, aviso de API com retry). Conectado ao backend real via hooks.
+- **UI 4.2 — War Room**: `frontend/src/pages/WarRoomPage.tsx` — tela única de comando operacional (KPIs, live event feed, MITRE top-5, top assets comprometidos, status dos coletores, saúde da pipeline, mapa geográfico, donut de severidade, resumo operacional). Dados demo rotulados quando a API não responde.
+- **Charts**: `frontend/src/charts/` — wrappers Recharts (`SecurityAreaChart`, `SecurityDonutChart`).
+- **Proxy de desenvolvimento**: `frontend/vite.config.ts` — `/api` → FastAPI (porta 8080), `VITE_API_URL` opcional.
+- **Rota**: `/war-room` adicionada ao `routing/routes.tsx`.
+
+#### Documentado (UI 3.3–3.9 — já presentes no HEAD, agora registradas)
+- **UI 3.3 — Layout Enterprise**: Breadcrumb, Global Search, Theme Switch, User Menu, Notifications, Footer (`shell/`).
+- **UI 3.4 — Biblioteca de componentes**: KPI Card + MiniSparkline (`cards.tsx`), DataTable Enterprise (`DataTable.tsx`), Toolbar/Empty State/Skeleton (`feedback.tsx`), componentes base (`primitives.tsx`), Activity Feed (`Timeline.tsx`).
+- **UI 3.6/3.7 — Live Operations Bar + Global Search Universal**: `shell/LiveOperationsBar.tsx`, `shell/GlobalSearch.tsx`.
+- **UI 3.8/3.9 — Alert Center + Detail Drawer**: `pages/AlertCenterPage.tsx`, `pages/AlertDetailDrawer.tsx`.
+
+#### Limpeza / Estabilização
+- Arquivos **experimentais/temporários removidos do versionamento** (sem produção): `frontend/build_log.txt`, `frontend/tsc_audit.txt`, `frontend/tsc_current.txt`, `frontend/tsc_current2.txt` → movidos para `archive/frontend_scratch/` (preservados, não versionados); `frontend/tsconfig.tsbuildinfo` removido do tracking (artefato de build incremental).
+- `.gitignore` atualizado: `*.tsbuildinfo`, `frontend/build_log.txt`, `frontend/tsc_*.txt`, `archive/frontend_scratch/`.
+- Nenhuma funcionalidade backend alterada nesta sprint.
+
+#### Versionamento
+- `0.1.0` → `0.2.0` em `pyproject.toml`, `src/edysiem/__init__.py` e `frontend/package.json`. Tag `v0.2.0`.
 
 ### Sprint UI 3.0/3.1/3.2 — UX Benchmark + Design System + React Shell
 

@@ -3,16 +3,19 @@
 Plataforma profissional de Security Information and Event Management (SIEM).
 Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
 
-> **Status:** Sprint 1 (Foundation Core) concluída — tag `v0.1.0`. Sprints 2.1–2.11
+> **Status:** Sprint 1 (Foundation Core) — tag `v0.1.0`. Sprints 2.1–2.12
 > concluídas: pipeline oficial (ADR-008), infraestrutura de ingestão (ADR-009),
 > parsers + normalizer, Enrichment Engine, Correlation Engine, Rule/Detection
 > Framework (DSL declarativa), Alert Engine Enterprise (risk/fingerprint/dedup/
 > lifecycle), Incident Engine Enterprise (grouping/correlator/lifecycle), Case
 > Engine (Investigation Workspace), API v1 + CLI Enterprise (FastAPI),
 > Persistence Foundation + Engine + Event Store (SQLite, repos por agregado,
-> UnitOfWork, pipeline persistida) e Search Engine + Audit Trail (busca
+> UnitOfWork, pipeline persistida), Search Engine + Audit Trail (busca
 > desacoplada, auditoria completa) — frameworks desacoplados com regras
 > declarativas, janelas temporais, isolamento de falhas e métricas.
+> **Sprint 2.13 — Estabilização do Projeto concluída** (checkpoint v0.2.0):
+> projeto consistente entre código, Git e documentação; UI 4.x formalizada.
+> Próxima: Sprint 2.14 (integração E2E Pipeline → Alert → Incident → Case).
 > **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
 
 ## Documentação
@@ -32,12 +35,14 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 
 ## Frontend (React)
 
-- `frontend/` — Design System (tokens + componentes base) e estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global).
+- `frontend/` — Design System (tokens + componentes base), estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global) e camada conectada ao backend (API client + hooks): **Dashboard v0** (`/`), **Alert Center** (`/alerts`) e **War Room** (`/war-room`).
 - Benchmark UX: [docs/ENTERPRISE_UX_BENCHMARK.md](docs/ENTERPRISE_UX_BENCHMARK.md).
 
 ```bash
 cd frontend && npm install && npm run dev
 ```
+
+> O Vite faz proxy de `/api` para o FastAPI em `http://localhost:8080` (configurável via `VITE_API_URL`).
 
 ## Visão do fluxo
 

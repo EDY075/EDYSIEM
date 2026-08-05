@@ -82,7 +82,7 @@ class SiemConfig:
     """Configuração raiz que agrega todos os sub-configs."""
 
     project_name: str = "EDY SIEM"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     environment: Environment = Environment.DEVELOPMENT
     app: AppConfig = field(default_factory=AppConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)

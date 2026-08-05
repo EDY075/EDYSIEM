@@ -1,5 +1,6 @@
 /**
  * Hook: useMetrics — fetch dashboard metrics (UI 4.0)
+ * Conecta ao endpoint real GET /api/v1/metrics
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
@@ -36,9 +37,25 @@ export function useMetrics(timeRange: string = "1h") {
   const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get<DashboardMetrics>(`/metrics?range=${timeRange}`);
+      setError(null);
+      const response = await apiClient.get(`/metrics?range=${timeRange}`);
       if (response.success && response.data) {
-        setMetrics(response.data);
+        const raw = response.data as { metrics: Record<string, number>; components: Record<string, unknown> };
+        const m = raw.metrics || {};
+
+        // Mapeia os campos do backend para os campos esperados pelo frontend
+        setMetrics({
+          eps: m.events_per_second || m.eps || 0,
+          activeAlerts: m.active_alerts || 0,
+          openCases: m.open_cases || 0,
+          eventsLastHour: m.events_last_hour || m.eventsLastHour || 0,
+          eventsLast24h: m.events_last_24h || m.eventsLast24h || 0,
+          systemHealth: (m.system_health || "healthy") as DashboardMetrics["systemHealth"],
+          ingestionStatus: (m.ingestion_status || "online") as DashboardMetrics["ingestionStatus"],
+          avgRiskScore: m.avg_risk_score || m.risk_score || 0,
+          mttr: m.mttr || 0,
+          mtta: m.mtta || 0,
+        });
       } else {
         setError(response.error?.message || "Failed to fetch metrics");
       }

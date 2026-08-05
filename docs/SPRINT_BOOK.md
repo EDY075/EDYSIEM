@@ -176,11 +176,54 @@
 - **Resultado:** decisões de UX documentadas (dark default, severidade semântica, IA por workflow, master-detail, entidade-cêntrico) + design system novo (tokens cores/spacing/typography/icons/motion/shadows + Button/Badge/Card/Input/Table) + estrutura React sem lógica (AppShell, Sidebar, Topbar, Layout, Routing, ThemeProvider, AppState, responsividade).
 - **Lições:** benchmark define tokens semânticos de severidade (low=azul, medium=âmbar, high=laranja, critical=vermelho); dark theme default; navegação por workflow (Overview->Triage->Investigate->Respond->Manage).
 
+### Sprint UI 3.3 — Layout Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-04
+- **Objetivo:** layout enterprise sobre o shell (breadcrumb, global search, theme switch, user menu, notificações, footer).
+- **Arquivos:** `frontend/src/shell/{Breadcrumb,GlobalSearch,ThemeSwitch,UserMenu,Notifications,Footer}.tsx`, `AppShell.tsx`, `Topbar.tsx`.
+- **Resultado:** componentes de layout reutilizáveis, zero dados reais; 755 testes, cobertura 95.17%, mypy strict 0, ruff limpo.
+- **Lições:** tema persistido em `localStorage`; global search com debounce 150ms.
+
+### Sprint UI 3.4 — Biblioteca de componentes
+- **Status:** Concluída
+- **Data:** 2026-08-04
+- **Objetivo:** biblioteca de componentes enterprise sobre os tokens.
+- **Arquivos:** `frontend/src/design-system/components/{cards,DataTable,feedback,primitives,Timeline}.tsx`.
+- **Resultado:** KPI Card + MiniSparkline, DataTable Enterprise, Toolbar/Empty State/Skeleton, componentes base, Activity Feed.
+- **Lições:** componentes entregues junto ao hardening de tipagem; documentados formalmente na Sprint 2.13.
+
+### Sprint UI 3.6/3.7 — Live Operations Bar + Global Search Universal
+- **Status:** Concluída
+- **Data:** 2026-08-04
+- **Objetivo:** barra de operação em tempo real + busca universal por entidades (IP, host, user, IOC, hash, domínio, alerta, incidente, caso, MITRE, asset, regra).
+- **Arquivos:** `frontend/src/shell/{LiveOperationsBar,GlobalSearch}.tsx`.
+- **Resultado:** polling 3s (WebSocket/SSE ready), EPS formatado, navegação por teclado, busca exata/parcial com agrupamento.
+
+### Sprint UI 3.8/3.9 — Alert Center + Detail Drawer
+- **Status:** Concluída
+- **Data:** 2026-08-04
+- **Objetivo:** centro de alertas master-detail + drawer de detalhes (timeline, asset, IOC, MITRE, eventos, relacionados).
+- **Arquivos:** `frontend/src/pages/{AlertCenterPage,AlertDetailDrawer}.tsx`.
+
+### Sprint UI 4.0/4.1/4.2 — API Client + Dashboard v0 + War Room
+- **Status:** Concluída (formalizada na Sprint 2.13)
+- **Data:** 2026-08-04/05
+- **Objetivo:** conectar o frontend ao backend real: API client central, hooks de dados, Dashboard v0 e War Room.
+- **Arquivos:** `frontend/src/api/client.ts`, `frontend/src/hooks/*`, `frontend/src/pages/{DashboardOverview,WarRoomPage}.tsx`, `frontend/src/charts/*`, `frontend/vite.config.ts` (proxy `/api` → FastAPI 8080).
+- **Resultado:** Dashboard v0 com KPIs/série temporal/severidade/alertas/saúde (dados reais + fallback demo rotulado); War Room como tela única de comando operacional.
+- **Lições:** fallback demo explícito e rotulado; tipos TS alinhados aos schemas Pydantic.
+
+### Sprint 2.13 — Estabilização do Projeto
+- **Status:** Concluída
+- **Data:** 2026-08-05
+- **Objetivo:** NÃO criar funcionalidade nova. Tornar o projeto consistente entre **código, Git e documentação**.
+- **Escopo:** auditoria final (working tree, branch, commits, tag); remoção de arquivos experimentais/temporários; commit único e organizado; atualização de ROADMAP/CHANGELOG/MEMORY_LOG/SPRINT_BOOK/relatório; bump de versão `0.1.0 → 0.2.0` + tag `v0.2.0`; validação (pytest, mypy, ruff, npm build, tsc).
+- **Arquivos:** `.gitignore`, `CHANGELOG.md`, `README.md`, `docs/ROADMAP.md`, `docs/SPRINT_BOOK.md`, `MEMORY_LOG.md`, `SPRINT2_13_REPORT.md`, `pyproject.toml`, `src/edysiem/__init__.py`, `frontend/package.json`, `archive/frontend_scratch/` (temporários preservados), `frontend/**` (checkpoint da UI 4.x).
+- **Resultado:** 1 commit de checkpoint, tag **`v0.2.0`**, working tree limpa, backend 95.17% cobertura / mypy strict 0 / ruff limpo, frontend compilando (tsc + vite).
+- **Lições:** sprints de feature anteriores à formalização documental deixam lacunas em ROADMAP/CHANGELOG — a sprint de estabilização fechou essas lacunas; arquivos experimentais (`build_log.txt`, `tsc_*.txt`, `tsconfig.tsbuildinfo`) foram versionados por engano e agora são ignorados.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.12** — Conectar engines à persistência (repos nos contexts) + pipeline E2E persistido.
-- **Sprint 2.13** — Dashboard v0 (KPIs, alertas criticos).
-- **Sprint 2.8** — API v1 + CLI + health.
-- **Sprint 2.9** — UI v0: shell + tokens + tela Events/Alerts.
-- **Sprint 2.7** — API v1 + CLI + health.
-- **Sprint 2.8** — UI v0: shell + tokens + tela Events/Alerts.
+- **Sprint 2.14** — Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines conectadas aos repos nos contexts, pipeline persistida de ponta a ponta).
+- **Sprint 2.15** — Investigação (drawer, evidências, timeline, notas) + Rules UI.
+- **Sprint 2.16** — Intelligence (IOC manager) + Assets + Incident UI.

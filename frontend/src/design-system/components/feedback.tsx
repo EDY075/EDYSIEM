@@ -37,12 +37,15 @@ export function Toolbar({ left, right, style }: ToolbarProps) {
 /* ----------------------------- Empty State ------------------------------ */
 
 export interface EmptyStateProps {
+  title?: string;
   text?: string;
+  description?: string;
   icon?: string;
   action?: ReactNode;
+  compact?: boolean;
 }
 
-export function EmptyState({ text = "Nenhum dado", icon = "◌", action }: EmptyStateProps) {
+export function EmptyState({ title, text, description, icon = "◌", action, compact }: EmptyStateProps) {
   return (
     <div
       style={{
@@ -50,14 +53,41 @@ export function EmptyState({ text = "Nenhum dado", icon = "◌", action }: Empty
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: spacing["3"],
-        padding: spacing["8"],
+        gap: spacing["2"],
+        padding: compact ? spacing["4"] : spacing["6"],
+        textAlign: "center",
         color: colors.textMuted,
       }}
     >
-      <div style={{ fontSize: 32, opacity: 0.6 }}>{icon}</div>
-      <div style={{ fontSize: typography.size.base }}>{text}</div>
-      {action}
+      <div
+        aria-hidden
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: radii.full,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 20,
+          background: colors.surfaceAlt,
+          border: `1px solid ${colors.border}`,
+          color: colors.textSecondary,
+          marginBottom: spacing["1"],
+        }}
+      >
+        {icon}
+      </div>
+      {(title || text) && (
+        <div style={{ fontSize: typography.size.base, fontWeight: typography.weight.semibold, color: colors.textPrimary }}>
+          {title || text}
+        </div>
+      )}
+      {description && (
+        <div style={{ fontSize: typography.size.sm, color: colors.textMuted, maxWidth: 260, lineHeight: 1.5 }}>
+          {description}
+        </div>
+      )}
+      {action && <div style={{ marginTop: spacing["2"] }}>{action}</div>}
     </div>
   );
 }

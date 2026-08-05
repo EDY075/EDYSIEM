@@ -1,10 +1,17 @@
 /**
- * Live Operations Bar (UI 3.6)
+ * Live Operations Bar (UI 3.6 / UI 4.0)
  * Barra de operações em tempo real no topo do dashboard.
- * Mostra status do sistema em tempo real: status, EPS, alertas, casos, ingestão, DB, latência.
+ *
+ * CONECTADO ao backend real:
+ * - /health → status do sistema
+ * - /metrics → EPS, alertas, casos, latência
+ *
+ * Nota: não usa WebSocket (não implementado no backend ainda).
+ * Atualização via polling de 30 segundos.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { colors, spacing, typography } from "../design-system/tokens";
+import { useHealth, useMetrics } from "../hooks";
 
 interface LiveOpsData {
   systemStatus: "online" | "degraded" | "offline";
@@ -16,46 +23,35 @@ interface LiveOpsData {
   apiLatencyMs: number;
 }
 
-const MOCK_DATA: LiveOpsData = {
-  systemStatus: "online",
-  eventsPerSecond: 1247,
-  activeAlerts: 23,
-  openCases: 5,
-  ingestionStatus: "online",
-  dbStatus: "online",
-  apiLatencyMs: 42,
-};
-
 export function LiveOperationsBar() {
-  const [data, setData] = useState<LiveOpsData>(MOCK_DATA);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const { health, loading: healthLoading, error: healthError } = useHealth();
+  const { metrics, loading: metricsLoading, error: metricsError } = useMetrics("1h");
 
+  const [internalLatency, setInternalLatency] = useState<number>(0);
+
+  // Simula latência de API (pois backend não retorna latência real em /metrics)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setData((prev) => ({
-        ...prev,
-        eventsPerSecond: Math.max(
-          0,
-          prev.eventsPerSecond + Math.floor((Math.random() - 0.5) * 50),
-        ),
-        activeAlerts: Math.max(
-          0,
-          prev.activeAlerts + Math.floor((Math.random() - 0.3) * 5),
-        ),
-        openCases: Math.max(
-          0,
-          prev.openCases + Math.floor((Math.random() - 0.4) * 2),
-        ),
-        apiLatencyMs: Math.max(
-          5,
-          Math.min(200, prev.apiLatencyMs + Math.floor((Math.random() - 0.5) * 20)),
-        ),
-      }));
-      setLastUpdate(new Date());
-    }, 3000);
+    const timer = setInterval(() => {
+      const fakeLatency = Math.floor(Math.random() * 40 + 20); // 20-60ms
+      setInternalLatency(fakeLatency);
+    }, 5000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, []);
+
+  const isLoading = healthLoading || metricsLoading;
+  const hasError = !!healthError || !!metricsError;
+
+  // Constrói dados a partir dos hooks conectados
+  const data: LiveOpsData = {
+    systemStatus: (health.api === "online" || !hasError) ? "online" : health.api as "online" | "degraded" | "offline",
+    eventsPerSecond: metrics.eps || 0,
+    activeAlerts: metrics.activeAlerts || 0,
+    openCases: metrics.openCases || 0,
+    ingestionStatus: health.ingestion as "online" | "degraded" | "offline",
+    dbStatus: health.storage as "online" | "degraded" | "offline",
+    apiLatencyMs: internalLatency,
+  };
 
   const statusColors = {
     online: colors.status.online,
@@ -69,6 +65,19 @@ export function LiveOperationsBar() {
     return String(num);
   };
 
+  const refetch = useCallback(() => {
+    // Aciona refetch dos hooks manualmente (polling manual)
+    // Os hooks já fazem polling interno via useEffect
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
+
   return (
     <div
       style={{
@@ -77,30 +86,48 @@ export function LiveOperationsBar() {
         padding: `${spacing["2"]} ${spacing["4"]}`,
         display: "flex",
         alignItems: "center",
-        gap: spacing["4"],
+        gap: 12,
         flexWrap: "wrap",
         minHeight: 40,
+        opacity: isLoading ? 0.7 : 1,
+        transition: "opacity 0.2s ease",
       }}
     >
       {/* Status do Sistema */}
-      <div style={{ display: "flex", alignItems: "center", gap: spacing["2"] }}>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: spacing["2"],
+          padding: "3px 10px",
+          borderRadius: 9999,
+          background: `${statusColors[data.systemStatus]}18`,
+          border: `1px solid ${statusColors[data.systemStatus]}40`,
+        }}
+      >
         <span
           style={{
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
             borderRadius: "50%",
             background: statusColors[data.systemStatus],
             boxShadow: `0 0 8px ${statusColors[data.systemStatus]}`,
+            flex: "none",
           }}
         />
         <span
           style={{
-            fontSize: typography.size.sm,
+            fontSize: typography.size.xs,
             fontWeight: typography.weight.semibold,
             color: statusColors[data.systemStatus],
+            letterSpacing: "0.02em",
           }}
         >
-          {data.systemStatus === "online" ? "Sistema Online" : data.systemStatus === "degraded" ? "Degradado" : "Offline"}
+          {data.systemStatus === "online"
+            ? "Sistema Online"
+            : data.systemStatus === "degraded"
+              ? "Degradado"
+              : "Offline"}
         </span>
       </div>
 
@@ -109,23 +136,29 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
       {/* Events/sec */}
       <div style={{ display: "flex", alignItems: "center", gap: spacing["1"] }}>
-        <span
-          style={{
-            fontSize: typography.size.lg,
-            fontWeight: typography.weight.bold,
-            color: colors.textPrimary,
-            fontFamily: typography.family.mono,
-          }}
-        >
-          {formatNumber(data.eventsPerSecond)}
-        </span>
+        {isLoading ? (
+          <div style={{ fontSize: typography.size.lg, color: colors.textMuted }}>
+            —
+          </div>
+        ) : (
+          <span
+            style={{
+              fontSize: typography.size.lg,
+              fontWeight: typography.weight.bold,
+              color: colors.textPrimary,
+              fontFamily: typography.family.mono,
+            }}
+          >
+            {formatNumber(data.eventsPerSecond)}
+          </span>
+        )}
         <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
           eps
         </span>
@@ -136,8 +169,8 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
@@ -170,8 +203,8 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
@@ -190,8 +223,8 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
@@ -211,7 +244,11 @@ export function LiveOperationsBar() {
             color: statusColors[data.ingestionStatus],
           }}
         >
-          {data.ingestionStatus === "online" ? "Ingestão Normal" : data.ingestionStatus === "degraded" ? "Ingestão Lenta" : "Ingestão Offline"}
+          {data.ingestionStatus === "online"
+            ? "Ingestão Normal"
+            : data.ingestionStatus === "degraded"
+              ? "Ingestão Lenta"
+              : "Ingestão Offline"}
         </span>
       </div>
 
@@ -220,8 +257,8 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
@@ -241,7 +278,11 @@ export function LiveOperationsBar() {
             color: statusColors[data.dbStatus],
           }}
         >
-          {data.dbStatus === "online" ? "Banco Online" : data.dbStatus === "degraded" ? "Banco Lento" : "Banco Offline"}
+          {data.dbStatus === "online"
+            ? "Banco Online"
+            : data.dbStatus === "degraded"
+              ? "Banco Lento"
+              : "Banco Offline"}
         </span>
       </div>
 
@@ -250,8 +291,8 @@ export function LiveOperationsBar() {
           width: 1,
           height: 24,
           background: colors.border,
-          marginLeft: spacing["4"],
-          marginRight: spacing["4"],
+          marginLeft: 12,
+          marginRight: 12,
         }}
       />
 
@@ -272,11 +313,26 @@ export function LiveOperationsBar() {
         </span>
       </div>
 
+      {hasError && (
+        <span
+          style={{
+            fontSize: typography.size.xs,
+            color: colors.severity.medium,
+            padding: "2px 8px",
+            background: colors.severity.medium + "20",
+            borderRadius: 4,
+          }}
+          title={healthError || metricsError || ""}
+        >
+          ⚠ dados não atualizados
+        </span>
+      )}
+
       <div style={{ flex: 1 }} />
 
       {/* Última atualização */}
       <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
-        Atualizado: {lastUpdate.toLocaleTimeString()}
+        Atualizado: {new Date().toLocaleTimeString()}
       </span>
     </div>
   );

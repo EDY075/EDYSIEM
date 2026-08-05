@@ -1,19 +1,23 @@
 /**
- * Routing (UI 3.2)
- * Definição de rotas da aplicação. Páginas são stubs estruturais.
+ * Routing (UI 3.2 / UI 4.x)
+ * Definição de rotas da aplicação conectada às páginas reais.
  */
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../shell/AppShell";
 import { Page } from "../components/Page";
+import { DashboardOverview } from "../pages/DashboardOverview";
+import { AlertCenterPage } from "../pages/AlertCenterPage";
+import { WarRoomPage } from "../pages/WarRoomPage";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <AppShell />,
     children: [
-      { index: true, element: <Page title="Overview" /> },
+      { index: true, element: <DashboardOverview /> },
+      { path: "war-room", element: <WarRoomPage /> },
       { path: "triage", element: <Page title="Triage" /> },
-      { path: "alerts", element: <Page title="Alertas" /> },
+      { path: "alerts", element: <AlertCenterPage /> },
       { path: "incidents", element: <Page title="Incidentes" /> },
       { path: "investigate", element: <Page title="Investigar" /> },
       { path: "cases", element: <Page title="Cases" /> },

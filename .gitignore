@@ -32,6 +32,16 @@ dist/
 *.egg
 .python-version
 
+# TypeScript — artefatos de build incremental
+*.tsbuildinfo
+
+# Scratch / logs de auditoria do frontend
+frontend/build_log.txt
+frontend/tsc_*.txt
+
+# Artefatos temporários preservados em archive (não versionados)
+archive/frontend_scratch/
+
 # Segredos (nunca versionar)
 .env
 .env.*

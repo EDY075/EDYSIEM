@@ -1,1 +1,0 @@
-﻿error TS6053: File 'C:/Users/edmil/tsconfig.json' not found.

@@ -20,7 +20,7 @@ export function AppShell() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Topbar />
         <LiveOperationsBar />
-        <main style={{ flex: 1, padding: 24, minWidth: 0 }}>
+        <main style={{ flex: 1, padding: 20, minWidth: 0 }}>
           <Outlet />
         </main>
         <Footer />

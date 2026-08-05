@@ -169,7 +169,7 @@ export function GlobalSearch() {
     }
   };
 
-  // Click outside to close
+  // Click outside to close + atalho ⌘K / Ctrl+K
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -181,40 +181,96 @@ export function GlobalSearch() {
         setIsOpen(false);
       }
     };
+    const handleHotkey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setIsOpen(true);
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleHotkey);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleHotkey);
+    };
   }, []);
 
   return (
     <div style={{ position: "relative", width: "100%" }}>
-      <input
-        ref={inputRef}
-        placeholder="Buscar IP, hostname, usuário, IOC, hash, domínio, alerta..."
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setIsOpen(true);
-          setSelectedIndex(0);
-        }}
-        onKeyDown={handleKeyDown}
-        onFocus={() => setIsOpen(true)}
+      <div
         style={{
-          width: "100%",
-          fontFamily: typography.family.ui,
-          fontSize: typography.size.sm,
+          display: "flex",
+          alignItems: "center",
+          gap: spacing["2"],
           background: colors.background,
-          color: colors.textPrimary,
           border: `1px solid ${colors.border}`,
           borderRadius: radii.md,
-          padding: `${spacing["2"]} ${spacing["3"]}`,
-          outline: "none",
-          transition: motion.transition.fast,
+          padding: `0 ${spacing["2"]}`,
+          transition: `border-color ${motion.transition.fast}, box-shadow ${motion.transition.fast}`,
+          boxShadow: isOpen ? `0 0 0 3px ${colors.accent}26` : "none",
         }}
-        autoComplete="off"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-      />
+        onMouseEnter={(e) => {
+          if (!isOpen) e.currentTarget.style.borderColor = colors.textMuted + "80";
+        }}
+        onMouseLeave={(e) => {
+          if (!isOpen) e.currentTarget.style.borderColor = colors.border;
+        }}
+      >
+        <span
+          aria-hidden
+          style={{ color: colors.textMuted, fontSize: typography.size.sm, display: "flex", flex: "none" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+        </span>
+        <input
+          ref={inputRef}
+          placeholder="Buscar IP, hostname, IOC, hash, alerta..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+            setSelectedIndex(0);
+          }}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsOpen(true)}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            fontFamily: typography.family.ui,
+            fontSize: typography.size.sm,
+            background: "transparent",
+            color: colors.textPrimary,
+            border: "none",
+            outline: "none",
+            padding: `${spacing["2"]} 0`,
+            width: "100%",
+          }}
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <kbd
+          aria-hidden
+          style={{
+            flex: "none",
+            fontFamily: typography.family.mono,
+            fontSize: 10,
+            color: colors.textMuted,
+            background: colors.surfaceAlt,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 4,
+            padding: "1px 6px",
+            letterSpacing: "0.04em",
+          }}
+        >
+          ⌘K
+        </kbd>
+      </div>
 
       {isOpen && (
         <div
@@ -287,73 +343,74 @@ export function GlobalSearch() {
                         {typeResults.length} resultado{typeResults.length !== 1 ? "s" : ""}
                       </span>
                     </div>
-                    {typeResults.map((result) => (
-                      <button
-                        key={result.id}
-                        onClick={() => {
-                          if (result.route) window.location.href = result.route;
-                          setQuery("");
-                          setIsOpen(false);
-                        }}
-                        onMouseEnter={() =>
-                          setSelectedIndex(
-                            filteredResults.findIndex((r) => r.id === result.id),
-                          )
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: spacing["2"],
-                          width: "100%",
-                          padding: `${spacing["2"]} ${spacing["3"]}`,
-                          borderRadius: radii.sm,
-                          background: "transparent",
-                          border: "none",
-                          textAlign: "left",
-                          cursor: "pointer",
-                          color: colors.textPrimary,
-                          fontSize: typography.size.sm,
-                          transition: motion.transition.fast,
-                        }}
-                      >
-                        <span style={{ fontSize: typography.size.sm }}>{result.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontWeight: typography.weight.medium,
-                              color: colors.textPrimary,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {result.label}
-                          </div>
-                          {result.description && (
+                    {typeResults.map((result) => {
+                      const idx = filteredResults.findIndex((r) => r.id === result.id && r.type === result.type);
+                      const highlighted = idx === selectedIndex;
+                      return (
+                        <button
+                          key={result.id}
+                          onClick={() => {
+                            if (result.route) window.location.href = result.route;
+                            setQuery("");
+                            setIsOpen(false);
+                          }}
+                          onMouseEnter={() => setSelectedIndex(idx)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: spacing["2"],
+                            width: "100%",
+                            padding: `${spacing["2"]} ${spacing["3"]}`,
+                            borderRadius: radii.sm,
+                            background: highlighted ? colors.accentSubtle : "transparent",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            color: colors.textPrimary,
+                            fontSize: typography.size.sm,
+                            transition: `background ${motion.transition.fast}`,
+                          }}
+                        >
+                          <span style={{ fontSize: typography.size.sm }}>{result.icon}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div
                               style={{
-                                fontSize: typography.size.xs,
-                                color: colors.textMuted,
+                                fontWeight: typography.weight.medium,
+                                color: colors.textPrimary,
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                               }}
                             >
-                              {result.description}
+                              {result.label}
                             </div>
-                          )}
-                        </div>
-                        <span
-                          style={{
-                            fontSize: typography.size.xs,
-                            color: colors.textMuted,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {result.type}
-                        </span>
-                      </button>
-                    ))}
+                            {result.description && (
+                              <div
+                                style={{
+                                  fontSize: typography.size.xs,
+                                  color: colors.textMuted,
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {result.description}
+                              </div>
+                            )}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: typography.size.xs,
+                              color: highlighted ? colors.accentHover : colors.textMuted,
+                              whiteSpace: "nowrap",
+                              fontFamily: typography.family.mono,
+                            }}
+                          >
+                            {result.type}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })}

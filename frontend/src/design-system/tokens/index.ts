@@ -21,6 +21,8 @@ export const typography = {
     lg: "16px",
     xl: "18px",
     "2xl": "22px",
+    "3xl": "28px",
+    display: "30px",
   },
   weight: {
     regular: 400,

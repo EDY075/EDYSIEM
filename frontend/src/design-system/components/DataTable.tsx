@@ -14,6 +14,8 @@ export interface DataColumn {
   render?: (row: Record<string, ReactNode>) => ReactNode;
   width?: string;
   sortable?: boolean;
+  /** Aplica tipografia técnica (JetBrains Mono) nas células — IPs, hashes, timestamps, métricas. */
+  mono?: boolean;
 }
 
 export interface DataTableProps {
@@ -107,7 +109,14 @@ export function DataTable({
                   </td>
                 )}
                 {columns.map((c) => (
-                  <td key={c.key} style={cell}>
+                  <td
+                    key={c.key}
+                    style={{
+                      ...cell,
+                      fontFamily: c.mono ? typography.family.mono : typography.family.ui,
+                      fontVariantNumeric: c.mono ? "tabular-nums" : undefined,
+                    }}
+                  >
                     {c.render ? c.render(row) : (row[c.key] as ReactNode) ?? "—"}
                   </td>
                 ))}

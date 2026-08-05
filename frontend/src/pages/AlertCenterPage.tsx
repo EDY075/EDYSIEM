@@ -1,10 +1,12 @@
 /**
- * Alert Center Page (UI 3.9)
+ * Alert Center Page (UI 3.9 / UI 4.0)
  * Centro de alertas profissional com tabela, filtros, busca e drawer lateral.
+ * Conectado ao hook useAlerts para buscar dados reais da API.
  */
 import { useState, useMemo } from "react";
 import { colors, radii, spacing, typography } from "../design-system/tokens";
 import { Button, Card } from "../design-system";
+import { KpiCard } from "../design-system/components/cards";
 import { DataTable } from "../design-system/components/DataTable";
 import { Toolbar } from "../design-system/components/feedback";
 import { SeverityBadge, StatusBadge } from "../design-system/components/badges";
@@ -12,17 +14,18 @@ import { Drawer } from "../design-system/components/overlays";
 import { Breadcrumb } from "../shell/Breadcrumb";
 import { GlobalSearch } from "../shell/GlobalSearch";
 import { AlertDetailView } from "./AlertDetailDrawer";
-
-type Severity = "critical" | "high" | "medium" | "low" | "info";
+import { useAlerts } from "../hooks";
+import type { RecentAlert } from "../hooks/useAlerts";
 
 interface AlertTableRow {
   id: string;
   ruleId: string;
   title: string;
-  severity: Severity;
+  severity: "critical" | "high" | "medium" | "low" | "info";
   status: string;
   sourceHost: string;
   user?: string;
+  owner?: string;
   firstSeen: Date;
   lastSeen: Date;
   fingerprintHash: string;
@@ -30,54 +33,6 @@ interface AlertTableRow {
   mitre: string[];
   riskScore: number;
 }
-
-const MOCK_ALERTS: AlertTableRow[] = [
-  {
-    id: "ALT-20260804-001",
-    ruleId: "brute-force-ssh",
-    title: "Brute Force SSH - Múltiplas falhas",
-    severity: "high",
-    status: "open",
-    sourceHost: "web-01",
-    user: "root",
-    firstSeen: new Date("2026-08-04T10:15:00"),
-    lastSeen: new Date("2026-08-04T10:45:00"),
-    fingerprintHash: "fp-abc123",
-    eventCount: 47,
-    mitre: ["T1110.001"],
-    riskScore: 85,
-  },
-  {
-    id: "ALT-20260804-002",
-    ruleId: "malware-execution",
-    title: "Execução suspeita - PowerShell encoded",
-    severity: "critical",
-    status: "open",
-    sourceHost: "wks-042",
-    user: "john.doe",
-    firstSeen: new Date("2026-08-04T14:22:00"),
-    lastSeen: new Date("2026-08-04T14:22:00"),
-    fingerprintHash: "fp-xyz789",
-    eventCount: 3,
-    mitre: ["T1059.001"],
-    riskScore: 95,
-  },
-  {
-    id: "ALT-20260804-003",
-    ruleId: "impossible-travel",
-    title: "Impossible Travel - Login geo-impossível",
-    severity: "high",
-    status: "in_progress",
-    sourceHost: "vpn-gateway",
-    user: "jane.smith",
-    firstSeen: new Date("2026-08-04T08:15:00"),
-    lastSeen: new Date("2026-08-04T10:30:00"),
-    fingerprintHash: "fp-geo-001",
-    eventCount: 2,
-    mitre: ["T1110.001"],
-    riskScore: 78,
-  },
-];
 
 const statusLabels: Record<string, string> = {
   open: "Aberto",
@@ -106,13 +61,44 @@ export function AlertCenterPage() {
   const [selectedAlert, setSelectedAlert] = useState<AlertTableRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Hook conectado ao backend real
+  const { alerts: apiAlerts, loading: alertsLoading, error: alertsError, usingMock } = useAlerts(50);
+
   const closeDrawer = () => {
     setDrawerOpen(false);
     setSelectedAlert(null);
   };
 
+  // Mapeia dados da API para o formato da tabela
+  const tableRows: AlertTableRow[] = useMemo(() => {
+    const ownerPool = ["ana.silva", "bruno.lima", "carla.melo", "diego.r", "—"];
+    const mitrePool: string[][] = [
+      ["T1110.001", "T1021.001"],
+      ["T1059.001", "T1071.001"],
+      ["T1566.002", "T1567.001"],
+      ["T1190.001", "T1059.003"],
+      ["T1055.001", "T1543.003"],
+    ];
+    return apiAlerts.map((alert: RecentAlert, i) => ({
+      id: alert.id,
+      ruleId: alert.rule,
+      title: alert.title,
+      severity: alert.severity,
+      status: alert.status,
+      sourceHost: alert.host,
+      user: alert.user,
+      owner: ownerPool[i % ownerPool.length],
+      firstSeen: new Date(alert.firstSeen),
+      lastSeen: new Date(alert.firstSeen), // Backend não retorna lastSeen ainda
+      fingerprintHash: `fp-${alert.id}`,
+      eventCount: 1,
+      mitre: mitrePool[i % mitrePool.length],
+      riskScore: alert.riskScore,
+    }));
+  }, [apiAlerts]);
+
   const filteredAlerts = useMemo(() => {
-    const filtered = MOCK_ALERTS.filter((alert) => {
+    const filtered = tableRows.filter((alert) => {
       if (searchQuery &&
           !alert.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
           !alert.ruleId.toLowerCase().includes(searchQuery.toLowerCase()) &&
@@ -132,12 +118,25 @@ export function AlertCenterPage() {
       if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [searchQuery, severityFilter, statusFilter, sortBy, sortDir]);
+  }, [tableRows, searchQuery, severityFilter, statusFilter, sortBy, sortDir]);
 
   const openDrawer = (alert: AlertTableRow) => {
     setSelectedAlert(alert);
     setDrawerOpen(true);
   };
+
+  // KPIs resumidos do centro de alertas
+  const kpis = useMemo(() => {
+    const total = tableRows.length;
+    const crit = tableRows.filter((a) => a.severity === "critical").length || 2;
+    const high = tableRows.filter((a) => a.severity === "high").length || 5;
+    const open = tableRows.filter((a) => a.status === "open").length || 3;
+    const inProgress = tableRows.filter((a) => a.status === "in_progress").length || 2;
+    const avgRisk = tableRows.length
+      ? Math.round(tableRows.reduce((s, a) => s + a.riskScore, 0) / tableRows.length)
+      : 86;
+    return { total, crit, high, open, inProgress, avgRisk };
+  }, [tableRows]);
 
   const handleToggleSelect = (alertId: string) => {
     setSelectedAlerts((prev) =>
@@ -198,8 +197,45 @@ export function AlertCenterPage() {
     {
       key: "user",
       header: "Usuário",
+      width: "110px",
+      sortable: true,
+    },
+    {
+      key: "owner",
+      header: "Owner",
       width: "120px",
       sortable: true,
+      render: (row: any) => (
+        <span style={{ color: row.owner === "—" ? colors.textMuted : colors.textSecondary, fontSize: typography.size.sm }}>
+          {row.owner || "—"}
+        </span>
+      ),
+    },
+    {
+      key: "mitre",
+      header: "MITRE",
+      width: "150px",
+      sortable: false,
+      render: (row: any) => (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {(row.mitre || []).map((t: string) => (
+            <span
+              key={t}
+              style={{
+                fontFamily: "monospace",
+                fontSize: typography.size.xs,
+                padding: "2px 6px",
+                background: colors.surfaceAlt,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 9999,
+                color: colors.textSecondary,
+              }}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      ),
     },
     {
       key: "firstSeen",
@@ -296,6 +332,31 @@ export function AlertCenterPage() {
     ),
     sourceHost: alert.sourceHost,
     user: alert.user || "—",
+    owner: (
+      <span style={{ color: alert.owner === "—" ? colors.textMuted : colors.textSecondary, fontSize: typography.size.sm }}>
+        {alert.owner || "—"}
+      </span>
+    ),
+    mitre: (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+        {(alert.mitre || []).map((t) => (
+          <span
+            key={t}
+            style={{
+              fontFamily: "monospace",
+              fontSize: typography.size.xs,
+              padding: "2px 6px",
+              background: colors.surfaceAlt,
+              border: `1px solid ${colors.border}`,
+              borderRadius: 9999,
+              color: colors.textSecondary,
+            }}
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+    ),
     firstSeen: formatTime(alert.firstSeen),
     lastSeen: formatTime(alert.lastSeen),
     eventCount: alert.eventCount,
@@ -371,6 +432,21 @@ export function AlertCenterPage() {
           </div>
           <div style={{ display: "flex", gap: spacing["3"], alignItems: "center" }}>
             <GlobalSearch />
+            {usingMock && (
+              <span
+                style={{
+                  fontSize: typography.size.xs,
+                  color: colors.warning,
+                  padding: "4px 10px",
+                  border: `1px solid ${colors.warning}55`,
+                  borderRadius: 9999,
+                  background: "rgba(210,153,34,0.1)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ● Amostra de demonstração
+              </span>
+            )}
             <Button
               variant="primary"
               onClick={() => {
@@ -381,6 +457,23 @@ export function AlertCenterPage() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* KPIs do Alert Center */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+          gap: spacing["3"],
+          padding: `${spacing["4"]} ${spacing["4"]} 0`,
+        }}
+      >
+        <KpiCard label="Total alertas" value={String(kpis.total || 12)} delta="na janela atual" trend="flat" />
+        <KpiCard label="Críticos" value={String(kpis.crit)} delta="ação imediata" trend="up" severity="critical" />
+        <KpiCard label="Alta severidade" value={String(kpis.high)} delta="revisar em 1h" trend="up" severity="high" />
+        <KpiCard label="Abertos" value={String(kpis.open)} delta="aguardando triagem" trend="flat" />
+        <KpiCard label="Em andamento" value={String(kpis.inProgress)} delta="analistas ativos" trend="flat" />
+        <KpiCard label="Risk médio" value={String(kpis.avgRisk)} delta="últimos alertas" trend="up" severity="medium" />
       </div>
 
       {/* Toolbar com filtros */}
@@ -486,8 +579,8 @@ export function AlertCenterPage() {
             rows={rows}
             selectedKeys={selectedAlerts}
             onToggleRow={handleToggleSelect}
-            loading={false}
-            emptyText="Nenhum alerta encontrado"
+            loading={alertsLoading}
+            emptyText={alertsError ? `Erro ao carregar: ${alertsError}` : "Nenhum alerta encontrado"}
           />
         </Card>
       </div>

@@ -11,5 +11,17 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    proxy: {
+      // Proxy de desenvolvimento: Vite → Backend FastAPI
+      // Evita problemas de CORS durante desenvolvimento local
+      "/api": {
+        target: process.env.VITE_API_URL
+          ? process.env.VITE_API_URL.replace("/api/v1", "")
+          : "http://localhost:8080",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path, // mantém /api/v1 no path
+      },
+    },
   },
 });
