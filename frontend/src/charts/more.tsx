@@ -28,6 +28,24 @@ export interface SecurityDonutChartProps {
 }
 
 export function SecurityDonutChart({ data, nameKey, valueKey, height = 200, innerRadius = 50, outerRadius = 80 }: SecurityDonutChartProps) {
+  if (data.length === 0) {
+    return (
+      <div
+        style={{
+          height,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: `1px dashed ${colors.border}`,
+          borderRadius: 8,
+          color: colors.textMuted,
+          fontSize: typography.size.sm,
+        }}
+      >
+        Sem dados no período
+      </div>
+    );
+  }
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
@@ -82,6 +100,23 @@ export function SecurityHeatmap({ rows, cols, cells }: SecurityHeatmapProps) {
     cellMap[`${c.row}::${c.col}`] = c.value;
   });
   const max = Math.max(...cells.map((c) => c.value), 1);
+
+  if (cells.length === 0) {
+    return (
+      <div
+        style={{
+          padding: "24px 12px",
+          textAlign: "center",
+          color: colors.textMuted,
+          fontSize: typography.size.sm,
+          border: `1px dashed ${colors.border}`,
+          borderRadius: 8,
+        }}
+      >
+        Sem dados de heatmap no período
+      </div>
+    );
+  }
 
   return (
     <div style={{ overflowX: "auto" }}>
