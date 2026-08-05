@@ -19,12 +19,31 @@ const microAnimCss = `
   0%, 100% { box-shadow: 0 0 4px currentColor; opacity: 0.65; }
   50%      { box-shadow: 0 0 10px currentColor; opacity: 1; }
 }
+/* Spotlight que segue o cursor (gradiente radial) — Sprint 2.14 / WP2 */
+.lumina-card { position: relative; }
+.lumina-spotlight {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(340px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(255,255,255,0.05), transparent 65%);
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.lumina-card:hover .lumina-spotlight, .lumina-card:focus-visible .lumina-spotlight { opacity: 1; }
 .lumina-fadein { animation: luminaFade 200ms cubic-bezier(0.2, 0, 0, 1) both; }
 .lumina-pulse  { animation: luminaPulse 2s ease-in-out infinite; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
-  .lumina-fadein, .lumina-pulse { animation: none !important; }
+  .lumina-fadein, .lumina-pulse, .lumina-spotlight { animation: none !important; opacity: 0 !important; }
 }
 `;
+
+/** Atualiza as CSS vars de posição do cursor para o spotlight. */
+function trackSpotlight(e: React.MouseEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--spot-x", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--spot-y", `${e.clientY - r.top}px`);
+}
 
 /* Deterministic sparkline from a seed string (no lib, no state). */
 function hashSeed(str: string): number {
@@ -113,8 +132,9 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
   return (
     <button
       onClick={onClick}
-      className="lumina-fadein"
+      className="lumina-fadein lumina-card"
       aria-label={delta ? `${label}: ${value} (${delta})` : `${label}: ${value}`}
+      onMouseMove={trackSpotlight}
       style={{
         position: "relative",
         overflow: "hidden",
@@ -141,6 +161,10 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
         e.currentTarget.style.boxShadow = "none";
       }}
     >
+      <div
+        aria-hidden
+        className="lumina-spotlight"
+      />
       {/* micro borda superior com gradiente */}
       <div
         aria-hidden
@@ -261,7 +285,8 @@ export interface MetricCardProps {
 export function MetricCard({ title, children, footer, style }: MetricCardProps) {
   return (
     <section
-      className="lumina-fadein"
+      className="lumina-fadein lumina-card"
+      onMouseMove={trackSpotlight}
       style={{
         position: "relative",
         overflow: "hidden",
@@ -273,6 +298,7 @@ export function MetricCard({ title, children, footer, style }: MetricCardProps) 
         ...style,
       }}
     >
+      <div aria-hidden className="lumina-spotlight" />
       {/* micro borda superior com gradiente accent */}
       <div
         aria-hidden
