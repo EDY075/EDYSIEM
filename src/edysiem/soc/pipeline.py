@@ -99,6 +99,8 @@ class SocPipeline:
         cid = correlation_id or raw.event_id
 
         parsed = self._parse(raw)
+        if not parsed.fields:
+            raise ValueError("formato de log não reconhecido")
         canonical_result = c.normalizer.normalize(parsed)
         if isinstance(canonical_result, Failure):
             raise ValueError(f"normalização falhou: {canonical_result.error.message}")
