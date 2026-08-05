@@ -30,6 +30,7 @@ from ..persistence import (
     EventStore,
     MigrationRunner,
     PipelineStage,
+    Transaction,
 )
 from ..persistence.repos import AlertRepository, CaseRepository, IncidentRepository
 from .sla import SlaPolicy, SlaSnapshot, compute_sla
@@ -86,32 +87,37 @@ class SocService:
     # --- Persistencia (ponte engines -> repos) ------------------------------
 
     def persist_alert(self, alert: Alert) -> Alert:
-        """Insere ou atualiza um alerta no repositório."""
-        if self._alerts.get(alert.id) is None:
-            self._alerts.add(alert)
-        else:
-            self._alerts.update(alert)
-        self._event_store.record_event(PipelineStage.ALERT, alert, alert.id)
+        """Insere ou atualiza um alerta no repositório (transação atômica)."""
+        with Transaction(self._manager.connect()):
+            if self._alerts.get(alert.id) is None:
+                self._alerts.add(alert)
+            else:
+                self._alerts.update(alert)
+            self._event_store.record_event(PipelineStage.ALERT, alert, alert.id)
         return alert
 
     def persist_incident(self, incident: Incident) -> Incident:
-        """Insere ou atualiza um incidente no repositório."""
-        if self._incidents.get(incident.id) is None:
-            self._incidents.add(incident)
-        else:
-            self._incidents.update(incident)
-        self._event_store.record_event(PipelineStage.INCIDENT, incident, correlation_id=incident.id)
+        """Insere ou atualiza um incidente no repositório (transação atômica)."""
+        with Transaction(self._manager.connect()):
+            if self._incidents.get(incident.id) is None:
+                self._incidents.add(incident)
+            else:
+                self._incidents.update(incident)
+            self._event_store.record_event(
+                PipelineStage.INCIDENT, incident, correlation_id=incident.id
+            )
         return incident
 
     def persist_case(self, case: Case) -> Case:
-        """Insere ou atualiza um caso no repositório."""
-        if self._cases.get(case.id) is None:
-            self._cases.add(case)
-        else:
-            self._cases.update(case)
-        self._event_store.record_event(
-            PipelineStage.CASE, case, correlation_id=case.incident_id or case.id
-        )
+        """Insere ou atualiza um caso no repositório (transação atômica)."""
+        with Transaction(self._manager.connect()):
+            if self._cases.get(case.id) is None:
+                self._cases.add(case)
+            else:
+                self._cases.update(case)
+            self._event_store.record_event(
+                PipelineStage.CASE, case, correlation_id=case.incident_id or case.id
+            )
         return case
 
     # --- Pipeline de criação -----------------------------------------------

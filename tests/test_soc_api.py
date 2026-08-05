@@ -68,8 +68,7 @@ def test_soc_api_pipeline_run_event(monkeypatch, tmp_path) -> None:
                 "source_type": "syslog",
                 "source_host": "wks-01",
                 "raw_payload": (
-                    "<134>1 2026-08-03T12:00:00.000Z wks-01 sshd - - - "
-                    "Failed password for admin"
+                    "<134>1 2026-08-03T12:00:00.000Z wks-01 sshd - - - Failed password for admin"
                 ),
             },
         )
