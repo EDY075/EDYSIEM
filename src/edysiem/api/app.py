@@ -20,7 +20,7 @@ from ..config import load
 from ..container import ApplicationContainer
 from .errors import register_error_handlers
 from .middleware import HTTPLoggingMiddleware, RequestIDMiddleware
-from .routes import alerts, cases, health, incidents, pipeline
+from .routes import alerts, cases, health, incidents, pipeline, soc
 
 
 def _build_lifespan(
@@ -76,6 +76,7 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     app.include_router(alerts.router, prefix="/api/v1")
     app.include_router(incidents.router, prefix="/api/v1")
     app.include_router(cases.router, prefix="/api/v1")
+    app.include_router(soc.router, prefix="/api/v1")
 
     return app
 
