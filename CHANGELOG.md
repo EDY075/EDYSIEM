@@ -5,6 +5,23 @@ Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [Não publicado]
+
+### Sprint 2.14 — Qualidade UI Enterprise (WP1–WP9)
+
+> Foco em QUALIDADE visual/premium, não em quantidade. Zero mudança de backend.
+
+#### Adicionado / Melhorado
+- **WP1 → Performance**: code-splitting de rotas via `React.lazy` + Suspense (`routes.tsx`, barra de progresso). Chunk inicial de entrada **691 kB → 248 kB** (gzip 205 kB → 79.6 kB).
+- **WP2 → Micro-interações**: spotlight `gradient-follow` (radial seguindo o cursor, CSS vars `--spot-x/--spot-y`, sem re-render) em `KpiCard` e `MetricCard`; ativo em `:hover`/`:focus-visible` e desativado em `prefers-reduced-motion`.
+- **WP3 → Skeleton Loading / Empty**: `LoadingSkeleton` com variantes `lines` (larguras relativas) e `card` (blocos de painel) + efeito shimmer; `EmptyState` com ação `onRetry`/`retryLabel`.
+- **WP4 → Activity Feed**: `ActivityItem.tone` (dot de severidade com glow), hover da linha e estado vazio (`digest do Timeline.tsx`).
+- **WP5 → Charts interativos**: legend clicável (alternar séries) em Line/Area/Bar; estado vazio profissional em Line/Area/Bar/Donut/Heatmap.
+- **WP6 → Dashboard Enterprise**: skeleton shimmer real no bloco de 6 KPIs durante load; `aria-busy`.
+- **WP7 → Alert Center**: contador de resultados "X de Y alertas" no toolbar.
+- **WP8 → War Room**: relógio de "última atualização" com tick (3s), dot de severidade no feed ao vivo, grids principais colapsam para 1 coluna em `<1280px`.
+- **WP9 → Acessibilidade**: `:focus-visible` global (anel accent), `color-scheme: dark`, `box-sizing`, scrollbar enterprise, `prefers-reduced-motion` global.
+
 ## [2.13 / v0.2.0] - 2026-08-05 — Sprint 2.13 (Estabilização do Projeto)
 
 > Objetivo da sprint: NÃO criar funcionalidade nova. Tornar o projeto consistente

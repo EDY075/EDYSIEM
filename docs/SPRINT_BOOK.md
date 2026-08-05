@@ -222,8 +222,17 @@
 - **Resultado:** 1 commit de checkpoint, tag **`v0.2.0`**, working tree limpa, backend 95.17% cobertura / mypy strict 0 / ruff limpo, frontend compilando (tsc + vite).
 - **Lições:** sprints de feature anteriores à formalização documental deixam lacunas em ROADMAP/CHANGELOG — a sprint de estabilização fechou essas lacunas; arquivos experimentais (`build_log.txt`, `tsc_*.txt`, `tsconfig.tsbuildinfo`) foram versionados por engano e agora são ignorados.
 
+### Sprint 2.14 — Qualidade UI Enterprise
+- **Status:** Concluída
+- **Data:** 2026-08-05
+- **Objetivo:** elevar o frontend ao padrão visual dos melhores SIEMs do mercado — foco em qualidade, não quantidade. Zero mudança de backend.
+- **Escopo:** 9 work packages com commit próprio — WP1 performance (code-splitting React.lazy), WP2 micro-interações (spotlight), WP3 skeleton/empty, WP4 Activity Feed, WP5 charts interativos, WP6 dashboard, WP7 alert center, WP8 war room, WP9 acessibilidade/responsividade.
+- **Arquivos:** `frontend/src/{routing/routes.tsx, App.tsx, charts/*, design-system/components/{cards,feedback,Timeline}.tsx, pages/{DashboardOverview,AlertCenterPage,WarRoomPage}.tsx}`.
+- **Resultado:** chunk inicial 691→248 kB (gzip 205→79.6 kB); 9 commits (`81ac069`…`d5b88c0`); build/tsc verdes por commit; backend intacto (pytest 95.17%, mypy strict 0, ruff limpo).
+- **Lições:** legend interativa e estados vazios agregam percepção enterprise com custo baixo; spotlight com CSS vars evita re-render (60fps); `React.lazy` é o maior lever de performance inicial do frontend.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.14** — Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines conectadas aos repos nos contexts, pipeline persistida de ponta a ponta).
-- **Sprint 2.15** — Investigação (drawer, evidências, timeline, notas) + Rules UI.
-- **Sprint 2.16** — Intelligence (IOC manager) + Assets + Incident UI.
+- **Sprint 2.15** — Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines conectadas aos repos nos contexts, pipeline persistida de ponta a ponta).
+- **Sprint 2.16** — Investigação (drawer, evidências, timeline, notas) + Rules UI.
+- **Sprint 2.17** — Intelligence (IOC manager) + Assets + Incident UI.

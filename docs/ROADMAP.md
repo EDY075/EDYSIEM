@@ -63,7 +63,8 @@
 | UI 4.0 | API Client central + hooks (metrics/alerts/incidents/cases/health) | ✅ Concluída |
 | UI 4.1 | Dashboard v0 (KPIs, série temporal, severidade, alertas, saúde) | ✅ Concluída |
 | UI 4.2 | War Room (tela única de comando operacional) | ✅ Concluída |
-| 2.14 | Integração E2E Pipeline → Alert → Incident → Case + Operação SOC | ⏳ Próxima |
+| 2.14 | **Qualidade UI Enterprise** (Dashboard, Alert Center, War Room, charts interativos, micro-interações, skeleton/empty, acessibilidade, performance) | ✅ Concluída |
+| 2.15 | Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines ↔ repos nos contexts) | ⏳ Próxima |
 
 ## Fase 3 — Escala
 
