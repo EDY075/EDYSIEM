@@ -552,6 +552,14 @@ export function AlertCenterPage() {
           }
           right={
             <>
+              {!selectedAlerts.length && (
+                <span
+                  data-mono
+                  style={{ fontSize: typography.size.xs, color: colors.textMuted }}
+                >
+                  {filteredAlerts.length} de {tableRows.length} alertas
+                </span>
+              )}
               {selectedAlerts.length > 0 && (
                 <>
                   <span style={{ fontSize: typography.size.sm, color: colors.textMuted }}>
