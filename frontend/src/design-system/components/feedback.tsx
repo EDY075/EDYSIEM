@@ -159,6 +159,9 @@ const skeletonCss = `
 }
 `;
 
+/** CSS do skeleton (exportado para reuso fora do componente). */
+export { skeletonCss };
+
 export function LoadingSkeleton({ rows = 4, height = 16, variant = "lines", widths }: LoadingSkeletonProps) {
   if (variant === "card") {
     return (

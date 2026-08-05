@@ -12,7 +12,7 @@ import { colors, spacing, typography } from "../design-system/tokens";
 import { KpiCard } from "../design-system/components/cards";
 import { DataTable } from "../design-system/components/DataTable";
 import { SeverityBadge } from "../design-system/components/badges";
-import { EmptyState } from "../design-system/components/feedback";
+import { EmptyState, skeletonCss } from "../design-system/components/feedback";
 import { SecurityAreaChart, SecurityDonutChart } from "../charts";
 import { useMetrics, useHealth, useAlerts } from "../hooks";
 import type { SystemHealth } from "../hooks";
@@ -108,7 +108,8 @@ export function DashboardOverview() {
     systemHealth.api === "online" ? "info" : systemHealth.api === "degraded" ? "medium" : "critical";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }} aria-busy={isLoading}>
+      <style>{skeletonCss}</style>
       {/* Cabeçalho de página compacto */}
       <div
         style={{
@@ -230,6 +231,7 @@ export function DashboardOverview() {
 
       {/* KPI principais (6) */}
       <div
+        aria-busy={isLoading}
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
@@ -238,7 +240,23 @@ export function DashboardOverview() {
       >
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => (
-            <KpiCard key={i} label="Carregando..." value={""} delta="" trend="flat" />
+            <div
+              key={i}
+              style={{
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 12,
+                padding: "18px 20px",
+                minHeight: 104,
+              }}
+            >
+              <div
+                className="skeleton-line"
+                style={{ height: 12, width: "52%", borderRadius: 6 }}
+              />
+              <div className="skeleton-line" style={{ height: 28, width: "38%", marginTop: 14, borderRadius: 6 }} />
+              <div className="skeleton-line" style={{ height: 12, width: "40%", marginTop: 14, borderRadius: 6 }} />
+            </div>
           ))
         ) : (
           <>
