@@ -16,11 +16,13 @@ import argparse
 import asyncio
 import json
 import sys
+from dataclasses import asdict
 from typing import Any
 
 from ..bootstrap import build_container, version
 from ..domain import RawEvent
 from ..parsers import parse_rfc5424, parse_syslog
+from ..soc import SocPipeline, SocService
 
 
 def _print(data: Any) -> None:
@@ -214,6 +216,17 @@ def cmd_demo(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_soc_run(_args: argparse.Namespace) -> int:
+    """Executa o fluxo SOC E2E de demonstração (alerta → incidente → caso)."""
+    svc = SocService()
+    pipeline = SocPipeline(svc)
+    loop = asyncio.new_event_loop()
+    flow = loop.run_until_complete(pipeline.run_demo())
+    loop.close()
+    _print({"soc_demo": True, **asdict(flow)})
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Constroi o parser de comandos do CLI."""
     parser = argparse.ArgumentParser(prog="edysiem", description="EDY SIEM CLI")
@@ -224,6 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("config", help="exibe a configuracao")
     sub.add_parser("validate-config", help="valida a configuracao")
     sub.add_parser("demo", help="executa a demo da pipeline")
+    sub.add_parser("soc-run", help="executa o fluxo SOC E2E (alerta -> incidente -> caso)")
 
     p_pipe = sub.add_parser("run-pipeline", help="executa a pipeline ponta a ponta")
     p_pipe.add_argument("--source-type", default="syslog")
@@ -246,6 +260,7 @@ _COMMANDS = {
     "run-pipeline": cmd_run_pipeline,
     "ingest": cmd_ingest,
     "demo": cmd_demo,
+    "soc-run": cmd_soc_run,
 }
 
 
