@@ -166,6 +166,9 @@ def test_soc_empty_metrics(tmp_path) -> None:
     assert m["components"]["total_alerts"] == 0
     assert m["components"]["total_cases"] == 0
     assert m["metrics"]["mttr_seconds"] == 0
+    assert len(m["metrics"]["events_series"]) == 60
+    assert all(p["events"] == 0 for p in m["metrics"]["events_series"])
+    assert m["metrics"]["events_per_second"] == 0.0
 
 
 def test_soc_sla_warning_state() -> None:

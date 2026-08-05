@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .._utils import utcnow as _utcnow
@@ -398,12 +398,36 @@ class SocService:
         )
         avg_risk = round(sum(a.risk_score.value for a in alerts) / len(alerts)) if alerts else 0
 
+        # Série temporal real (eventos por minuto, últimos 60 min) — Dashboard Vivo
+        events = self._event_store.repository.query(limit=20000).items
+        now = _utcnow()
+        minute_now = int(now.timestamp() // 60)
+        buckets: dict[int, int] = {}
+        for ev in events:
+            minute = int(ev.timestamp.timestamp() // 60)
+            if minute <= minute_now and minute_now - minute < 60:
+                buckets[minute] = buckets.get(minute, 0) + 1
+        series: list[dict[str, Any]] = []
+        for offset in range(59, -1, -1):
+            minute = minute_now - offset
+            dt = datetime.fromtimestamp(minute * 60, tz=UTC)
+            series.append({"time": dt.strftime("%H:%M"), "events": buckets.get(minute, 0)})
+
+        recent_window = sum(buckets.get(minute_now - offset, 0) for offset in range(5))
+        eps = round(recent_window / 300, 2) if events else 0.0
+        events_last_24h = sum(1 for ev in events if ev.timestamp >= now - timedelta(hours=24))
+
         return {
             "metrics": {
+                "events_per_second": eps,
                 "events_per_minute": float(self._event_store.repository.count()),
+                "events_last_24h": events_last_24h,
                 "active_alerts": sum(1 for a in alerts if a.status.value != "resolved"),
                 "open_cases": len(open_cases),
                 "mttr_seconds": mttr_seconds,
+                "mtta_seconds": 0,
+                "avg_risk_score": avg_risk,
+                "events_series": series,
             },
             "components": {
                 "total_alerts": len(alerts),

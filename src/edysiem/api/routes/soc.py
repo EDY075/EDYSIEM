@@ -94,6 +94,29 @@ def _service(container: ApplicationContainer) -> SocService:
     return cast(SocService, container.soc_service)
 
 
+# --- Alerts --------------------------------------------------------------------
+
+
+@router.get("/soc/alerts", summary="Lista alertas persistidos")
+def list_alerts(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+    svc = _service(container)
+    return {
+        "total": len(svc.list_alerts(limit=10000)),
+        "items": [_a(a) for a in svc.list_alerts(limit=100)],
+    }
+
+
+@router.get("/soc/alerts/{alert_id}", summary="Detalhe de um alerta")
+def get_alert(
+    alert_id: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    svc = _service(container)
+    alert = svc.get_alert(alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="alerta não encontrado")
+    return {**_a(alert), "sla": asdict(svc.sla_of(alert))}
+
+
 # --- Incident Management ------------------------------------------------------------
 
 

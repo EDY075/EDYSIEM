@@ -141,3 +141,27 @@ def test_soc_api_details_transition_and_400(monkeypatch, tmp_path) -> None:
         assert r.status_code == 404
         r = client.get("/api/v1/soc/cases/nao-existe/investigate")
         assert r.status_code == 404
+
+
+def test_soc_api_alerts_and_series(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        client.post("/api/v1/soc/pipeline/demo")
+
+        r = client.get("/api/v1/soc/alerts")
+        assert r.status_code == 200
+        items = r.json()["items"]
+        assert r.json()["total"] >= 4
+        assert items[0]["alert_id"]
+
+        r = client.get(f"/api/v1/soc/alerts/{items[0]['alert_id']}")
+        assert r.status_code == 200
+        assert "sla" in r.json()
+
+        assert client.get("/api/v1/soc/alerts/nao-existe").status_code == 404
+
+        r = client.get("/api/v1/soc/metrics")
+        assert r.status_code == 200
+        series = r.json()["metrics"]["events_series"]
+        assert len(series) == 60
+        assert isinstance(series[0]["events"], int)
