@@ -6,7 +6,7 @@
  * Prioridade: aparência e leitura rápida. Sem IA real nem integrações externas.
  * Dados demo são usados quando a API retorna vazio e são rotulados claramente.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { colors, radii, spacing, typography } from "../design-system/tokens";
 import { KpiCard, MetricCard } from "../design-system/components/cards";
 import { StatusBadge } from "../design-system/components/badges";
@@ -90,6 +90,13 @@ export function WarRoomPage() {
   const { health, loading: healthLoading } = useHealth();
   const { alerts, loading: alertsLoading, usingMock: alertsMock } = useAlerts(8);
 
+  // Relógio "última atualização" — tick a cada 3s (Sprint 2.14 / WP8)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 3000);
+    return () => clearInterval(timer);
+  }, []);
+
   const usingDemo = metricsLoading || healthLoading || alertsLoading || alerts.length === 0;
 
   const liveItems: ActivityItem[] = useMemo(() => {
@@ -100,6 +107,7 @@ export function WarRoomPage() {
         action: "disparou alerta em",
         target: a.host,
         time: `${i}s`,
+        tone: a.severity === "critical" ? "critical" : a.severity === "high" ? "high" : a.severity === "medium" ? "medium" : undefined,
       }));
     }
     return DEMO_LIVE;
@@ -119,6 +127,9 @@ export function WarRoomPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: colors.background }}>
+      <style>{`.wr-grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.wr-grid-bottom { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+@media (max-width: 1280px) { .wr-grid-main, .wr-grid-bottom { grid-template-columns: 1fr !important; } }`}</style>
       {/* ---------------- Cabeçalho ---------------- */}
       <div
         style={{
@@ -156,7 +167,7 @@ export function WarRoomPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: spacing["3"] }}>
           <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
-            Janela: Última hora • Atualizado às {new Date().toLocaleTimeString()}
+            Janela: Última hora • Atualizado às {now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
           </span>
           {usingDemo && (
             <span
@@ -186,7 +197,7 @@ export function WarRoomPage() {
         </div>
 
         {/* ---------------- Grade principal ---------------- */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing["4"], alignItems: "start" }}>
+        <div className="wr-grid-main">
           {/* ---- Coluna esquerda ---- */}
           <div style={{ display: "flex", flexDirection: "column", gap: spacing["4"] }}>
             {/* Live Event Feed */}
@@ -374,7 +385,7 @@ export function WarRoomPage() {
         </div>
 
         {/* ---------------- Mapa geográfico + Severidade ---------------- */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: spacing["4"] }}>
+        <div className="wr-grid-bottom">
           {/* Mapa geográfico (visual funcional) */}
           <MetricCard
             title="Origem geográfica dos eventos"
