@@ -15,7 +15,7 @@ tipados. O mesmo container alimenta a API e o CLI.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .alerts import AlertContext, AlertEngine, AlertRegistry
 from .cases import CaseBuilder, CaseContext, CaseEngine, CaseRegistry
@@ -48,6 +48,9 @@ from .ingestion.metrics import MetricsRegistry
 from .normalization import Registry as NormalizationRegistry
 from .normalization import StrategyNormalizer, register_default_normalizers
 
+if TYPE_CHECKING:
+    from .soc import SocPipeline, SocService
+
 
 class ApplicationContainer:
     """Container que conecta todos os engines da plataforma.
@@ -61,6 +64,8 @@ class ApplicationContainer:
         self._config = config if config is not None else load().unwrap()
         self._di = Container()
         self._metrics = MetricsRegistry()
+        self._soc_service: SocService | None = None
+        self._soc_pipeline: SocPipeline | None = None
         self._build()
 
     def _build(self) -> None:
@@ -192,6 +197,39 @@ class ApplicationContainer:
     def cases(self) -> CaseEngine:
         """Case Engine (Investigation Workspace)."""
         return self._di.resolve(CaseEngine)
+
+    # --- SOC (Sprint 2.15) -------------------------------------------------
+
+    @property
+    def soc_service(self) -> Any:
+        """SocService (persistido) — construído sob demanda.
+
+        Usa ``EDYSIEM_DB`` (default ``edysiem.db``) como arquivo SQLite.
+        Engines do container são reutilizados (low coupling).
+        """
+        if self._soc_service is None:
+            import os
+
+            from .soc import SlaPolicy, SocService
+
+            self._soc_service = SocService(
+                alert_engine=self.alerts,
+                incident_engine=self.incidents,
+                case_engine=self.cases,
+                version=self.version(),
+                db_path=os.environ.get("EDYSIEM_DB") or "edysiem.db",
+                sla=SlaPolicy(),
+            )
+        return self._soc_service
+
+    @property
+    def soc_pipeline(self) -> Any:
+        """SocPipeline (orquestração E2E) — construído sob demanda."""
+        if self._soc_pipeline is None:
+            from .soc import SocPipeline
+
+            self._soc_pipeline = SocPipeline(self.soc_service, container=self)
+        return self._soc_pipeline
 
     # --- Utilitarios -------------------------------------------------------
 
