@@ -7,7 +7,26 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint 2.14 — Qualidade UI Enterprise (WP1–WP9)
+### Sprint 2.15 — SOC Investigation Pipeline
+
+> Fluxo operacional: **Evento → Regra → Alerta → Incidente → Caso**, com
+> persistência real (engines ↔ repos SQLite). Baixo acoplamento: nenhum engine
+> existente foi modificado.
+
+#### Adicionado
+- **Pacote `src/edysiem/soc/`** (novo):
+  - `sla.py` — `SlaPolicy` (prazos por severidade) + `compute_sla` (estados `ok/warning/overdue/met/missed`).
+  - `service.py` — `SocService`: ponte engines → repos (transação atômica por operação), Incident Management (severidade/status/atribuição), Case Management (comentários, evidências, anexos, tarefas, resolução/encerramento), Investigation (pivôs alertas/IOCs/contexto via EventStore) e Dashboard KPIs reais (`metrics`).
+  - `pipeline.py` — `SocPipeline`: `run_event` (pipeline de engines completa) e `run_demo` (4 alertas brute-force → 1 incidente → 1 caso).
+- **Container**: `soc_service`/`soc_pipeline` lazy (`EDYSIEM_DB`, default `edysiem.db`).
+- **API `/api/v1/soc`**: pipeline demo/run, incidentes (list/get/assign/transition), cases (list/get/investigate/comment/evidence/assign/resolve/close), metrics.
+- **CLI**: comando `edysiem soc-run`.
+- **Testes**: `test_soc_pipeline.py` (8) + `test_soc_api.py` (4) — fluxo completo até encerramento do caso.
+
+#### Métricas
+- 771 testes, cobertura **95.04%**, mypy strict 0 (145 arquivos), ruff check+format limpos.
+
+## Sprint 2.14 — Qualidade UI Enterprise (WP1–WP9)
 
 > Foco em QUALIDADE visual/premium, não em quantidade. Zero mudança de backend.
 

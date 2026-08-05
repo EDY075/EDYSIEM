@@ -64,7 +64,8 @@
 | UI 4.1 | Dashboard v0 (KPIs, série temporal, severidade, alertas, saúde) | ✅ Concluída |
 | UI 4.2 | War Room (tela única de comando operacional) | ✅ Concluída |
 | 2.14 | **Qualidade UI Enterprise** (Dashboard, Alert Center, War Room, charts interativos, micro-interações, skeleton/empty, acessibilidade, performance) | ✅ Concluída |
-| 2.15 | Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines ↔ repos nos contexts) | ⏳ Próxima |
+| 2.15 | **SOC Investigation Pipeline** (Evento→Regra→Alerta→Incidente→Caso persistido; incident/case management, SLA, investigação, KPIs reais) | ✅ Concluída |
+| 2.16 | Frontend operacional (investigação, rules UI, incident UI) + dados reais E2E | ⏳ Próxima |
 
 ## Fase 3 — Escala
 

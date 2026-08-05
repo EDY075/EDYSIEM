@@ -231,8 +231,17 @@
 - **Resultado:** chunk inicial 691→248 kB (gzip 205→79.6 kB); 9 commits (`81ac069`…`d5b88c0`); build/tsc verdes por commit; backend intacto (pytest 95.17%, mypy strict 0, ruff limpo).
 - **Lições:** legend interativa e estados vazios agregam percepção enterprise com custo baixo; spotlight com CSS vars evita re-render (60fps); `React.lazy` é o maior lever de performance inicial do frontend.
 
+### Sprint 2.15 — SOC Investigation Pipeline
+- **Status:** Concluída
+- **Data:** 2026-08-05
+- **Objetivo:** transformar o EDY SIEM de dashboard para **fluxo operacional de SOC**: Evento → Regra → Alerta → Incidente → Caso, persistido, com incident/case management, SLA, investigação e KPIs reais.
+- **Escopo:** 6 work packages com commit próprio — WP-A pacote `soc` (SlaPolicy/`compute_sla`, `SocService` ponte engines→repos, `SocPipeline` run_event/run_demo), WP-B wire no container, WP-C API `/api/v1/soc`, WP-D testes E2E, WP-E CLI `soc-run`, style (ruff format).
+- **Arquivos:** `src/edysiem/soc/` (novo), `container.py`, `api/routes/soc.py`, `api/app.py`, `cli/main.py`, `tests/test_soc_{pipeline,api}.py`.
+- **Resultado:** fluxo completo funcional do alerta até o encerramento do caso (persistido em SQLite, transações atômicas); SLA por severidade; pivôs de investigação (alertas/IOCs/contexto via EventStore); KPIs reais; 771 testes, cobertura 95.04%, mypy strict 0, ruff limpo.
+- **Lições:** repos não committam (UoW/Transaction controla) — persist_* precisa de transação explícita; engines de alerta/incidente/case são async (fachadas do serviço devem `await`); `RecordNotFoundError(kind, record_id)` e `MigrationRunner.apply(manager)`; ANN401 em camada de rota é aceitável via `# ruff: noqa: ANN401`.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.15** — Integração E2E Pipeline → Alert → Incident → Case + operação SOC (engines conectadas aos repos nos contexts, pipeline persistida de ponta a ponta).
-- **Sprint 2.16** — Investigação (drawer, evidências, timeline, notas) + Rules UI.
-- **Sprint 2.17** — Intelligence (IOC manager) + Assets + Incident UI.
+- **Sprint 2.16** — Frontend operacional: investigação, rules UI, incident UI + dados reais E2E.
+- **Sprint 2.17** — Investigação avançada (drawer, evidências, timeline, notas) + Intelligence (IOC manager) + Assets.
+- **Sprint 2.18** — Escala (fila externa, storage alternativo, auth).
