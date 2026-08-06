@@ -292,7 +292,9 @@ async def run_event(
 
 
 @router.post("/soc/rules", summary="Registra uma regra no catálogo")
-def create_rule(body: dict[str, Any], container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+def create_rule(
+    body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
     return _service(container).register_rule(
         rule_id=str(body.get("rule_id", "")),
         name=str(body.get("name", "")),

@@ -174,7 +174,13 @@ def test_soc_api_detection_intel(monkeypatch, tmp_path) -> None:
 
         r = client.post(
             "/api/v1/soc/rules",
-            json={"rule_id": "brute-force-ssh", "name": "Brute Force SSH", "severity": "critical", "category": "authentication", "tags": ["brute"]},
+            json={
+                "rule_id": "brute-force-ssh",
+                "name": "Brute Force SSH",
+                "severity": "critical",
+                "category": "authentication",
+                "tags": ["brute"],
+            },
         )
         assert r.status_code == 200
         assert r.json()["rule_id"] == "brute-force-ssh"
@@ -188,11 +194,17 @@ def test_soc_api_detection_intel(monkeypatch, tmp_path) -> None:
         assert r.status_code == 200
         assert r.json()["matches"] >= 1
 
-        client.post("/api/v1/soc/iocs", json={"value": "1.2.3.4", "ioc_type": "ip", "reputation": "malicious"})
+        client.post(
+            "/api/v1/soc/iocs",
+            json={"value": "1.2.3.4", "ioc_type": "ip", "reputation": "malicious"},
+        )
         assert client.get("/api/v1/soc/iocs").json()["total"] >= 1
         assert client.get("/api/v1/soc/iocs/1.2.3.4/related").status_code == 200
 
-        client.post("/api/v1/soc/assets", json={"hostname": "web-01", "ip": "10.0.0.5", "os": "Linux", "criticality": "critical"})
+        client.post(
+            "/api/v1/soc/assets",
+            json={"hostname": "web-01", "ip": "10.0.0.5", "os": "Linux", "criticality": "critical"},
+        )
         assert client.get("/api/v1/soc/assets").json()["total"] >= 1
         assert client.get("/api/v1/soc/assets/web-01/related").status_code == 200
 
