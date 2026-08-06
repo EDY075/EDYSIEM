@@ -66,7 +66,8 @@
 | 2.14 | **Qualidade UI Enterprise** (Dashboard, Alert Center, War Room, charts interativos, micro-interações, skeleton/empty, acessibilidade, performance) | ✅ Concluída |
 | 2.15 | **SOC Investigation Pipeline** (Evento→Regra→Alerta→Incidente→Caso persistido; incident/case management, SLA, investigação, KPIs reais) | ✅ Concluída |
 | 2.16 | **Frontend operacional** (Dashboard/War Room/Alert Center com dados reais; Incident UI, Case UI, Investigation Workspace; toasts/UX) | ✅ Concluída |
-| 2.17 | Regras/Detection UI + Intelligence (IOC manager) + Assets | ⏳ Próxima |
+| 2.17 | **Detection Engineering + Threat Intelligence** (Rule mgmt + Simulator + IOC + Asset + Detection Dashboard) | ✅ Concluída |
+| 2.18 | Escala (fila externa Kafka, storage PostgreSQL via Protocol, auth/SSO) | ⏳ Próxima |
 
 ## Fase 3 — Escala
 

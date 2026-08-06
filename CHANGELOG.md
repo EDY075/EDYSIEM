@@ -7,7 +7,35 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint 2.16 — Frontend Operacional
+### Sprint 2.17 — Detection Engineering + Threat Intelligence
+
+> Capacidade de detectar/enriquecer/contextualizar eventos. Reutiliza `SocService`
+> e a API `/soc/*` existentes — sem duplicar lógica, sem quebrar arquitetura.
+
+#### Adicionado
+- **SchemaV4** (+migração): tabelas `det_rules`, `iocs`, `assets` com índices.
+- **Rule Engine gerenciável (SocService)**: catálogo persistido de regras
+  (`register_rule`, `list_rules`, `set_rule_enabled`), contador de disparos
+  (`fire_count`/`last_fired`) incrementado automaticamente em `persist_alert`.
+- **Rule Simulator**: `simulate_rule(payload_json)` — retorna regra aplicada,
+  severidade, score, motivo e `alert_generated`, **sem modificar a pipeline**.
+- **IOC Intelligence**: `register_ioc`/`list_iocs`/`ioc_related` (IP/domínio/URL/
+  hash/e-mail), reputação, first/last seen, hits, incidentes/casos relacionados.
+- **Asset Inventory**: `register_asset`/`list_assets`/`asset_related` (hostname/IP/
+  OS/criticidade/owner/status/last_seen) + relacionamento com incidentes/casos.
+- **Detection Dashboard**: `detection_stats` — top rules, top MITRE, top IOCs,
+  assets críticos, alertas por regra e tendência temporal (dados reais).
+- **API `/soc/*`**: `GET/POST /soc/rules` + `enable`/`disable`, `POST /soc/simulator`,
+  `GET/POST /soc/iocs` + `/soc/iocs/{value}/related`, `GET/POST /soc/assets` +
+  `/soc/assets/{hostname}/related`, `GET /soc/detection`.
+- **Frontend (real, sem mock)**: `IntelligencePage` (`/rules`, `/intel`) com abas
+  Rules Manager, Rule Simulator, IOC e Assets; `DetectionDashboardPage` (`/detection`).
+
+#### Métricas
+- Backend: 771+ testes, cobertura **95.11%**, mypy strict 0 (145 arquivos), ruff limpo.
+- Frontend: `tsc -b` exit 0, `npm run build` OK.
+
+## Sprint 2.16 — Frontend Operacional
 
 > Consome exclusivamente a API `/soc/*` real (sem novas engines, sem duplicar lógica).
 > Nenhum dado mock restante no frontend.

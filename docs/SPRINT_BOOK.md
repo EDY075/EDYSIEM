@@ -249,8 +249,17 @@
 - **Resultado:** 5 commits (33b2a47, baf76c5, 96a6a57, f930078, f03b2fd); frontend tsc+build verdes; backend 771 testes, cobertura 95.08%, mypy strict 0, ruff limpo.
 - **Lições:** `interface` (sem index signature) não é atribuível a `Record<string, ReactNode>` — usar `type`; `render: (row: any)` é o padrão do DataTable; hooks com mock fallback criavam dívida — remover junto com a mudança de shape (commits entrelaçados viram commit agrupado para manter buildável).
 
+### Sprint 2.17 — Detection Engineering + Threat Intelligence
+- **Status:** Concluída
+- **Data:** 2026-08-05
+- **Objetivo:** detectar, enriquecer e contextualizar eventos (fluxo de SOC moderno), reutilizando `SocService`/API `/soc/*` (sem duplicar lógica, sem quebrar arquitetura).
+- **Escopo:** WP1-WP5 backend (SchemaV4 + catálogo de regras + simulador + IOC + asset + detection_stats + API), WP6 frontend (Intelligence + Detection Dashboard), WP7 qualidade, WP8 docs.
+- **Arquivos:** `persistence/schema.py` (SchemaV4), `soc/service.py` (intel methods), `api/routes/soc.py`, `frontend/src/pages/{IntelligencePage,DetectionDashboardPage}.tsx`, `routing/routes.tsx`, testes.
+- **Resultado:** Rule Manager gerenciável (enable/disable/fire_count), Rule Simulator (sem tocar a pipeline), IOC Manager, Asset Inventory, Detection Dashboard; 3 commits (b1594cf, 97028dd, f8d319f); suíte ~783 testes, cobertura 95.11%, mypy strict 0, ruff limpo; frontend tsc+build verdes.
+- **Lições:** migração nova (v4) exige atualizar asserções de `current_version`/`len(migrations)` nos testes; transações SQLite internas não se aninham — incrementar contadores dentro da mesma `Transaction` do `persist_alert`; ANN401 em helpers `row: sqlite3.Row` resolver em vez de `Any`.
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.17** — Rules UI + Intelligence (IOC manager) + Assets + Incident UI avançada.
-- **Sprint 2.18** — Escala (fila externa, storage alternativo, auth).
-- **Sprint 2.19** — Hunting (MITRE navigator-like) + multi-tenant.
+- **Sprint 2.18** — Escala (fila externa Kafka, storage PostgreSQL via Protocol, auth/SSO).
+- **Sprint 2.19** — Hunting (MITRE navigator-like) + multi-tenant/retention.
+- **Sprint 2.20** — Threat intel online (feeds) + correlação enriquecida.
