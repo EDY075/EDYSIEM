@@ -112,7 +112,7 @@ def _seed() -> None:
         )
         try:
             urllib.request.urlopen(req, timeout=20)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log(f"aviso: seed {path} falhou (não fatal): {exc}")
 
     post("/soc/pipeline/demo", None)
@@ -207,7 +207,7 @@ def run_dev(
     if seed:
         try:
             _seed()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log(f"seed falhou (não fatal): {exc}")
 
     if open_browser:
