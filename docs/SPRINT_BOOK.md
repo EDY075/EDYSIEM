@@ -240,8 +240,17 @@
 - **Resultado:** fluxo completo funcional do alerta até o encerramento do caso (persistido em SQLite, transações atômicas); SLA por severidade; pivôs de investigação (alertas/IOCs/contexto via EventStore); KPIs reais; 771 testes, cobertura 95.04%, mypy strict 0, ruff limpo.
 - **Lições:** repos não committam (UoW/Transaction controla) — persist_* precisa de transação explícita; engines de alerta/incidente/case são async (fachadas do serviço devem `await`); `RecordNotFoundError(kind, record_id)` e `MigrationRunner.apply(manager)`; ANN401 em camada de rota é aceitável via `# ruff: noqa: ANN401`.
 
+### Sprint 2.16 — Frontend Operacional
+- **Status:** Concluída
+- **Data:** 2026-08-05
+- **Objetivo:** transformar o EDY SIEM em aplicação operacional completa consumindo a API `/soc/*` (sem novas engines, sem duplicar lógica). **Nenhum mock restante.**
+- **Escopo:** WP1 integração hooks reais + `GET /soc/alerts` e série temporal no `/soc/metrics`; WP6 Dashboard/War Room vivos; WP2 Incident UI; WP3 Case UI; WP4 Investigation Workspace; WP5 Alert Center com paginação; WP7 toasts/UX; WP8 validação; WP9 docs.
+- **Arquivos:** `frontend/src/hooks/*`, `pages/{DashboardOverview,WarRoomPage,AlertCenterPage,IncidentCenterPage,CaseCenterPage,InvestigationPage}.tsx`, `state/toast.tsx`, `routing/routes.tsx`, `App.tsx`, `api/routes/soc.py`, `soc/service.py`.
+- **Resultado:** 5 commits (33b2a47, baf76c5, 96a6a57, f930078, f03b2fd); frontend tsc+build verdes; backend 771 testes, cobertura 95.08%, mypy strict 0, ruff limpo.
+- **Lições:** `interface` (sem index signature) não é atribuível a `Record<string, ReactNode>` — usar `type`; `render: (row: any)` é o padrão do DataTable; hooks com mock fallback criavam dívida — remover junto com a mudança de shape (commits entrelaçados viram commit agrupado para manter buildável).
+
 ## Próximas sprints (planejadas)
 
-- **Sprint 2.16** — Frontend operacional: investigação, rules UI, incident UI + dados reais E2E.
-- **Sprint 2.17** — Investigação avançada (drawer, evidências, timeline, notas) + Intelligence (IOC manager) + Assets.
+- **Sprint 2.17** — Rules UI + Intelligence (IOC manager) + Assets + Incident UI avançada.
 - **Sprint 2.18** — Escala (fila externa, storage alternativo, auth).
+- **Sprint 2.19** — Hunting (MITRE navigator-like) + multi-tenant.

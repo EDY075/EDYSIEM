@@ -65,7 +65,8 @@
 | UI 4.2 | War Room (tela única de comando operacional) | ✅ Concluída |
 | 2.14 | **Qualidade UI Enterprise** (Dashboard, Alert Center, War Room, charts interativos, micro-interações, skeleton/empty, acessibilidade, performance) | ✅ Concluída |
 | 2.15 | **SOC Investigation Pipeline** (Evento→Regra→Alerta→Incidente→Caso persistido; incident/case management, SLA, investigação, KPIs reais) | ✅ Concluída |
-| 2.16 | Frontend operacional (investigação, rules UI, incident UI) + dados reais E2E | ⏳ Próxima |
+| 2.16 | **Frontend operacional** (Dashboard/War Room/Alert Center com dados reais; Incident UI, Case UI, Investigation Workspace; toasts/UX) | ✅ Concluída |
+| 2.17 | Regras/Detection UI + Intelligence (IOC manager) + Assets | ⏳ Próxima |
 
 ## Fase 3 — Escala
 

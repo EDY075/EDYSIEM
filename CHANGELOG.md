@@ -7,7 +7,28 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint 2.15 — SOC Investigation Pipeline
+### Sprint 2.16 — Frontend Operacional
+
+> Consome exclusivamente a API `/soc/*` real (sem novas engines, sem duplicar lógica).
+> Nenhum dado mock restante no frontend.
+
+#### Adicionado / Melhorado
+- **Backend (WP1)**: `GET /soc/alerts` (+) e `GET /soc/alerts/{id}` (+SLA); `/soc/metrics` enriquecido com `events_per_second`, `events_last_24h`, `avg_risk_score` e `events_series` (60 pts/min, EventStore real).
+- **Hooks reais (WP1)**: `useMetrics/useAlerts/useIncidents/useCases` reescritos sem mock, consumindo `GET /soc/*`, com loading/erro/refetch padronizado. `RecentAlert.mitre` adicionado.
+- **Dashboard Vivo (WP6)**: série temporal real (sem gerador random); severidade por contagens reais; `usingMock`/banner demo removidos.
+- **War Room Vivo (WP6)**: reescrita sem `DEMO_*` — KPIs/EPS/feed/MITRE/assets/severidade derivados de dados reais via hooks.
+- **Incident UI (WP2)**: `IncidentCenterPage` — severidade/status/SLA/owner, assumir, transição e drawer.
+- **Case Management UI (WP3)**: `CaseCenterPage` — timeline, evidências, contexto (IOC/MITRE/assets/users), comentar, anexar evidência, resolver e encerrar.
+- **Investigation Workspace (WP4)**: `InvestigationPage` — cadeia navegável Eventos→Alerta→Incidente→Caso→MITRE→IOC→Asset→Usuário→Timeline.
+- **Alert Center Enterprise (WP5)**: paginação (10/página), somando-se a filtros/pesquisa/ordenação/bulk/drawer + dados reais.
+- **UX Enterprise (WP7)**: `ToastProvider`+`useToast` (feedback sucesso/erro/info), montado no App; toasts nas operações de incident/case.
+- **Rotas**: `/incidents`, `/cases`, `/investigate` agora usam as telas reais (lazy).
+
+#### Métricas
+- Backend: 771 testes, cobertura **95.08%**, mypy strict 0 (145 arquivos), ruff limpo.
+- Frontend: `tsc -b` exit 0, `npm run build` OK.
+
+## Sprint 2.15 — SOC Investigation Pipeline
 
 > Fluxo operacional: **Evento → Regra → Alerta → Incidente → Caso**, com
 > persistência real (engines ↔ repos SQLite). Baixo acoplamento: nenhum engine

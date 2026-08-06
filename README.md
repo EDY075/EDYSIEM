@@ -35,7 +35,7 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 
 ## Frontend (React)
 
-- `frontend/` — Design System (tokens + componentes base), estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global) e camada conectada ao backend (API client + hooks): **Dashboard v0** (`/`), **Alert Center** (`/alerts`) e **War Room** (`/war-room`).
+- `frontend/` — Design System (tokens + componentes base), estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global, toasts) e camada conectada ao backend (API client + hooks). Consome a API **`/soc/*`** real: **Dashboard** (`/`), **War Room** (`/war-room`), **Alert Center** (`/alerts`), **Incident Center** (`/incidents`), **Case Management** (`/cases`) e **Investigation Workspace** (`/investigate`). Sem dados mock.
 - Benchmark UX: [docs/ENTERPRISE_UX_BENCHMARK.md](docs/ENTERPRISE_UX_BENCHMARK.md).
 
 ```bash
