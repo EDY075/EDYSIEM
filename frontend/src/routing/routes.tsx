@@ -14,6 +14,9 @@ import { colors } from "../design-system/tokens";
 const DashboardOverview = lazy(() => import("../pages/DashboardOverview").then((m) => ({ default: m.DashboardOverview })));
 const WarRoomPage = lazy(() => import("../pages/WarRoomPage").then((m) => ({ default: m.WarRoomPage })));
 const AlertCenterPage = lazy(() => import("../pages/AlertCenterPage").then((m) => ({ default: m.AlertCenterPage })));
+const IncidentCenterPage = lazy(() => import("../pages/IncidentCenterPage").then((m) => ({ default: m.IncidentCenterPage })));
+const CaseCenterPage = lazy(() => import("../pages/CaseCenterPage").then((m) => ({ default: m.CaseCenterPage })));
+const InvestigationPage = lazy(() => import("../pages/InvestigationPage").then((m) => ({ default: m.InvestigationPage })));
 
 /** Fallback global de carregamento de rota (barra fina superior, GPU-friendly). */
 function RouteFallback() {
@@ -59,9 +62,9 @@ export const router = createBrowserRouter([
       { path: "war-room", element: withSuspense(<WarRoomPage />) },
       { path: "triage", element: <Page title="Triage" /> },
       { path: "alerts", element: withSuspense(<AlertCenterPage />) },
-      { path: "incidents", element: <Page title="Incidentes" /> },
-      { path: "investigate", element: <Page title="Investigar" /> },
-      { path: "cases", element: <Page title="Cases" /> },
+      { path: "incidents", element: withSuspense(<IncidentCenterPage />) },
+      { path: "investigate", element: withSuspense(<InvestigationPage />) },
+      { path: "cases", element: withSuspense(<CaseCenterPage />) },
       { path: "playbooks", element: <Page title="Playbooks" /> },
       { path: "rules", element: <Page title="Regras" /> },
       { path: "intel", element: <Page title="Intelligence" /> },
