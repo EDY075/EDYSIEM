@@ -165,3 +165,38 @@ def test_soc_api_alerts_and_series(monkeypatch, tmp_path) -> None:
         series = r.json()["metrics"]["events_series"]
         assert len(series) == 60
         assert isinstance(series[0]["events"], int)
+
+
+def test_soc_api_detection_intel(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        client.post("/api/v1/soc/pipeline/demo")
+
+        r = client.post(
+            "/api/v1/soc/rules",
+            json={"rule_id": "brute-force-ssh", "name": "Brute Force SSH", "severity": "critical", "category": "authentication", "tags": ["brute"]},
+        )
+        assert r.status_code == 200
+        assert r.json()["rule_id"] == "brute-force-ssh"
+
+        assert client.get("/api/v1/soc/rules").json()["total"] >= 1
+        assert client.post("/api/v1/soc/rules/brute-force-ssh/disable").json()["enabled"] is False
+        assert client.post("/api/v1/soc/rules/brute-force-ssh/enable").json()["enabled"] is True
+        assert client.post("/api/v1/soc/rules/nao-existe/enable").status_code == 404
+
+        r = client.post("/api/v1/soc/simulator", json={"event": {"category": "authentication"}})
+        assert r.status_code == 200
+        assert r.json()["matches"] >= 1
+
+        client.post("/api/v1/soc/iocs", json={"value": "1.2.3.4", "ioc_type": "ip", "reputation": "malicious"})
+        assert client.get("/api/v1/soc/iocs").json()["total"] >= 1
+        assert client.get("/api/v1/soc/iocs/1.2.3.4/related").status_code == 200
+
+        client.post("/api/v1/soc/assets", json={"hostname": "web-01", "ip": "10.0.0.5", "os": "Linux", "criticality": "critical"})
+        assert client.get("/api/v1/soc/assets").json()["total"] >= 1
+        assert client.get("/api/v1/soc/assets/web-01/related").status_code == 200
+
+        r = client.get("/api/v1/soc/detection")
+        assert r.status_code == 200
+        assert "top_rules" in r.json()
+        assert isinstance(r.json()["critical_assets"], list)

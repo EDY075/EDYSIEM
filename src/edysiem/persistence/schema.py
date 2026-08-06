@@ -181,6 +181,54 @@ class SchemaV3(Migration):
         conn.executescript(_CREATE_AUDIT)
 
 
-ALL_MIGRATIONS: list[Migration] = [SchemaV1(), SchemaV2(), SchemaV3()]
+_CREATE_INTEL = """
+CREATE TABLE IF NOT EXISTS det_rules (
+    rule_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT '',
+    severity TEXT NOT NULL DEFAULT 'medium',
+    category TEXT NOT NULL DEFAULT '',
+    mitre TEXT NOT NULL DEFAULT '[]',
+    tags TEXT NOT NULL DEFAULT '[]',
+    description TEXT NOT NULL DEFAULT '',
+    enabled INTEGER NOT NULL DEFAULT 1,
+    fire_count INTEGER NOT NULL DEFAULT 0,
+    last_fired TEXT
+);
+CREATE TABLE IF NOT EXISTS iocs (
+    value TEXT PRIMARY KEY,
+    ioc_type TEXT NOT NULL,
+    reputation TEXT NOT NULL DEFAULT 'unknown',
+    source TEXT NOT NULL DEFAULT 'analyst',
+    first_seen TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    hits INTEGER NOT NULL DEFAULT 1,
+    labels TEXT NOT NULL DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS assets (
+    hostname TEXT PRIMARY KEY,
+    ip TEXT NOT NULL DEFAULT '',
+    os TEXT NOT NULL DEFAULT '',
+    criticality TEXT NOT NULL DEFAULT 'medium',
+    owner TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'active',
+    last_seen TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_iocs_type ON iocs (ioc_type);
+CREATE INDEX IF NOT EXISTS idx_assets_criticality ON assets (criticality);
+"""
 
+
+class SchemaV4(Migration):
+    """Versao 4 do schema: detection engineering + threat intel."""
+
+    version = 4
+    description = "detection intel: det_rules, iocs, assets"
+
+    def up(self, conn: sqlite3.Connection) -> None:
+        conn.executescript(_CREATE_INTEL)
+
+
+ALL_MIGRATIONS: list[Migration] = [SchemaV1(), SchemaV2(), SchemaV3(), SchemaV4()]
+
+__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3", "SchemaV4"]
 __all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3"]

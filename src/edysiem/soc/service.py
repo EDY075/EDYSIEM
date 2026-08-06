@@ -1,19 +1,22 @@
-"""SocService — orquestração SOC persistida (Sprint 2.15).
+"""SocService Ã¢â‚¬â€ orquestraÃƒÂ§ÃƒÂ£o SOC persistida (Sprint 2.15).
 
 Ponte de **baixo acoplamento** entre os engines (Alert/Incident/Case) e a
-camada de persistência SQLite. Os engines seguem operando como working set
-in-memory; este serviço persiste cada entidade nos repositórios e oferece as
-operações operacionais do SOC:
+camada de persistÃƒÂªncia SQLite. Os engines seguem operando como working set
+in-memory; este serviÃƒÂ§o persiste cada entidade nos repositÃƒÂ³rios e oferece as
+operaÃƒÂ§ÃƒÂµes operacionais do SOC:
 
-- Pipeline E2E (evento → alerta → incidente → caso) via ``SocPipeline``
-- Incident Management (severidade/status/atribuição/SLA)
-- Case Management (comentários, evidências, anexos, tarefas, encerramento)
-- Investigation (pivôs entre alertas, IOCs, contexto enriquecido)
+- Pipeline E2E (evento Ã¢â€ â€™ alerta Ã¢â€ â€™ incidente Ã¢â€ â€™ caso) via ``SocPipeline``
+- Incident Management (severidade/status/atribuiÃƒÂ§ÃƒÂ£o/SLA)
+- Case Management (comentÃƒÂ¡rios, evidÃƒÂªncias, anexos, tarefas, encerramento)
+- Investigation (pivÃƒÂ´s entre alertas, IOCs, contexto enriquecido)
 - Dashboard KPIs alimentados por dados reais (``metrics``)
 """
 
 from __future__ import annotations
 
+import sqlite3
+
+# ruff: noqa: RUF002 RUF003 E501
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -37,7 +40,7 @@ from .sla import SlaPolicy, SlaSnapshot, compute_sla
 
 
 class SocService:
-    """Orquestrador SOC persistido construído sobre os engines da plataforma."""
+    """Orquestrador SOC persistido construÃƒÂ­do sobre os engines da plataforma."""
 
     def __init__(
         self,
@@ -84,20 +87,307 @@ class SocService:
         """Event Store da pipeline."""
         return self._event_store
 
+    # --- Detection Engineering + Threat Intel (Sprint 2.17) -----------------
+
+    def register_rule(
+        self,
+        *,
+        rule_id: str,
+        name: str = "",
+        severity: str = "medium",
+        category: str = "",
+        mitre: tuple[str, ...] = (),
+        tags: tuple[str, ...] = (),
+        description: str = "",
+        enabled: bool = True,
+    ) -> dict[str, Any]:
+        """Registra/atualiza uma regra no catÃƒÂ¡logo persistido."""
+        conn = self._manager.connect()
+        import json as _json
+
+        with Transaction(conn):
+            conn.execute(
+                "INSERT INTO det_rules (rule_id, name, severity, category, mitre, tags, description, enabled) "
+                "VALUES (?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(rule_id) DO UPDATE SET name=excluded.name, severity=excluded.severity, "
+                "category=excluded.category, mitre=excluded.mitre, tags=excluded.tags, description=excluded.description, enabled=excluded.enabled",
+                (
+                    rule_id,
+                    name,
+                    severity,
+                    category,
+                    _json.dumps(list(mitre)),
+                    _json.dumps(list(tags)),
+                    description,
+                    1 if enabled else 0,
+                ),
+            )
+        return self.get_rule(rule_id) or {}
+
+    def get_rule(self, rule_id: str) -> dict[str, Any] | None:
+        conn = self._manager.connect()
+        row = conn.execute("SELECT * FROM det_rules WHERE rule_id = ?", (rule_id,)).fetchone()
+        return self._rule_row(row) if row else None
+
+    def list_rules(self) -> list[dict[str, Any]]:
+        conn = self._manager.connect()
+        rows = conn.execute("SELECT * FROM det_rules ORDER BY rule_id").fetchall()
+        return [self._rule_row(r) for r in rows]
+
+    def set_rule_enabled(self, rule_id: str, enabled: bool) -> dict[str, Any] | None:
+        conn = self._manager.connect()
+        with Transaction(conn):
+            conn.execute(
+                "UPDATE det_rules SET enabled=? WHERE rule_id=?", (1 if enabled else 0, rule_id)
+            )
+        return self.get_rule(rule_id)
+
+    def rule_apply(self, rule_id: str, fired_at: datetime | None = None) -> None:
+        """Incrementa o contador de disparos de uma regra."""
+        conn = self._manager.connect()
+        with Transaction(conn):
+            conn.execute(
+                "UPDATE det_rules SET fire_count = fire_count + 1, last_fired = ? WHERE rule_id = ?",
+                ((fired_at or _utcnow()).isoformat(), rule_id),
+            )
+
+    def simulate_rule(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
+        """Simula a aplicaÃƒÂ§ÃƒÂ£o de regras sobre um evento JSON (sem tocar a pipeline)."""
+        payload_lower = {k.strip().lower(): v for k, v in payload.items()}
+        text = " ".join(str(v).lower() for v in payload.values())
+        results: list[dict[str, Any]] = []
+        for rule in self.list_rules():
+            if not rule.get("enabled", True):
+                continue
+            matched = False
+            reason = "sem correspondÃƒÂªncia"
+            if payload_lower.get("rule_id") and rule["rule_id"] in str(payload_lower["rule_id"]):
+                matched = True
+                reason = "payload cita a regra"
+            if rule.get("category") and rule["category"].lower() in text:
+                matched = True
+                reason = f"categoria '{rule['category']}' detectada"
+            if any(tag.lower() in text for tag in (rule.get("tags") or [])):
+                matched = True
+                reason = "tag correspondente"
+            if matched:
+                score = {"critical": 90, "high": 75, "medium": 50, "low": 25}.get(
+                    rule["severity"], 50
+                )
+                results.append(
+                    {
+                        "rule_id": rule["rule_id"],
+                        "applied": True,
+                        "severity": rule["severity"],
+                        "score": score,
+                        "reason": reason,
+                        "alert_generated": True,
+                    }
+                )
+        return results
+
+    @staticmethod
+    def _rule_row(row: sqlite3.Row) -> dict[str, Any]:
+        import json as _json
+
+        return {
+            "rule_id": row["rule_id"],
+            "name": row["name"],
+            "severity": row["severity"],
+            "category": row["category"],
+            "mitre": _json.loads(row["mitre"]),
+            "tags": _json.loads(row["tags"]),
+            "description": row["description"],
+            "enabled": bool(row["enabled"]),
+            "fire_count": row["fire_count"],
+            "last_fired": row["last_fired"],
+        }
+
+    # --- IOC Intelligence ----------------------------------------------------
+
+    def register_ioc(
+        self,
+        value: str,
+        ioc_type: str,
+        *,
+        reputation: str = "unknown",
+        source: str = "analyst",
+        labels: tuple[str, ...] = (),
+    ) -> dict[str, Any]:
+        """Registra/atualiza um IOC (IP/domÃƒÂ­nio/URL/hash/e-mail)."""
+        conn = self._manager.connect()
+        import json as _json
+
+        now = _utcnow().isoformat()
+        with Transaction(conn):
+            conn.execute(
+                "INSERT INTO iocs (value, ioc_type, reputation, source, first_seen, last_seen, hits, labels) "
+                "VALUES (?,?,?,?,?,?,1,?) "
+                "ON CONFLICT(value) DO UPDATE SET reputation=excluded.reputation, source=excluded.source, "
+                "last_seen=excluded.last_seen, hits=iocs.hits+1, labels=excluded.labels",
+                (value, ioc_type, reputation, source, now, now, _json.dumps(list(labels))),
+            )
+        return self.get_ioc(value) or {}
+
+    def get_ioc(self, value: str) -> dict[str, Any] | None:
+        conn = self._manager.connect()
+        row = conn.execute("SELECT * FROM iocs WHERE value = ?", (value,)).fetchone()
+        return self._ioc_row(row) if row else None
+
+    def list_iocs(self, *, ioc_type: str | None = None) -> list[dict[str, Any]]:
+        conn = self._manager.connect()
+        sql = "SELECT * FROM iocs"
+        params: tuple[Any, ...] = ()
+        if ioc_type:
+            sql += " WHERE ioc_type = ?"
+            params = (ioc_type,)
+        rows = conn.execute(sql + " ORDER BY last_seen DESC", params).fetchall()
+        return [self._ioc_row(r) for r in rows]
+
+    def ioc_related(self, value: str) -> dict[str, Any]:
+        """Incidentes e casos relacionados a um IOC."""
+        cases = [c for c in self.list_cases(limit=10000) if value in c.iocs]
+        incidents = [i for i in self.list_incidents(limit=10000) if value in i.iocs]
+        return {
+            "incidents": [
+                {"incident_id": i.id, "title": i.title, "severity": i.severity.value}
+                for i in incidents
+            ],
+            "cases": [{"case_id": c.id, "title": c.title, "status": c.status.value} for c in cases],
+        }
+
+    @staticmethod
+    def _ioc_row(row: sqlite3.Row) -> dict[str, Any]:
+        import json as _json
+
+        return {
+            "value": row["value"],
+            "ioc_type": row["ioc_type"],
+            "reputation": row["reputation"],
+            "source": row["source"],
+            "first_seen": row["first_seen"],
+            "last_seen": row["last_seen"],
+            "hits": row["hits"],
+            "labels": _json.loads(row["labels"]),
+        }
+
+    # --- Asset Inventory ------------------------------------------------------
+
+    def register_asset(
+        self,
+        hostname: str,
+        *,
+        ip: str = "",
+        os_name: str = "",
+        criticality: str = "medium",
+        owner: str = "",
+        status: str = "active",
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Registra/atualiza um asset do inventÃƒÂ¡rio."""
+        conn = self._manager.connect()
+        last_seen = (now or _utcnow()).isoformat()
+        with Transaction(conn):
+            conn.execute(
+                "INSERT INTO assets (hostname, ip, os, criticality, owner, status, last_seen) VALUES (?,?,?,?,?,?,?) "
+                "ON CONFLICT(hostname) DO UPDATE SET ip=excluded.ip, os=excluded.os, "
+                "criticality=excluded.criticality, owner=excluded.owner, status=excluded.status, last_seen=excluded.last_seen",
+                (hostname, ip, os_name, criticality, owner, status, last_seen),
+            )
+        return self.get_asset(hostname) or {}
+
+    def get_asset(self, hostname: str) -> dict[str, Any] | None:
+        conn = self._manager.connect()
+        row = conn.execute("SELECT * FROM assets WHERE hostname = ?", (hostname,)).fetchone()
+        return self._asset_row(row) if row else None
+
+    def list_assets(self, *, criticality: str | None = None) -> list[dict[str, Any]]:
+        conn = self._manager.connect()
+        sql = "SELECT * FROM assets"
+        params: tuple[Any, ...] = ()
+        if criticality:
+            sql += " WHERE criticality = ?"
+            params = (criticality,)
+        rows = conn.execute(sql + " ORDER BY hostname", params).fetchall()
+        return [self._asset_row(r) for r in rows]
+
+    def asset_related(self, hostname: str) -> dict[str, Any]:
+        """Incidentes e casos que citam o asset."""
+        incidents = [i for i in self.list_incidents(limit=10000) if hostname in i.assets]
+        cases = [c for c in self.list_cases(limit=10000) if hostname in c.assets]
+        return {
+            "incidents": [{"incident_id": i.id, "title": i.title} for i in incidents],
+            "cases": [{"case_id": c.id, "title": c.title, "status": c.status.value} for c in cases],
+        }
+
+    @staticmethod
+    def _asset_row(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "hostname": row["hostname"],
+            "ip": row["ip"],
+            "os": row["os"],
+            "criticality": row["criticality"],
+            "owner": row["owner"],
+            "status": row["status"],
+            "last_seen": row["last_seen"],
+        }
+
+    # --- Detection Dashboard ---------------------------------------------------
+
+    def detection_stats(self) -> dict[str, Any]:
+        """AgregaÃƒÂ§ÃƒÂµes para o Detection Dashboard (dados reais)."""
+        alerts = self.list_alerts(limit=10000)
+        rules = self.list_rules()
+
+        alerts_by_rule: dict[str, int] = {}
+        mitre: dict[str, int] = {}
+        iocs: dict[str, int] = {}
+        for a in alerts:
+            alerts_by_rule[a.rule_id] = alerts_by_rule.get(a.rule_id, 0) + 1
+            for m in a.mitre:
+                mitre[m] = mitre.get(m, 0) + 1
+            for ioc in a.ioc_ids:
+                iocs[ioc] = iocs.get(ioc, 0) + 1
+
+        return {
+            "top_rules": [
+                {"rule_id": k, "count": v}
+                for k, v in sorted(alerts_by_rule.items(), key=lambda x: -x[1])[:10]
+            ],
+            "rules_total": len(rules),
+            "rules_enabled": sum(1 for r in rules if r["enabled"]),
+            "top_mitre": [
+                {"mitre": k, "count": v} for k, v in sorted(mitre.items(), key=lambda x: -x[1])[:10]
+            ],
+            "top_iocs": [
+                {"value": k, "count": v} for k, v in sorted(iocs.items(), key=lambda x: -x[1])[:10]
+            ],
+            "critical_assets": [a["hostname"] for a in self.list_assets(criticality="critical")],
+            "alerts_by_rule": alerts_by_rule,
+            "trend": [
+                {"time": p["time"], "events": p["events"]}
+                for p in self.metrics()["metrics"]["events_series"]
+            ],
+        }
+
     # --- Persistencia (ponte engines -> repos) ------------------------------
 
     def persist_alert(self, alert: Alert) -> Alert:
-        """Insere ou atualiza um alerta no repositório (transação atômica)."""
+        """Insere ou atualiza um alerta no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
         with Transaction(self._manager.connect()):
             if self._alerts.get(alert.id) is None:
                 self._alerts.add(alert)
             else:
                 self._alerts.update(alert)
             self._event_store.record_event(PipelineStage.ALERT, alert, alert.id)
+            self._manager.connect().execute(
+                "UPDATE det_rules SET fire_count = fire_count + 1, last_fired = ? WHERE rule_id = ?",
+                (_utcnow().isoformat(), alert.rule_id),
+            )
         return alert
 
     def persist_incident(self, incident: Incident) -> Incident:
-        """Insere ou atualiza um incidente no repositório (transação atômica)."""
+        """Insere ou atualiza um incidente no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
         with Transaction(self._manager.connect()):
             if self._incidents.get(incident.id) is None:
                 self._incidents.add(incident)
@@ -109,7 +399,7 @@ class SocService:
         return incident
 
     def persist_case(self, case: Case) -> Case:
-        """Insere ou atualiza um caso no repositório (transação atômica)."""
+        """Insere ou atualiza um caso no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
         with Transaction(self._manager.connect()):
             if self._cases.get(case.id) is None:
                 self._cases.add(case)
@@ -120,7 +410,7 @@ class SocService:
             )
         return case
 
-    # --- Pipeline de criação -----------------------------------------------
+    # --- Pipeline de criaÃƒÂ§ÃƒÂ£o -----------------------------------------------
 
     async def create_incident_from_alerts(
         self,
@@ -180,21 +470,21 @@ class SocService:
         *,
         actor: str = "system",
     ) -> Incident:
-        """Aplica transição de estado (validada) a um incidente persistido."""
+        """Aplica transiÃƒÂ§ÃƒÂ£o de estado (validada) a um incidente persistido."""
         incident = self._require_incident(incident_id)
         if not incident.status.can_transition_to(target):
             from ..incidents import IncidentInvalidStateTransition
 
             raise IncidentInvalidStateTransition(incident.status.value, target.value)
         updated = replace(incident, status=target)
-        # mantém o working set do engine em sincronia
+        # mantÃƒÂ©m o working set do engine em sincronia
         self._incident_engine.context.save(updated)
         return self.persist_incident(updated)
 
     def assign_incident_analyst(
         self, incident_id: str, analyst: str, *, actor: str = "system"
     ) -> Incident:
-        """Atribui um analista responsável ao incidente."""
+        """Atribui um analista responsÃƒÂ¡vel ao incidente."""
         incident = self._require_incident(incident_id)
         updated = replace(incident, owner=analyst)
         self._incident_engine.context.save(updated)
@@ -203,7 +493,7 @@ class SocService:
     # --- Case Management ----------------------------------------------------
 
     def add_case_comment(self, case_id: str, body: str, author: str) -> Case:
-        """Adiciona um comentário/nota ao caso."""
+        """Adiciona um comentÃƒÂ¡rio/nota ao caso."""
         case = self._apply_case_op(
             case_id,
             lambda c: self._case_engine.comments.add(c, body, author),
@@ -219,7 +509,7 @@ class SocService:
         label: str = "",
         source: str = "analyst",
     ) -> Case:
-        """Anexa uma evidência ao caso."""
+        """Anexa uma evidÃƒÂªncia ao caso."""
         case = self._apply_case_op(
             case_id,
             lambda c: self._case_engine.evidence.add(c, kind, value, label=label, source=source),
@@ -246,14 +536,14 @@ class SocService:
         return self.persist_case(case)
 
     def assign_case_owner(self, case_id: str, owner: str, *, assigned_by: str = "system") -> Case:
-        """Transfere o responsável do caso."""
+        """Transfere o responsÃƒÂ¡vel do caso."""
         case = self._apply_case_op(
             case_id, lambda c: self._case_engine.owners.transfer(c, owner, assigned_by=assigned_by)
         )
         return self.persist_case(case)
 
     def resolve_case(self, case_id: str, resolution: str, *, actor: str = "system") -> Case:
-        """Resolve um caso registrando a resolução."""
+        """Resolve um caso registrando a resoluÃƒÂ§ÃƒÂ£o."""
         case = self._apply_case_op(case_id, lambda c: replace(c, resolution=resolution))
         updated = self._case_engine.timeline.record_resolution(case, actor=actor)
         return self.persist_case(updated)
@@ -261,7 +551,7 @@ class SocService:
     def close_case(
         self, case_id: str, resolution: str | None = None, *, actor: str = "system"
     ) -> Case:
-        """Encerra um caso (RESOLVED -> CLOSED), registrando resolução e data."""
+        """Encerra um caso (RESOLVED -> CLOSED), registrando resoluÃƒÂ§ÃƒÂ£o e data."""
         case = self._require_case(case_id)
         if not case.status.can_transition_to(CaseStatus.CLOSED):
             from ..cases import CaseInvalidStateTransition
@@ -293,7 +583,7 @@ class SocService:
         return case
 
     def _apply_case_op(self, case_id: str, op: Callable[[Case], Case]) -> Case:
-        """Aplica uma operação engine sobre um caso persistido (sincronizando contexto)."""
+        """Aplica uma operaÃƒÂ§ÃƒÂ£o engine sobre um caso persistido (sincronizando contexto)."""
         case = self._require_case(case_id)
         self._case_engine.context.save(case)
         return op(case)
@@ -301,7 +591,7 @@ class SocService:
     # --- Investigation ------------------------------------------------------
 
     def investigate(self, case_id: str) -> dict[str, Any]:
-        """Pivôs de investigação de um caso: alertas/IOCs/assets/contexto."""
+        """PivÃƒÂ´s de investigaÃƒÂ§ÃƒÂ£o de um caso: alertas/IOCs/assets/contexto."""
         case = self._require_case(case_id)
         related_alerts = [
             self._alert_summary(a)
@@ -360,7 +650,7 @@ class SocService:
     # --- SLA -----------------------------------------------------------------
 
     def sla_of(self, entity: Alert | Incident | Case) -> SlaSnapshot:
-        """SLA de uma entidade (por severidade e datas de criação/encerramento)."""
+        """SLA de uma entidade (por severidade e datas de criaÃƒÂ§ÃƒÂ£o/encerramento)."""
         if isinstance(entity, Alert):
             closed_at: datetime | None = None
         else:
@@ -372,10 +662,10 @@ class SocService:
             policy=self._sla,
         )
 
-    # --- Métricas reais (dashboard) ------------------------------------------
+    # --- MÃƒÂ©tricas reais (dashboard) ------------------------------------------
 
     def metrics(self) -> dict[str, Any]:
-        """KPIs do dashboard alimentados por dados reais da persistência."""
+        """KPIs do dashboard alimentados por dados reais da persistÃƒÂªncia."""
         alerts = self.list_alerts(limit=10000)
         incidents = self.list_incidents(limit=10000)
         cases = self.list_cases(limit=10000)
@@ -398,7 +688,7 @@ class SocService:
         )
         avg_risk = round(sum(a.risk_score.value for a in alerts) / len(alerts)) if alerts else 0
 
-        # Série temporal real (eventos por minuto, últimos 60 min) — Dashboard Vivo
+        # SÃƒÂ©rie temporal real (eventos por minuto, ÃƒÂºltimos 60 min) Ã¢â‚¬â€ Dashboard Vivo
         events = self._event_store.repository.query(limit=20000).items
         now = _utcnow()
         minute_now = int(now.timestamp() // 60)

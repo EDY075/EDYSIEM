@@ -190,3 +190,30 @@ def test_soc_queries_and_not_found(tmp_path) -> None:
     assert svc.get_incident("nope") is None
     assert svc.get_case("nope") is None
     assert len(svc.list_alerts()) >= 4
+
+
+def test_soc_intelligence(tmp_path) -> None:
+    svc = SocService(db_path=str(tmp_path / "intel.db"))
+    svc.register_rule(rule_id="r-bf", name="Brute", severity="high", category="authentication", mitre=("T1110",), tags=("brute",), description="muitas falhas")
+    assert len(svc.list_rules()) == 1
+
+    sim = svc.simulate_rule({"category": "authentication"})
+    assert sim and sim[0]["rule_id"] == "r-bf" and sim[0]["alert_generated"] is True
+    svc.rule_apply("r-bf")
+    assert svc.get_rule("r-bf")["fire_count"] == 1
+
+    assert svc.set_rule_enabled("r-bf", False)["enabled"] is False
+    assert svc.get_rule("nao-existe") is None
+
+    svc.register_ioc("185.10.0.1", "ip", reputation="suspicious")
+    assert svc.get_ioc("185.10.0.1")["hits"] >= 1
+    assert svc.list_iocs(ioc_type="ip")
+    assert "incidents" in svc.ioc_related("185.10.0.1")
+
+    svc.register_asset("db-01", ip="10.0.0.9", os_name="Linux", criticality="critical")
+    assert svc.list_assets(criticality="critical")
+    assert "incidents" in svc.asset_related("db-01")
+
+    st = svc.detection_stats()
+    assert "top_rules" in st and "critical_assets" in st
+    assert svc.list_iocs(ioc_type="nonexistent") == []

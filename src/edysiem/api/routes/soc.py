@@ -288,6 +288,120 @@ async def run_event(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+# --- Detection Engineering + Threat Intel (Sprint 2.17) ------------------------------
+
+
+@router.post("/soc/rules", summary="Registra uma regra no catálogo")
+def create_rule(body: dict[str, Any], container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+    return _service(container).register_rule(
+        rule_id=str(body.get("rule_id", "")),
+        name=str(body.get("name", "")),
+        severity=str(body.get("severity", "medium")),
+        category=str(body.get("category", "")),
+        mitre=tuple(body.get("mitre", [])),
+        tags=tuple(body.get("tags", [])),
+        description=str(body.get("description", "")),
+    )
+
+
+@router.get("/soc/rules", summary="Lista regras do catálogo")
+def list_rules(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+    svc = _service(container)
+    rules = svc.list_rules()
+    return {"total": len(rules), "enabled": sum(1 for r in rules if r["enabled"]), "items": rules}
+
+
+@router.post("/soc/rules/{rule_id}/enable", summary="Habilita uma regra")
+def enable_rule(
+    rule_id: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    rule = _service(container).set_rule_enabled(rule_id, True)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="regra não encontrada")
+    return rule
+
+
+@router.post("/soc/rules/{rule_id}/disable", summary="Desabilita uma regra")
+def disable_rule(
+    rule_id: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    rule = _service(container).set_rule_enabled(rule_id, False)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="regra não encontrada")
+    return rule
+
+
+@router.post("/soc/simulator", summary="Simula aplicação de regras sobre um evento JSON")
+def simulate(
+    body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    event = body.get("event", {})
+    results = _service(container).simulate_rule(dict(event))
+    return {"applied": [r for r in results if r["applied"]], "matches": len(results)}
+
+
+@router.get("/soc/iocs", summary="Lista IOCs")
+def list_iocs(
+    ioc_type: str | None = None, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    items = _service(container).list_iocs(ioc_type=ioc_type)
+    return {"total": len(items), "items": items}
+
+
+@router.post("/soc/iocs", summary="Registra um IOC")
+def register_ioc(
+    body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    return _service(container).register_ioc(
+        str(body.get("value", "")),
+        str(body.get("ioc_type", "ip")),
+        reputation=str(body.get("reputation", "unknown")),
+        source=str(body.get("source", "analyst")),
+        labels=tuple(body.get("labels", [])),
+    )
+
+
+@router.get("/soc/iocs/{value}/related", summary="Incidentes/casos relacionados a um IOC")
+def ioc_related(
+    value: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    return _service(container).ioc_related(value)
+
+
+@router.get("/soc/assets", summary="Lista assets do inventário")
+def list_assets(
+    criticality: str | None = None, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    items = _service(container).list_assets(criticality=criticality)
+    return {"total": len(items), "items": items}
+
+
+@router.post("/soc/assets", summary="Registra um asset")
+def register_asset(
+    body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    return _service(container).register_asset(
+        str(body.get("hostname", "")),
+        ip=str(body.get("ip", "")),
+        os_name=str(body.get("os", "")),
+        criticality=str(body.get("criticality", "medium")),
+        owner=str(body.get("owner", "")),
+        status=str(body.get("status", "active")),
+    )
+
+
+@router.get("/soc/assets/{hostname}/related", summary="Incidentes/casos relacionados a um asset")
+def asset_related(
+    hostname: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    return _service(container).asset_related(hostname)
+
+
+@router.get("/soc/detection", summary="Detection Dashboard (agregações reais)")
+def detection(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+    return _service(container).detection_stats()
+
+
 # --- Dashboard KPIs ------------------------------------------------------------------
 
 
