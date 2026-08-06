@@ -108,7 +108,7 @@ def _seed() -> None:
     def post(path: str, body: dict[str, Any] | None = None) -> None:
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(
-            base + path, data=data, headers={"Content-Type": "application/json"}
+            base + path, data=data, headers={"Content-Type": "application/json"}, method="POST"
         )
         urllib.request.urlopen(req, timeout=20)
 
