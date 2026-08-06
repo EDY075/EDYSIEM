@@ -274,6 +274,7 @@ _COMMANDS = {
     "demo": cmd_demo,
     "soc-run": cmd_soc_run,
     "dev": cmd_dev,
+    "run-dev": cmd_dev,
 }
 
 

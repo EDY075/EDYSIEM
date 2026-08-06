@@ -1,11 +1,15 @@
 """Runner de desenvolvimento: inicia backend + frontend com um único comando.
 
-Usado pelo CLI (``edysiem dev``) e pelo ``run.py`` da raiz. Responsável por:
+Usado pelo CLI (``edysiem dev`` / ``edysiem run-dev``) e pelo ``run.py``.
+
+Responsabilidades:
 - verificar/instalar dependências (backend + frontend)
 - criar banco + aplicar migrações
-- iniciar backend (uvicorn) e frontend (vite)
-- (opcional) popular dados de demonstração no ``/soc``
-- abrir http://localhost:5173 e exibir logs claros
+- iniciar backend (uvicorn, ``--reload``) e frontend (vite, HMR)
+- abrir o navegador UMA única vez na URL final
+- watchdog: reinicia um serviço que cair (com limite, sem loop infinito)
+- seed opcional em /soc
+- logs claros + cleanup obrigatório no erro
 
 Frontend (npm) é invocado via ``cmd /c`` no Windows — nunca via ``shell=True``.
 """
@@ -26,6 +30,7 @@ FRONTEND = ROOT / "frontend"
 INSTANCE = ROOT / "instance"
 BACKEND_URL = "http://127.0.0.1:8080"
 FRONTEND_URL = "http://localhost:5173"
+MAX_RESTARTS = 3  # limite por serviço (evita loop infinito)
 
 
 def _log(msg: str) -> None:
@@ -47,49 +52,43 @@ def _ensure_backend_deps() -> bool:
     except ImportError:
         _log("backend não instalado; instalando `pip install -e .[dev]` ...")
         ok = subprocess.run(
-            _node_argv_py([sys.executable, "-m", "pip", "install", "-e", ".[dev]", "-q"]),
-            cwd=ROOT,
+            [sys.executable, "-m", "pip", "install", "-e", ".[dev]", "-q"], cwd=ROOT
         )
         return ok.returncode == 0
-
-
-def _node_argv_py(args: list[str]) -> list[str]:
-    return args  # pip/python sempre direto, sem shell
 
 
 def _ensure_frontend_deps() -> bool:
     if (FRONTEND / "node_modules").exists():
         return True
-    _log("node_modules ausente; executando `npm install` ...")
-    return subprocess.run(_node_argv(["npm", "install"]), cwd=FRONTEND).returncode == 0
+    _log("node_modules ausente; executando `npm install` (1 tentativa) ...")
+    ok = subprocess.run(_node_argv(["npm", "install"]), cwd=FRONTEND)
+    return ok.returncode == 0
 
 
-def _npm(argv: list[str]) -> subprocess.Popen[bytes]:
-    return subprocess.Popen(_node_argv(argv), cwd=FRONTEND)
-
-
-def _start_dev_server() -> tuple[subprocess.Popen[bytes], subprocess.Popen[bytes]]:
+def _start_backend(reload: bool) -> subprocess.Popen[bytes]:
     env = {**os.environ, "EDYSIEM_DB": str(INSTANCE / "edysiem.db")}
-    backend = subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "edysiem.api.app:create_app",
-            "--factory",
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "8080",
-        ],
-        cwd=ROOT,
-        env=env,
-    )
-    frontend = _npm(["npm", "run", "dev", "--", "--host"])
-    return backend, frontend
+    args = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "edysiem.api.app:create_app",
+        "--factory",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8080",
+    ]
+    if reload:
+        args.append("--reload")
+    return subprocess.Popen(args, cwd=ROOT, env=env)
+
+
+def _start_frontend() -> subprocess.Popen[bytes]:
+    return subprocess.Popen(_node_argv(["npm", "run", "dev", "--", "--host"]), cwd=FRONTEND)
 
 
 def _wait_url(url: str, timeout: int = 45) -> bool:
+    """Espera (tempo limitado) por um serviço. 1 tentativa por serviço."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -144,11 +143,36 @@ def _seed() -> None:
     _log("demonstração criada (alertas, incidente, caso, regras, IOC, asset)")
 
 
-def run_dev(*, seed: bool = True, open_browser: bool = True) -> int:
-    """Inicia backend + frontend e bloqueia até Ctrl-C.
+def _terminate_tree(proc: subprocess.Popen[bytes] | None) -> None:
+    """Encerra o processo (e a árvore no Windows) de forma segura."""
+    if proc is None or proc.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+            capture_output=True,
+            check=False,
+        )
+    else:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+def run_dev(
+    *,
+    seed: bool = True,
+    open_browser: bool = True,
+    reload: bool = True,
+    max_restarts: int = MAX_RESTARTS,
+) -> int:
+    """Inicia backend + frontend (com reload/watchdog) e bloqueia até Ctrl-C.
 
     Returns:
-        0 sucesso; 1 falha de dependência; 2 backend não subiu; 3 frontend não subiu.
+        0 sucesso; 1 dependência; 2 backend não subiu; 3 frontend não subiu;
+        4 serviço reiniciou além do limite (aborta).
     """
     if not _ensure_backend_deps():
         print("  [dev] falha ao instalar dependências do backend")
@@ -158,18 +182,21 @@ def run_dev(*, seed: bool = True, open_browser: bool = True) -> int:
         return 1
 
     INSTANCE.mkdir(exist_ok=True)
-    (INSTANCE / ".gitkeep").touch(exist_ok=True)
 
-    _log("iniciando backend (uvicorn) em http://127.0.0.1:8080")
-    backend, frontend = _start_dev_server()
+    _log("iniciando backend (uvicorn --reload) em http://127.0.0.1:8080")
+    backend = _start_backend(reload)
+    _log("iniciando frontend (vite HMR) em http://localhost:5173")
+    frontend = _start_frontend()
 
     if not _wait_url(BACKEND_URL + "/api/v1/health"):
-        _cleanup(backend, frontend)
+        _terminate_tree(backend)
+        _terminate_tree(frontend)
         print("  [dev] backend não respondeu a tempo")
         return 2
     _log("backend online")
     if not _wait_url(FRONTEND_URL):
-        _cleanup(backend, frontend)
+        _terminate_tree(backend)
+        _terminate_tree(frontend)
         print("  [dev] frontend não respondeu a tempo; confira a porta 5173")
         return 3
     _log("frontend online")
@@ -177,29 +204,46 @@ def run_dev(*, seed: bool = True, open_browser: bool = True) -> int:
     if seed:
         _seed()
 
-    _log("pronto! -> frontend http://localhost:5173  (API http://127.0.0.1:8080)")
     if open_browser:
+        _log(f"abrindo o navegador em {FRONTEND_URL} (uma vez)")
         webbrowser.open(FRONTEND_URL)
+    _log(f"pronto! -> {FRONTEND_URL}  (API/Swagger {BACKEND_URL}/docs)")
+
+    restarts: dict[str, int] = {"backend": 0, "frontend": 0}
+
+    def _restart(service: str) -> bool:
+        nonlocal backend, frontend
+        restarts[service] += 1
+        if restarts[service] > max_restarts:
+            print(
+                f"  [dev] '{service}' reiniciou além do limite ({max_restarts}x); abortando.",
+                flush=True,
+            )
+            return False
+        _log(f"'{service}' caiu; reiniciando ({restarts[service]}/{max_restarts})...")
+        time.sleep(2)  # backoff curto
+        if service == "backend":
+            backend = _start_backend(reload)
+        else:
+            frontend = _start_frontend()
+        return True
 
     try:
         while True:
             time.sleep(2)
+            if backend.poll() is not None and not _restart("backend"):
+                break
+            if frontend.poll() is not None and not _restart("frontend"):
+                break
     except KeyboardInterrupt:
         print("\n  [dev] encerrando...")
     finally:
-        _cleanup(backend, frontend)
+        _terminate_tree(backend)
+        _terminate_tree(frontend)
+
+    if restarts["backend"] > max_restarts or restarts["frontend"] > max_restarts:
+        return 4
     return 0
-
-
-def _cleanup(*procs: subprocess.Popen[bytes] | None) -> None:
-    """Encerra processos de forma segura (obrigatório no erro ou no Ctrl-C)."""
-    for proc in procs:
-        if proc is not None and proc.poll() is None:
-            proc.terminate()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                proc.kill()
 
 
 __all__ = ["run_dev"]

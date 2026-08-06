@@ -7,7 +7,13 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint UI/UX Polish
+### Sprint M4.3 — Live Preview + Browser Auto Open
+
+- `edysiem run-dev` (e `dev`): inicia backend (uvicorn `--reload`) + frontend (vite HMR), verifica portas, abre o navegador **uma vez**, imprime URL.
+- **Watchdog**: reinicia serviço que cair com limite (`MAX_RESTARTS=3`) e aborta com erro claro (sem loop infinito); cleanup obrigatório (taskkill /T no Windows).
+- Swagger em `/docs`; WebSocket não existe (frontend usa polling 3s) — confirmado.
+
+## Sprint UI/UX Polish
 
 > Frontend apenas (sem features novas, sem alteração de backend/arquitetura).
 

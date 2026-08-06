@@ -1,4 +1,4 @@
-"""Testes do runner de desenvolvimento (`edysiem dev` / `run.py`)."""
+﻿"""Testes do runner de desenvolvimento (`edysiem dev` / `run.py`)."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ import edysiem.cli.dev as dev
 
 
 class _FakeProc:
+    pid = 12345
+
     def poll(self) -> None:
         return None
 
@@ -58,11 +60,11 @@ def test_ensure_frontend_deps_install(monkeypatch) -> None:
 
 
 def test_ensure_backend_deps_present() -> None:
-    assert dev._ensure_backend_deps() is True  # edysiem importável
+    assert dev._ensure_backend_deps() is True  # edysiem importÃ¡vel
 
 
 def test_wait_url_false_fast() -> None:
-    # porta sem serviço -> False rapidamente (timeout 1s)
+    # porta sem serviÃ§o -> False rapidamente (timeout 1s)
     assert dev._wait_url("http://127.0.0.1:1/health", timeout=1) is False
 
 
@@ -80,7 +82,8 @@ def test_run_dev_frontend_deps_fail(monkeypatch) -> None:
 def test_run_dev_backend_not_responding(monkeypatch) -> None:
     monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
     monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)
-    monkeypatch.setattr(dev, "_start_dev_server", lambda: (_FakeProc(), _FakeProc()))
+    monkeypatch.setattr(dev, "_start_backend", lambda reload: _FakeProc())
+    monkeypatch.setattr(dev, "_start_frontend", lambda: _FakeProc())
     monkeypatch.setattr(dev, "_wait_url", lambda url, timeout=45: False)
     assert dev.run_dev(seed=True, open_browser=False) == 2
 
@@ -90,31 +93,23 @@ def test_run_dev_frontend_not_responding(monkeypatch) -> None:
 
     def wait(url: str, timeout: int = 45) -> bool:
         calls["n"] += 1
-        return calls["n"] == 1  # backend ok, frontend não
+        return calls["n"] == 1  # backend ok, frontend nÃ£o
 
     monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
     monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)
-    monkeypatch.setattr(dev, "_start_dev_server", lambda: (_FakeProc(), _FakeProc()))
+    monkeypatch.setattr(dev, "_start_backend", lambda reload: _FakeProc())
+    monkeypatch.setattr(dev, "_start_frontend", lambda: _FakeProc())
     monkeypatch.setattr(dev, "_wait_url", wait)
     assert dev.run_dev(seed=True, open_browser=False) == 3
 
 
 def test_run_dev_happy_path(monkeypatch) -> None:
-    state = {"seeded": False, "terminated": 0, "opened": ""}
-
-    class _Proc:
-        def poll(self) -> None:
-            return None
-
-        def terminate(self) -> None:
-            state["terminated"] += 1
-
-        def wait(self, timeout: float | None = None) -> int:
-            return 0
+    state = {"seeded": False, "opened": ""}
 
     monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
     monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)
-    monkeypatch.setattr(dev, "_start_dev_server", lambda: (_Proc(), _Proc()))
+    monkeypatch.setattr(dev, "_start_backend", lambda reload: _FakeProc())
+    monkeypatch.setattr(dev, "_start_frontend", lambda: _FakeProc())
     monkeypatch.setattr(dev, "_wait_url", lambda url, timeout=45: True)
     monkeypatch.setattr(dev, "_seed", lambda: state.update(seeded=True))
 
@@ -129,8 +124,28 @@ def test_run_dev_happy_path(monkeypatch) -> None:
 
     assert dev.run_dev(seed=True, open_browser=True) == 0
     assert state["seeded"] is True
-    assert state["terminated"] == 2
     assert state["opened"] == dev.FRONTEND_URL
+
+
+def test_run_dev_watchdog_restarts_then_aborts(monkeypatch) -> None:
+    """Watchdog reinicia com limite e aborta ao exceder (nao entra em loop infinito)."""
+
+    class _Dead:
+        pid = 9999
+
+        def poll(self):
+            return 0  # sempre "morto" -> forca o watchdog a reiniciar
+
+    monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
+    monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)
+    monkeypatch.setattr(dev, "_start_backend", lambda reload: _Dead())
+    monkeypatch.setattr(dev, "_start_frontend", lambda: _Dead())
+    monkeypatch.setattr(dev, "_wait_url", lambda url, timeout=45: True)
+    monkeypatch.setattr(dev, "_seed", lambda: None)
+    monkeypatch.setattr(dev.webbrowser, "open", lambda url: None)
+    monkeypatch.setattr(dev.time, "sleep", lambda _s: None)  # acelera o watchdog
+
+    assert dev.run_dev(seed=True, open_browser=False) == 4
 
 
 def test_cli_dev_command(monkeypatch) -> None:
@@ -182,14 +197,60 @@ def test_seed_posts(monkeypatch) -> None:
     assert len(posts) >= 5  # demo + rules + iocs + assets
 
 
-def test_npm_invokes_popen(monkeypatch) -> None:
-    state = {"p": 0}
+def test_terminate_tree_posix(monkeypatch) -> None:
+    monkeypatch.setattr(dev.os, "name", "posix")
 
     class _P:
-        def __init__(self, *args, **kwargs) -> None:
-            state["p"] += 1
+        pid = 1
 
-    monkeypatch.setattr(dev.subprocess, "Popen", _P)
-    monkeypatch.setattr(dev, "FRONTEND", Path("."))
-    dev._npm(["npm", "run", "dev", "--", "--host"])
-    assert state["p"] == 1
+        def poll(self):
+            return None
+
+        def terminate(self) -> None:
+            self.done = True
+
+        def wait(self, timeout=None) -> int:
+            return 0
+
+    p = _P()
+    dev._terminate_tree(p)
+    assert getattr(p, "done", False) is True
+    dev._terminate_tree(None)  # no-op
+
+
+def test_watchdog_restart_once_succeeds(monkeypatch) -> None:
+    """Watchdog reinicia uma vez (sem abortar) e segue até Ctrl-C -> 0."""
+
+    class _Seq:
+        pid = 7
+
+        def __init__(self) -> None:
+            self.n = 0
+
+        def poll(self):
+            self.n += 1
+            return 0 if self.n == 1 else None  # morre 1x, depois vive
+
+    procs = {"b": _Seq(), "f": _FakeProc()}
+
+    def _mk_backend(reload):
+        procs["b"] = _Seq()
+        return procs["b"]
+
+    monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
+    monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)
+    monkeypatch.setattr(dev, "_start_backend", _mk_backend)
+    monkeypatch.setattr(dev, "_start_frontend", lambda: procs["f"])
+    monkeypatch.setattr(dev, "_wait_url", lambda url, timeout=45: True)
+    monkeypatch.setattr(dev, "_seed", lambda: None)
+    monkeypatch.setattr(dev.webbrowser, "open", lambda url: None)
+
+    state = {"n": 0}
+
+    def _sleep(_s: float) -> None:
+        state["n"] += 1
+        if state["n"] >= 3:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(dev.time, "sleep", _sleep)
+    assert dev.run_dev(seed=True, open_browser=False) == 0
