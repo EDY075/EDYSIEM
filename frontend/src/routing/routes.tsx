@@ -17,6 +17,8 @@ const AlertCenterPage = lazy(() => import("../pages/AlertCenterPage").then((m) =
 const IncidentCenterPage = lazy(() => import("../pages/IncidentCenterPage").then((m) => ({ default: m.IncidentCenterPage })));
 const CaseCenterPage = lazy(() => import("../pages/CaseCenterPage").then((m) => ({ default: m.CaseCenterPage })));
 const InvestigationPage = lazy(() => import("../pages/InvestigationPage").then((m) => ({ default: m.InvestigationPage })));
+const IntelligencePage = lazy(() => import("../pages/IntelligencePage").then((m) => ({ default: m.IntelligencePage })));
+const DetectionDashboardPage = lazy(() => import("../pages/DetectionDashboardPage").then((m) => ({ default: m.DetectionDashboardPage })));
 
 /** Fallback global de carregamento de rota (barra fina superior, GPU-friendly). */
 function RouteFallback() {
@@ -66,8 +68,9 @@ export const router = createBrowserRouter([
       { path: "investigate", element: withSuspense(<InvestigationPage />) },
       { path: "cases", element: withSuspense(<CaseCenterPage />) },
       { path: "playbooks", element: <Page title="Playbooks" /> },
-      { path: "rules", element: <Page title="Regras" /> },
-      { path: "intel", element: <Page title="Intelligence" /> },
+      { path: "rules", element: withSuspense(<IntelligencePage />) },
+      { path: "intel", element: withSuspense(<IntelligencePage />) },
+      { path: "detection", element: withSuspense(<DetectionDashboardPage />) },
       { path: "settings", element: <Page title="Configuração" /> },
     ],
   },
