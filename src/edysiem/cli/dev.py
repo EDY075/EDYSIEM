@@ -110,7 +110,10 @@ def _seed() -> None:
         req = urllib.request.Request(
             base + path, data=data, headers={"Content-Type": "application/json"}, method="POST"
         )
-        urllib.request.urlopen(req, timeout=20)
+        try:
+            urllib.request.urlopen(req, timeout=20)
+        except Exception as exc:  # noqa: BLE001
+            _log(f"aviso: seed {path} falhou (não fatal): {exc}")
 
     post("/soc/pipeline/demo", None)
     post(
@@ -202,7 +205,10 @@ def run_dev(
     _log("frontend online")
 
     if seed:
-        _seed()
+        try:
+            _seed()
+        except Exception as exc:  # noqa: BLE001
+            _log(f"seed falhou (não fatal): {exc}")
 
     if open_browser:
         _log(f"abrindo o navegador em {FRONTEND_URL} (uma vez)")
