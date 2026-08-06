@@ -89,6 +89,8 @@ ignore = ["UP046", "UP047", "UP040"]
 "src/edysiem/api/routes/*.py" = ["B008"]
 "src/edysiem/container.py" = ["ANN401"]
 "src/edysiem/cli/main.py" = ["ANN401"]
+# Dev runner: urlopen para localhost é intencional (seed/healthcheck); subprocess de comandos fixos.
+"src/edysiem/cli/dev.py" = ["S310", "S603"]
 # Persistence: TABLE e constante (nao input), transacoes usam Any padrao.
 "src/edysiem/persistence/repos/*.py" = ["S608"]
 "src/edysiem/persistence/repository.py" = ["S608", "ANN401"]

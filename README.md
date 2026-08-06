@@ -18,6 +18,58 @@ Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e d
 > Próxima: Sprint 2.14 (integração E2E Pipeline → Alert → Incident → Case).
 > **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
 
+## Rodando o projeto (um comando)
+
+Qualquer pessoa que clonar o repositório consegue subir o ambiente completo:
+
+```bash
+# 1) instala as dependências (backend + frontend) automaticamente
+# 2) cria o banco e aplica migrações
+# 3) inicia backend (:8080) + frontend (:5173)
+# 4) popula dados de demonstração e abre o navegador
+python run.py
+```
+
+- Frontend (UI): http://localhost:5173
+- Swagger/API: http://127.0.0.1:8080/docs
+
+Equivalente via CLI instalada: `edysiem dev` (flags `--no-seed`, `--no-open`).
+Scripts prontos: `scripts/dev.ps1` (Windows) e `scripts/dev.sh` (Linux/macOS).
+
+### Instalação manual (opcional)
+
+```bash
+# Backend (Python 3.12+)
+python -m pip install -e ".[dev]"
+
+# Frontend (Node 18+)
+cd frontend && npm install && cd ..
+```
+
+### Modo desenvolvimento
+
+```bash
+python run.py                 # backend + frontend + seed + abre o navegador
+python run.py --no-seed       # sem dados de demonstração
+python run.py --no-open       # não abre o navegador
+```
+
+Servidores individuais (debug):
+```bash
+uvicorn edysiem.api.app:create_app --factory --host 127.0.0.1 --port 8080
+cd frontend && npm run dev
+```
+
+### Resolução de problemas
+
+| Problema | Solução |
+|---|---|
+| `Port 8080 already in use` | Encerre o processo anterior (`Get-NetTCPConnection -LocalPort 8080`) e rode de novo |
+| `node/npm não encontrado` | Instale Node.js 18+ (https://nodejs.org) |
+| Frontend abre sem dados | Verifique o backend em `/docs`; o Vite faz proxy `/api` → `:8080` |
+| Dados resetados | O banco dev fica em `instance/edysiem.db` (remova o arquivo para recomeçar) |
+| POST retorna 422 ao testar com curl | Não passe JSON inline via shell (aspas são removidas) — use `/docs` (Swagger), Python `requests`, ou `curl --data-binary @arquivo.json` |
+
 ## Documentação
 
 | Documento | Conteúdo |

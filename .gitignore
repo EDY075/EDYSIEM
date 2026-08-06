@@ -64,3 +64,7 @@ Desktop.ini
 # Logs locais
 *.log
 logs/
+
+# Desenvolvimento local (banco do dev runner)
+instance/
+*.db

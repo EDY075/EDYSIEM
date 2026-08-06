@@ -23,6 +23,7 @@ from ..bootstrap import build_container, version
 from ..domain import RawEvent
 from ..parsers import parse_rfc5424, parse_syslog
 from ..soc import SocPipeline, SocService
+from .dev import run_dev
 
 
 def _print(data: Any) -> None:
@@ -227,6 +228,11 @@ def cmd_soc_run(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dev(args: argparse.Namespace) -> int:
+    """Inicia o ambiente de desenvolvimento (backend + frontend) com um comando."""
+    return run_dev(seed=not args.no_seed, open_browser=not args.no_open)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Constroi o parser de comandos do CLI."""
     parser = argparse.ArgumentParser(prog="edysiem", description="EDY SIEM CLI")
@@ -238,6 +244,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("validate-config", help="valida a configuracao")
     sub.add_parser("demo", help="executa a demo da pipeline")
     sub.add_parser("soc-run", help="executa o fluxo SOC E2E (alerta -> incidente -> caso)")
+
+    p_dev = sub.add_parser("dev", help="inicia o ambiente de desenvolvimento (backend + frontend)")
+    p_dev.add_argument("--no-seed", action="store_true", help="não popula dados de demonstração")
+    p_dev.add_argument(
+        "--no-open", action="store_true", help="não abre o navegador automaticamente"
+    )
 
     p_pipe = sub.add_parser("run-pipeline", help="executa a pipeline ponta a ponta")
     p_pipe.add_argument("--source-type", default="syslog")
@@ -261,6 +273,7 @@ _COMMANDS = {
     "ingest": cmd_ingest,
     "demo": cmd_demo,
     "soc-run": cmd_soc_run,
+    "dev": cmd_dev,
 }
 
 
