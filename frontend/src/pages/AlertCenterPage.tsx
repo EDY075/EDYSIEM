@@ -60,6 +60,8 @@ export function AlertCenterPage() {
   const [selectedAlerts, setSelectedAlerts] = useState<string[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<AlertTableRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
 
   // Hook conectado ao backend real
   const { alerts: apiAlerts, loading: alertsLoading, error: alertsError } = useAlerts(50);
@@ -119,6 +121,9 @@ export function AlertCenterPage() {
       return 0;
     });
   }, [tableRows, searchQuery, severityFilter, statusFilter, sortBy, sortDir]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredAlerts.length / PAGE_SIZE));
+  const pagedAlerts = filteredAlerts.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const openDrawer = (alert: AlertTableRow) => {
     setSelectedAlert(alert);
@@ -308,7 +313,7 @@ export function AlertCenterPage() {
     },
   ];
 
-  const rows = filteredAlerts.map((alert) => ({
+  const rows = pagedAlerts.map((alert) => ({
     id: alert.id,
     select: (
       <input
@@ -590,6 +595,13 @@ export function AlertCenterPage() {
             loading={alertsLoading}
             emptyText={alertsError ? `Erro ao carregar: ${alertsError}` : "Nenhum alerta encontrado"}
           />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingBottom: spacing["2"] }}>
+            <Button variant="ghost" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>‹ Anterior</Button>
+            <span data-mono style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
+              {page + 1} / {pageCount} · {filteredAlerts.length} alertas
+            </span>
+            <Button variant="ghost" disabled={page + 1 >= pageCount} onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}>Próxima ›</Button>
+          </div>
         </Card>
       </div>
 
