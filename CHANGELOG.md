@@ -1,4 +1,13 @@
 # Changelog
+## [0.2.0-rc.1] - 2026-08-06
+
+### Finalização de release
+
+- Identidade visual Echelon aplicada ao shell e às áreas operacionais, com temas escuro e claro, navegação refinada e componentes de alto contraste.
+- Telas operacionais revisadas: Overview, War Room, Triage, Alertas, Incidentes, Investigação, Cases, Regras, Intelligence, Playbooks e Configurações.
+- O detalhe de alertas deixou de mostrar eventos, evidências, correlações e históricos inventados; abas sem contrato de API agora comunicam a indisponibilidade de dados de forma explícita.
+- Estabilizados testes de rate limiting e cobertos os caminhos de degradação do endpoint de saúde.
+- Validação local: TypeScript, ruff, mypy, compileall e 793 testes automatizados (95,05% de cobertura).
 
 Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 
@@ -7,7 +16,14 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint M4.3 — Live Preview + Browser Auto Open
+### Sprint Final — Parte 2 (Backend Security)
+
+- **Autenticação**: API Key **opt-in** (`EDYSIEM_API_KEY` → exige `X-API-Key`; sem env = dev aberto).
+- **RBAC**: papéis `admin`/`analyst`/`viewer` + matriz de permissões (`require_permission`); aplicado a regras (rule:write), cases (case:write) e intel (intel:write).
+- **Rate Limit**: janela deslizante em memória (`rate_limit`, 429) aplicado a `/pipeline/run`, `/soc/pipeline/run` e `/soc/simulator`.
+- **Testes**: `test_security.py` (+7) — 401/403/429 e pass cases; suíte **95.07%**, mypy 0 (147), ruff limpo, tsc/build verdes.
+
+## Sprint M4.3 — Live Preview + Browser Auto Open
 
 - `edysiem run-dev` (e `dev`): inicia backend (uvicorn `--reload`) + frontend (vite HMR), verifica portas, abre o navegador **uma vez**, imprime URL.
 - **Watchdog**: reinicia serviço que cair com limite (`MAX_RESTARTS=3`) e aborta com erro claro (sem loop infinito); cleanup obrigatório (taskkill /T no Windows).

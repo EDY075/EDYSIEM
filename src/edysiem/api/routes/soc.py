@@ -19,6 +19,7 @@ from ...incidents import Incident
 from ...incidents.models import IncidentStatus
 from ...soc import SocPipeline, SocService
 from ..deps import get_container
+from ..security import rate_limit, require_permission
 
 router = APIRouter(tags=["soc"])
 
@@ -246,7 +247,11 @@ def resolve_case(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.post("/soc/cases/{case_id}/close", summary="Encerra um case")
+@router.post(
+    "/soc/cases/{case_id}/close",
+    summary="Encerra um case",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 def close_case(
     case_id: str,
     resolution: str | None = None,
@@ -272,7 +277,11 @@ async def demo_flow(container: ApplicationContainer = Depends(get_container)) ->
     return asdict(flow)
 
 
-@router.post("/soc/pipeline/run", summary="Executa um evento bruto pela pipeline de engines")
+@router.post(
+    "/soc/pipeline/run",
+    summary="Executa um evento bruto pela pipeline de engines",
+    dependencies=[Depends(rate_limit(120, 60))],
+)
 async def run_event(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -313,7 +322,11 @@ def list_rules(container: ApplicationContainer = Depends(get_container)) -> dict
     return {"total": len(rules), "enabled": sum(1 for r in rules if r["enabled"]), "items": rules}
 
 
-@router.post("/soc/rules/{rule_id}/enable", summary="Habilita uma regra")
+@router.post(
+    "/soc/rules/{rule_id}/enable",
+    summary="Habilita uma regra",
+    dependencies=[Depends(require_permission("rule:write"))],
+)
 def enable_rule(
     rule_id: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -323,7 +336,11 @@ def enable_rule(
     return rule
 
 
-@router.post("/soc/rules/{rule_id}/disable", summary="Desabilita uma regra")
+@router.post(
+    "/soc/rules/{rule_id}/disable",
+    summary="Desabilita uma regra",
+    dependencies=[Depends(require_permission("rule:write"))],
+)
 def disable_rule(
     rule_id: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -333,7 +350,11 @@ def disable_rule(
     return rule
 
 
-@router.post("/soc/simulator", summary="Simula aplicação de regras sobre um evento JSON")
+@router.post(
+    "/soc/simulator",
+    summary="Simula aplicação de regras sobre um evento JSON",
+    dependencies=[Depends(rate_limit(120, 60))],
+)
 def simulate(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:

@@ -13,7 +13,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from ..bootstrap import version
 from ..config import load
@@ -21,6 +21,7 @@ from ..container import ApplicationContainer
 from .errors import register_error_handlers
 from .middleware import HTTPLoggingMiddleware, RequestIDMiddleware
 from .routes import alerts, cases, health, incidents, pipeline, soc
+from .security import require_api_key
 
 
 def _build_lifespan(
@@ -58,6 +59,8 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
         openapi_url="/openapi.json",
         docs_url="/docs",
         redoc_url="/redoc",
+        # Auth opt-in: exige X-API-Key apenas se EDYSIEM_API_KEY estiver definida
+        dependencies=[Depends(require_api_key)],
     )
 
     # Container acessivel por request.state (independente do lifespan)

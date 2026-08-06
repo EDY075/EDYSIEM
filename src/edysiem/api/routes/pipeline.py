@@ -12,6 +12,7 @@ from ...parsers import parse_rfc5424, parse_syslog
 from ...result import Failure
 from ..deps import get_container
 from ..schemas import PipelineRunRequest, PipelineRunResponse
+from ..security import rate_limit
 
 router = APIRouter(tags=["pipeline"])
 
@@ -31,6 +32,7 @@ def _parse(raw: RawEvent) -> dict[str, Any] | None:
     "/pipeline/run",
     response_model=PipelineRunResponse,
     summary="Executa a pipeline ponta a ponta",
+    dependencies=[Depends(rate_limit(120, 60))],
 )
 async def run_pipeline(
     body: PipelineRunRequest,
