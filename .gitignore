@@ -73,3 +73,5 @@ instance/
 UX_REVIEW/screenshots/
 UX_REVIEW/screenshots_after/
 UX_REVIEW/*.zip
+*.db-shm
+*.db-wal
