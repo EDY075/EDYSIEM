@@ -1,14 +1,14 @@
-"""SocService Ã¢â‚¬â€ orquestraÃƒÂ§ÃƒÂ£o SOC persistida (Sprint 2.15).
+"""SocService — orquestração SOC persistida (Sprint 2.15).
 
 Ponte de **baixo acoplamento** entre os engines (Alert/Incident/Case) e a
-camada de persistÃƒÂªncia SQLite. Os engines seguem operando como working set
-in-memory; este serviÃƒÂ§o persiste cada entidade nos repositÃƒÂ³rios e oferece as
-operaÃƒÂ§ÃƒÂµes operacionais do SOC:
+camada de persistência SQLite. Os engines seguem operando como working set
+in-memory; este serviço persiste cada entidade nos repositórios e oferece as
+operações operacionais do SOC:
 
-- Pipeline E2E (evento Ã¢â€ â€™ alerta Ã¢â€ â€™ incidente Ã¢â€ â€™ caso) via ``SocPipeline``
-- Incident Management (severidade/status/atribuiÃƒÂ§ÃƒÂ£o/SLA)
-- Case Management (comentÃƒÂ¡rios, evidÃƒÂªncias, anexos, tarefas, encerramento)
-- Investigation (pivÃƒÂ´s entre alertas, IOCs, contexto enriquecido)
+- Pipeline E2E (evento → alerta → incidente → caso) via ``SocPipeline``
+- Incident Management (severidade/status/atribuição/SLA)
+- Case Management (comentários, evidências, anexos, tarefas, encerramento)
+- Investigation (pivôs entre alertas, IOCs, contexto enriquecido)
 - Dashboard KPIs alimentados por dados reais (``metrics``)
 """
 
@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import sqlite3
 
-# ruff: noqa: RUF002 RUF003 E501
+# ruff: noqa: RUF002, E501
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -687,8 +687,7 @@ class SocService:
             else 0
         )
         avg_risk = round(sum(a.risk_score.value for a in alerts) / len(alerts)) if alerts else 0
-
-        # SÃƒÂ©rie temporal real (eventos por minuto, ÃƒÂºltimos 60 min) Ã¢â‚¬â€ Dashboard Vivo
+        # Série temporal real (eventos por minuto, últimos 60 min) — Dashboard Vivo
         events = self._event_store.repository.query(limit=20000).items
         now = _utcnow()
         minute_now = int(now.timestamp() // 60)

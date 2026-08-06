@@ -2,6 +2,13 @@
 
 Plataforma profissional de Security Information and Event Management (SIEM).
 Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
+## Estado de release
+
+A base está em **release candidate `0.2.0-rc.1`**. O produto reúne o shell Echelon, a operação SOC, detecção, investigação, cases e administração em uma experiência consistente, responsiva e acessível.
+
+- Validação de código: TypeScript, Ruff, MyPy e suíte Python automatizada.
+- Dados de operação: as telas consomem os contratos `/api/v1/soc/*` já disponíveis; ações que ainda não possuem contrato são explicitamente desabilitadas.
+- Antes de publicar: consulte o [relatório de release](docs/RELEASE_CANDIDATE_REPORT.md) e conclua os itens de infraestrutura indicados.
 
 > **Status:** Sprint 1 (Foundation Core) — tag `v0.1.0`. Sprints 2.1–2.12
 > concluídas: pipeline oficial (ADR-008), infraestrutura de ingestão (ADR-009),

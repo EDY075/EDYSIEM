@@ -1,4 +1,4 @@
-﻿"""Testes do runner de desenvolvimento (`edysiem dev` / `run.py`)."""
+"""Testes do runner de desenvolvimento (`edysiem dev` / `run.py`)."""
 
 from __future__ import annotations
 
@@ -60,11 +60,11 @@ def test_ensure_frontend_deps_install(monkeypatch) -> None:
 
 
 def test_ensure_backend_deps_present() -> None:
-    assert dev._ensure_backend_deps() is True  # edysiem importÃ¡vel
+    assert dev._ensure_backend_deps() is True  # edysiem importável
 
 
 def test_wait_url_false_fast() -> None:
-    # porta sem serviÃ§o -> False rapidamente (timeout 1s)
+    # porta sem serviço -> False rapidamente (timeout 1s)
     assert dev._wait_url("http://127.0.0.1:1/health", timeout=1) is False
 
 
@@ -93,7 +93,7 @@ def test_run_dev_frontend_not_responding(monkeypatch) -> None:
 
     def wait(url: str, timeout: int = 45) -> bool:
         calls["n"] += 1
-        return calls["n"] == 1  # backend ok, frontend nÃ£o
+        return calls["n"] == 1  # backend ok, frontend não
 
     monkeypatch.setattr(dev, "_ensure_backend_deps", lambda: True)
     monkeypatch.setattr(dev, "_ensure_frontend_deps", lambda: True)

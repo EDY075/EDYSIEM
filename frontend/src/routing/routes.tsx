@@ -8,7 +8,6 @@
 import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../shell/AppShell";
-import { Page } from "../components/Page";
 import { colors } from "../design-system/tokens";
 
 const DashboardOverview = lazy(() => import("../pages/DashboardOverview").then((m) => ({ default: m.DashboardOverview })));
@@ -18,7 +17,11 @@ const IncidentCenterPage = lazy(() => import("../pages/IncidentCenterPage").then
 const CaseCenterPage = lazy(() => import("../pages/CaseCenterPage").then((m) => ({ default: m.CaseCenterPage })));
 const InvestigationPage = lazy(() => import("../pages/InvestigationPage").then((m) => ({ default: m.InvestigationPage })));
 const IntelligencePage = lazy(() => import("../pages/IntelligencePage").then((m) => ({ default: m.IntelligencePage })));
+const RulesPage = lazy(() => import("../pages/RulesPage").then((m) => ({ default: m.RulesPage })));
 const DetectionDashboardPage = lazy(() => import("../pages/DetectionDashboardPage").then((m) => ({ default: m.DetectionDashboardPage })));
+const TriagePage = lazy(() => import("../pages/TriagePage").then((m) => ({ default: m.TriagePage })));
+const PlaybooksPage = lazy(() => import("../pages/PlaybooksPage").then((m) => ({ default: m.PlaybooksPage })));
+const SettingsPage = lazy(() => import("../pages/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
 /** Fallback global de carregamento de rota (barra fina superior, GPU-friendly). */
 function RouteFallback() {
@@ -62,16 +65,16 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: withSuspense(<DashboardOverview />) },
       { path: "war-room", element: withSuspense(<WarRoomPage />) },
-      { path: "triage", element: <Page title="Triage" /> },
+      { path: "triage", element: withSuspense(<TriagePage />) },
       { path: "alerts", element: withSuspense(<AlertCenterPage />) },
       { path: "incidents", element: withSuspense(<IncidentCenterPage />) },
       { path: "investigate", element: withSuspense(<InvestigationPage />) },
       { path: "cases", element: withSuspense(<CaseCenterPage />) },
-      { path: "playbooks", element: <Page title="Playbooks" /> },
-      { path: "rules", element: withSuspense(<IntelligencePage />) },
+      { path: "playbooks", element: withSuspense(<PlaybooksPage />) },
+      { path: "rules", element: withSuspense(<RulesPage />) },
       { path: "intel", element: withSuspense(<IntelligencePage />) },
       { path: "detection", element: withSuspense(<DetectionDashboardPage />) },
-      { path: "settings", element: <Page title="Configuração" /> },
+      { path: "settings", element: withSuspense(<SettingsPage />) },
     ],
   },
 ]);

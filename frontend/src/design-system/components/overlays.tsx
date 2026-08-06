@@ -29,7 +29,7 @@ export function Drawer({ open, title, onClose, side = "right", children }: Drawe
     >
       <div
         onClick={onClose}
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }}
+        style={{ position: "absolute", inset: 0, background: "color-mix(in srgb, var(--color-bg) 72%, transparent)", backdropFilter: "blur(3px)" }}
       />
       <aside
         style={{
@@ -37,10 +37,10 @@ export function Drawer({ open, title, onClose, side = "right", children }: Drawe
           width: 460,
           maxWidth: "94vw",
           height: "100%",
-          background: colors.surface,
+          background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 32%, ${colors.surface}) 100%)`,
           borderLeft: side === "right" ? `1px solid ${colors.border}` : "none",
           borderRight: side === "left" ? `1px solid ${colors.border}` : "none",
-          boxShadow: "-12px 0 32px rgba(0,0,0,0.55)",
+          boxShadow: "-18px 0 42px rgba(0,0,0,0.28)",
           display: "flex",
           flexDirection: "column",
           animation: `drawer-in ${motion.duration.normal} ${motion.easing.standard}`,
@@ -53,7 +53,7 @@ export function Drawer({ open, title, onClose, side = "right", children }: Drawe
             alignItems: "center",
             padding: spacing["4"],
             borderBottom: `1px solid ${colors.border}`,
-            background: colors.surface,
+            background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 32%, ${colors.surface}) 100%)`,
             position: "sticky",
             top: 0,
             zIndex: 1,
@@ -94,17 +94,18 @@ export function Modal({ open, title, onClose, children, width = 560 }: ModalProp
         justifyContent: "center",
       }}
     >
-      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.6)" }} />
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "color-mix(in srgb, var(--color-bg) 76%, transparent)", backdropFilter: "blur(4px)" }} />
       <div
         role="dialog"
         style={{
           position: "relative",
           width,
           maxWidth: "90vw",
-          background: colors.surface,
+          background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 32%, ${colors.surface}) 100%)`,
           border: `1px solid ${colors.border}`,
           borderRadius: radii.lg,
-          boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
+          overflow: "hidden",
+          boxShadow: "0 22px 54px rgba(0,0,0,0.30)",
           animation: `modal-in ${motion.duration.fast} ${motion.easing.standard}`,
         }}
       >

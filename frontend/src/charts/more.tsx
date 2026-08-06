@@ -49,7 +49,7 @@ export function SecurityDonutChart({ data, nameKey, valueKey, height = 200, inne
   return (
     <ResponsiveContainer width="100%" height={height}>
       <PieChart>
-        <Pie data={data} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%" innerRadius={innerRadius} outerRadius={outerRadius} strokeWidth={0}>
+        <Pie data={data} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%" innerRadius={innerRadius} outerRadius={outerRadius} paddingAngle={2} stroke={colors.surface} strokeWidth={3}>
           {data.map((_d, i) => (
             <Cell key={i} fill={palette[i % palette.length]} />
           ))}

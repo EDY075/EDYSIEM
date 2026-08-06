@@ -48,6 +48,7 @@ export function useMetrics(_timeRange: string = "1h") {
   const [metrics, setMetrics] = useState<DashboardMetrics>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchMetrics = useCallback(async () => {
     try {
@@ -70,6 +71,7 @@ export function useMetrics(_timeRange: string = "1h") {
           mtta: 0,
           eventsSeries: series,
         });
+        setLastUpdated(new Date());
       } else {
         setError(response.error?.message || "Falha ao carregar métricas");
         setMetrics(EMPTY);
@@ -86,5 +88,5 @@ export function useMetrics(_timeRange: string = "1h") {
     fetchMetrics();
   }, [fetchMetrics]);
 
-  return { metrics, loading, error, refetch: fetchMetrics };
+  return { metrics, loading, error, lastUpdated, refetch: fetchMetrics };
 }

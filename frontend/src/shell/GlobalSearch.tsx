@@ -1,423 +1,141 @@
-/**
- * Global Search (UI 3.3+)
- * Busca universal: IP, hostname, user, IOC, hash, domain, alert, incident, case, MITRE, asset, rule.
- * Debounce + autocomplete + highlight + keyboard navigation + entity type grouping.
- */
-import { useState, useEffect, useRef } from "react";
-import { colors, motion, radii, spacing, typography } from "../design-system/tokens";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { colors, elevation, motion, radii, spacing, typography } from "../design-system/tokens";
+import { useTheme } from "../theme/ThemeProvider";
 
-interface SearchResultItem {
+type CommandGroup = "Operação" | "Resposta" | "Detecção" | "Administração" | "Sistema";
+
+interface Command {
   id: string;
-  type: string;
   label: string;
-  description?: string;
-  icon: string;
-  route?: string;
+  description: string;
+  group: CommandGroup;
+  to?: string;
+  action?: "toggle-theme" | "refresh-data" | "open-notifications";
+  glyph: "grid" | "bolt" | "bell" | "case" | "radar" | "settings";
 }
 
-const MOCK_ENTITIES: Record<string, any[]> = {
-  ip: [
-    { id: "10.0.0.1", label: "10.0.0.1", description: "Workstation WS-001", icon: "🖥️", route: "/assets/10.0.0.1" },
-    { id: "192.168.1.50", label: "192.168.1.50", description: "Server SRV-DB", icon: "🗄️", route: "/assets/192.168.1.50" },
-  ],
-  hostname: [
-    { id: "wks-01", label: "WKS-01", description: "Workstation - João Silva", icon: "💻", route: "/assets/WKS-01" },
-    { id: "srv-db-01", label: "SRV-DB-01", description: "Database Server", icon: "🗄️", route: "/assets/SRV-DB-01" },
-  ],
-  user: [
-    { id: "admin", label: "admin", description: "Administrator", icon: "👤", route: "/users/admin" },
-    { id: "john.doe", label: "john.doe", description: "SOC Analyst", icon: "👤", route: "/users/john.doe" },
-  ],
-  ioc: [
-    { id: "malware-abc123", label: "malware-abc123", description: "Emotet IOC", icon: "🦠", route: "/iocs/malware-abc123" },
-    { id: "c2.badguy.com", label: "c2.badguy.com", description: "C2 Domain", icon: "🌐", route: "/iocs/c2.badguy.com" },
-  ],
-  hash: [
-    { id: "d41d8cd98f00b204e9800998ecf8427e", label: "d41d8cd98f00b204e9800998ecf8427e", description: "Empty file hash", icon: "🔐", route: "/hashes/d41d8cd98f00b204e9800998ecf8427e" },
-  ],
-  domain: [
-    { id: "evil.com", label: "evil.com", description: "Malicious domain", icon: "🌐", route: "/domains/evil.com" },
-    { id: "c2.badguy.com", label: "c2.badguy.com", description: "C2 Server", icon: "🎯", route: "/domains/c2.badguy.com" },
-  ],
-  alert: [
-    { id: "ALT-001", label: "Brute Force SSH", severity: "high", icon: "🚨", route: "/alerts/ALT-001" },
-    { id: "ALT-002", label: "Malware Detection", severity: "critical", icon: "🦠", route: "/alerts/ALT-002" },
-  ],
-  incident: [
-    { id: "INC-001", label: "Brute Force SSH", severity: "high", icon: "🚨", route: "/incidents/INC-001" },
-    { id: "INC-002", label: "Malware Outbreak", severity: "critical", icon: "☠️", route: "/incidents/INC-002" },
-  ],
-  case: [
-    { id: "CASE-001", label: "Investigar Brute Force", status: "in_progress", icon: "📁", route: "/cases/CASE-001" },
-    { id: "CASE-002", label: "Malware Outbreak", status: "in_progress", icon: "📂", route: "/cases/CASE-002" },
-  ],
-  mitre: [
-    { id: "T1110", label: "T1110 - Brute Force", description: "Brute Force Attack", icon: "🔑", route: "/mitre/T1110" },
-    { id: "T1059", label: "T1059 - Command & Scripting", description: "Command and Scripting Interpreter", icon: "💻", route: "/mitre/T1059" },
-  ],
-  asset: [
-    { id: "asset-1", label: "SRV-DB-01", type: "server", criticality: "high", route: "/assets/SRV-DB-01" },
-    { id: "asset-2", label: "WKS-001", type: "workstation", criticality: "medium", route: "/assets/WKS-001" },
-  ],
-  rule: [
-    { id: "rule-001", label: "Brute Force SSH", description: "5+ failed logins in 1min", icon: "🔑", route: "/rules/rule-001" },
-    { id: "rule-002", label: "Malware Execution", description: "Suspicious process execution", icon: "⚡", route: "/rules/rule-002" },
-  ],
-};
-
-const ENTITY_TYPES = [
-  { key: "ip", label: "IP", icon: "🌐" },
-  { key: "hostname", label: "Hostname", icon: "💻" },
-  { key: "user", label: "Usuário", icon: "👤" },
-  { key: "ioc", label: "IOC", icon: "🦠" },
-  { key: "hash", label: "Hash", icon: "🔐" },
-  { key: "domain", label: "Domínio", icon: "🌐" },
-  { key: "alert", label: "Alerta", icon: "🚨" },
-  { key: "incident", label: "Incidente", icon: "📋" },
-  { key: "case", label: "Caso", icon: "📁" },
-  { key: "mitre", label: "MITRE ATT&CK", icon: "🎯" },
-  { key: "asset", label: "Ativo", icon: "💻" },
-  { key: "rule", label: "Regra", icon: "⚙️" },
+const commands: Command[] = [
+  { id: "overview", label: "Abrir overview", description: "Visão operacional do SOC", group: "Operação", to: "/", glyph: "grid" },
+  { id: "war-room", label: "Abrir War Room", description: "Coordenação de resposta ativa", group: "Operação", to: "/war-room", glyph: "bolt" },
+  { id: "alerts", label: "Ver alertas", description: "Fila de detecções e risco", group: "Operação", to: "/alerts", glyph: "bell" },
+  { id: "incidents", label: "Ver incidentes", description: "Incidentes correlacionados", group: "Operação", to: "/incidents", glyph: "bolt" },
+  { id: "investigation", label: "Abrir investigação", description: "Evidências e pivôs de um caso", group: "Operação", to: "/investigate", glyph: "radar" },
+  { id: "cases", label: "Abrir cases", description: "Fila operacional e tratamento", group: "Resposta", to: "/cases", glyph: "case" },
+  { id: "playbooks", label: "Abrir playbooks", description: "Automação de resposta", group: "Resposta", to: "/playbooks", glyph: "bolt" },
+  { id: "rules", label: "Abrir regras", description: "Catálogo de detecções", group: "Detecção", to: "/rules", glyph: "grid" },
+  { id: "intelligence", label: "Abrir intelligence", description: "IOCs e contexto de ameaça", group: "Detecção", to: "/intel", glyph: "radar" },
+  { id: "settings", label: "Abrir configurações", description: "Preferências e ambiente", group: "Administração", to: "/settings", glyph: "settings" },
+  { id: "toggle-theme", label: "Alternar tema", description: "Mudar entre tema escuro e claro", group: "Sistema", action: "toggle-theme", glyph: "settings" },
+  { id: "refresh-data", label: "Recarregar dados", description: "Solicitar dados atuais ao console", group: "Sistema", action: "refresh-data", glyph: "bolt" },
+  { id: "open-notifications", label: "Abrir notificações", description: "Ver alertas em acompanhamento", group: "Sistema", action: "open-notifications", glyph: "bell" },
 ];
 
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  ip: "IP",
-  hostname: "Hostname",
-  user: "Usuário",
-  ioc: "IOC",
-  hash: "Hash",
-  domain: "Domínio",
-  alert: "Alerta",
-  incident: "Incidente",
-  case: "Caso",
-  mitre: "MITRE ATT&CK",
-  asset: "Ativo",
-  rule: "Regra",
-};
-
-const typeOrder: Record<string, number> = {
-  alert: 0,
-  incident: 1,
-  case: 2,
-  ip: 2,
-  hostname: 3,
-  user: 3,
-  ioc: 4,
-  domain: 4,
-  hash: 4,
-  asset: 5,
-  mitre: 5,
-  rule: 5,
-};
-
-const search = (q: string): SearchResultItem[] => {
-  if (!q || q.trim().length < 1) return [];
-
-  const query = q.toLowerCase().trim();
-  const results: SearchResultItem[] = [];
-
-  for (const [entityType, entities] of Object.entries(MOCK_ENTITIES)) {
-    for (const entity of entities) {
-      const searchable = `${entity.label} ${entity.description || ""} ${entity.id}`.toLowerCase();
-      if (searchable.includes(query)) {
-        results.push({
-          id: entity.id,
-          type: ENTITY_TYPE_LABELS[entityType] || entityType,
-          label: entity.label,
-          description: entity.description,
-          icon: entity.icon || "🔍",
-          route: entity.route,
-        });
-      }
-    }
-  }
-
-  // Sort: by type priority (fixed)
-  return results.sort((a, b) => {
-    return (typeOrder[a.type.toLowerCase()] || 99) - (typeOrder[b.type.toLowerCase()] || 99);
-  });
-};
+function CommandGlyph({ glyph }: { glyph: Command["glyph"] }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const paths = {
+    grid: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
+    bolt: <path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z" />,
+    bell: <><path d="M18 9a6 6 0 0 0-12 0c0 7-2.5 8-2.5 8h17S18 16 18 9Z" /><path d="M10 21h4" /></>,
+    case: <path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />,
+    radar: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3" /><path d="M12 4V2M20 12h2M12 22v-2M2 12h2" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5v.2h-4v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1-2.8-2.8.1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.5-1H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1 2.8-2.8.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1 2.8 2.8-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1h.2v4h-.2a1.7 1.7 0 0 0-1.4 1Z" /></>,
+  };
+  return <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" {...common}>{paths[glyph]}</svg>;
+}
 
 export function GlobalSearch() {
-  const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const navigate = useNavigate();
+  const { toggle } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(0);
 
-  const filteredResults = isOpen ? search(query) : [];
+  const results = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("pt-BR");
+    if (!normalized) return commands;
+    return commands.filter((command) => `${command.label} ${command.description} ${command.group}`.toLocaleLowerCase("pt-BR").includes(normalized));
+  }, [query]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen || filteredResults.length === 0) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, filteredResults.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const result = filteredResults[selectedIndex];
-      if (result?.route) {
-        window.location.href = result.route;
-      }
-      setIsOpen(false);
-      setQuery("");
-    } else if (e.key === "Escape") {
-      setIsOpen(false);
-    }
+  const execute = (command: Command | undefined) => {
+    if (!command) return;
+    if (command.to) navigate(command.to);
+    if (command.action === "toggle-theme") toggle();
+    if (command.action === "refresh-data") window.location.reload();
+    if (command.action === "open-notifications") window.dispatchEvent(new Event("edysiem:open-notifications"));
+    setOpen(false);
+    setQuery("");
   };
 
-  // Click outside to close + atalho ⌘K / Ctrl+K
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-    const handleHotkey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setIsOpen(true);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleHotkey);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleHotkey);
-    };
+  const shortcut = useMemo(() => {
+    const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform ?? navigator.userAgent;
+    return /mac|iphone|ipad/i.test(platform) ? "⌘K" : "Ctrl K";
   }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen(true);
+        window.setTimeout(() => inputRef.current?.focus(), 0);
+      }
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const onInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") { event.preventDefault(); setSelected((value) => Math.min(value + 1, Math.max(results.length - 1, 0))); }
+    if (event.key === "ArrowUp") { event.preventDefault(); setSelected((value) => Math.max(value - 1, 0)); }
+    if (event.key === "Enter") { event.preventDefault(); execute(results[selected]); }
+    if (event.key === "Escape") setOpen(false);
+  };
+
+  useEffect(() => setSelected(0), [query]);
+
+  const groups = Array.from(new Set(results.map((item) => item.group)));
 
   return (
     <div style={{ position: "relative", width: "100%" }}>
       <div
+        className="command-trigger"
+        onClick={() => { setOpen(true); inputRef.current?.focus(); }}
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: spacing["2"],
-          background: colors.background,
-          border: `1px solid ${colors.border}`,
-          borderRadius: radii.md,
-          padding: `0 ${spacing["2"]}`,
-          transition: `border-color ${motion.transition.fast}, box-shadow ${motion.transition.fast}`,
-          boxShadow: isOpen ? `0 0 0 3px ${colors.accent}26` : "none",
-        }}
-        onMouseEnter={(e) => {
-          if (!isOpen) e.currentTarget.style.borderColor = colors.textMuted + "80";
-        }}
-        onMouseLeave={(e) => {
-          if (!isOpen) e.currentTarget.style.borderColor = colors.border;
+          display: "flex", alignItems: "center", gap: spacing["2"], minHeight: 38,
+          padding: `0 ${spacing["3"]}`, cursor: "text", background: colors.background,
+          border: `1px solid ${open ? colors.accent : colors.border}`, borderRadius: radii.lg,
+          boxShadow: open ? "0 0 0 3px color-mix(in srgb, var(--color-accent) 14%, transparent)" : "inset 0 1px 0 color-mix(in srgb, white 4%, transparent)",
+          transition: `border-color ${motion.transition.fast}, box-shadow ${motion.transition.fast}, background ${motion.transition.fast}`,
         }}
       >
-        <span
-          aria-hidden
-          style={{ color: colors.textMuted, fontSize: typography.size.sm, display: "flex", flex: "none" }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
-        </span>
-        <input
-          ref={inputRef}
-          placeholder="Buscar IP, hostname, IOC, hash, alerta..."
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-            setSelectedIndex(0);
-          }}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsOpen(true)}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontFamily: typography.family.ui,
-            fontSize: typography.size.sm,
-            background: "transparent",
-            color: colors.textPrimary,
-            border: "none",
-            outline: "none",
-            padding: `${spacing["2"]} 0`,
-            width: "100%",
-          }}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-        />
-        <kbd
-          aria-hidden
-          style={{
-            flex: "none",
-            fontFamily: typography.family.mono,
-            fontSize: 10,
-            color: colors.textMuted,
-            background: colors.surfaceAlt,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 4,
-            padding: "1px 6px",
-            letterSpacing: "0.04em",
-          }}
-        >
-          ⌘K
-        </kbd>
+        <span style={{ color: colors.textMuted, display: "inline-flex" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg></span>
+        <input ref={inputRef} value={query} onFocus={() => setOpen(true)} onChange={(event) => setQuery(event.target.value)} onKeyDown={onInputKeyDown} placeholder="Buscar ou executar comando…" aria-label="Buscar ou executar comando" autoComplete="off" spellCheck={false} style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: colors.textPrimary, fontFamily: typography.family.ui, fontSize: typography.size.sm }} />
+        <kbd aria-hidden style={{ color: colors.textMuted, border: `1px solid ${colors.border}`, borderRadius: 5, padding: "2px 5px", fontFamily: typography.family.mono, fontSize: 10, background: colors.surfaceAlt }}>{shortcut}</kbd>
       </div>
-
-      {isOpen && (
-        <div
-          ref={dropdownRef}
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            right: 0,
-            background: colors.surfaceAlt,
-            border: `1px solid ${colors.border}`,
-            borderRadius: radii.md,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-            zIndex: 400,
-            maxHeight: 400,
-            overflowY: "auto",
-            padding: spacing["1"],
-          }}
-        >
-          {filteredResults.length === 0 ? (
-            <div
-              style={{
-                padding: spacing["2"],
-                color: colors.textMuted,
-                fontSize: typography.size.sm,
-              }}
-            >
-              Nenhum resultado para "{query}"
-            </div>
-          ) : (
-            <>
-              {ENTITY_TYPES.map(({ key, label, icon }) => {
-                const typeResults = filteredResults.filter(
-                  (r) => r.type.toLowerCase() === key.toLowerCase(),
-                );
-                if (typeResults.length === 0) return null;
-
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      borderTop: `1px solid ${colors.borderSubtle}`,
-                      paddingTop: spacing["2"],
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: spacing["2"],
-                        padding: `${spacing["1"]} ${spacing["2"]}`,
-                        fontSize: typography.size.xs,
-                        fontWeight: typography.weight.semibold,
-                        color: colors.textMuted,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        borderBottom: `1px solid ${colors.borderSubtle}`,
-                        paddingBottom: spacing["1"],
-                      }}
-                    >
-                      <span style={{ fontSize: typography.size.sm }}>{icon}</span>
-                      <span>{label}</span>
-                      <span
-                        style={{
-                          marginLeft: "auto",
-                          fontSize: typography.size.xs,
-                          color: colors.textMuted,
-                        }}
-                      >
-                        {typeResults.length} resultado{typeResults.length !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    {typeResults.map((result) => {
-                      const idx = filteredResults.findIndex((r) => r.id === result.id && r.type === result.type);
-                      const highlighted = idx === selectedIndex;
-                      return (
-                        <button
-                          key={result.id}
-                          onClick={() => {
-                            if (result.route) window.location.href = result.route;
-                            setQuery("");
-                            setIsOpen(false);
-                          }}
-                          onMouseEnter={() => setSelectedIndex(idx)}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: spacing["2"],
-                            width: "100%",
-                            padding: `${spacing["2"]} ${spacing["3"]}`,
-                            borderRadius: radii.sm,
-                            background: highlighted ? colors.accentSubtle : "transparent",
-                            border: "none",
-                            textAlign: "left",
-                            cursor: "pointer",
-                            color: colors.textPrimary,
-                            fontSize: typography.size.sm,
-                            transition: `background ${motion.transition.fast}`,
-                          }}
-                        >
-                          <span style={{ fontSize: typography.size.sm }}>{result.icon}</span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontWeight: typography.weight.medium,
-                                color: colors.textPrimary,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                            >
-                              {result.label}
-                            </div>
-                            {result.description && (
-                              <div
-                                style={{
-                                  fontSize: typography.size.xs,
-                                  color: colors.textMuted,
-                                  whiteSpace: "nowrap",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                }}
-                              >
-                                {result.description}
-                              </div>
-                            )}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: typography.size.xs,
-                              color: highlighted ? colors.accentHover : colors.textMuted,
-                              whiteSpace: "nowrap",
-                              fontFamily: typography.family.mono,
-                            }}
-                          >
-                            {result.type}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </>
-          )}
+      {open && (
+        <div role="dialog" aria-label="Paleta de comandos" className="command-palette" style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, right: 0, zIndex: 500, overflow: "hidden", maxHeight: 430, background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radii.lg, boxShadow: elevation.overlay, animation: "commandIn 160ms cubic-bezier(.2,0,0,1) both" }}>
+          <div style={{ padding: `${spacing["2"]} ${spacing["3"]}`, borderBottom: `1px solid ${colors.borderSubtle}`, color: colors.textMuted, fontSize: typography.size.xs }}>Navegação rápida do workspace</div>
+          <div style={{ maxHeight: 360, overflowY: "auto", padding: spacing["1"] }}>
+            {results.length === 0 ? <div style={{ padding: spacing["4"], color: colors.textMuted, textAlign: "center", fontSize: typography.size.sm }}>Nenhum comando encontrado.</div> : groups.map((group) => (
+              <section key={group} aria-label={group} style={{ paddingBottom: spacing["1"] }}>
+                <div style={{ padding: `${spacing["2"]} ${spacing["2"]} ${spacing["1"]}`, color: colors.textMuted, fontSize: 10, letterSpacing: "0.11em", textTransform: "uppercase", fontWeight: typography.weight.semibold }}>{group}</div>
+                {results.filter((command) => command.group === group).map((command) => {
+                  const index = results.indexOf(command);
+                  const isSelected = selected === index;
+                  return <button key={command.id} type="button" onMouseEnter={() => setSelected(index)} onClick={() => execute(command)} style={{ width: "100%", display: "flex", alignItems: "center", gap: spacing["3"], padding: `${spacing["2"]} ${spacing["2"]}`, background: isSelected ? colors.accentSubtle : "transparent", color: colors.textPrimary, border: "none", borderRadius: radii.md, cursor: "pointer", textAlign: "left", transition: `background ${motion.transition.fast}` }}>
+                    <span style={{ display: "inline-grid", placeItems: "center", width: 28, height: 28, borderRadius: radii.md, color: isSelected ? colors.accentHover : colors.textSecondary, background: isSelected ? "color-mix(in srgb, var(--color-accent) 13%, transparent)" : colors.surfaceAlt, border: `1px solid ${colors.borderSubtle}` }}><CommandGlyph glyph={command.glyph} /></span>
+                    <span style={{ flex: 1, minWidth: 0 }}><span style={{ display: "block", fontSize: typography.size.sm, fontWeight: typography.weight.medium }}>{command.label}</span><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{command.description}</span></span>
+                    <span style={{ color: colors.textMuted, fontSize: typography.size.xs, fontFamily: typography.family.mono }}>↵</span>
+                  </button>;
+                })}
+              </section>
+            ))}
+          </div>
         </div>
       )}
+      <style>{`@keyframes commandIn { from { opacity: 0; transform: translateY(-5px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } } .command-trigger:hover { border-color: color-mix(in srgb, var(--color-text-muted) 45%, transparent) !important; } @media (prefers-reduced-motion: reduce) { .command-palette { animation: none !important; } }`}</style>
     </div>
   );
 }

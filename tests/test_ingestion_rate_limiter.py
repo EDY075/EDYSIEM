@@ -24,7 +24,7 @@ def test_config_validation(rate: float, burst: int) -> None:
 
 
 def test_burst_tokens_available_then_exhausted() -> None:
-    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1_000_000.0, burst=3))
+    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1.0, burst=3))
     assert limiter.try_acquire() is True
     assert limiter.try_acquire() is True
     assert limiter.try_acquire() is True
@@ -32,7 +32,7 @@ def test_burst_tokens_available_then_exhausted() -> None:
 
 
 def test_tokens_property_and_reset() -> None:
-    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1_000_000.0, burst=5))
+    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1.0, burst=5))
     assert limiter.tokens == 5.0
     assert limiter.try_acquire() is True
     assert limiter.tokens == pytest.approx(4.0)
@@ -41,7 +41,7 @@ def test_tokens_property_and_reset() -> None:
 
 
 def test_acquire_consumes_token() -> None:
-    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1_000_000.0, burst=1))
+    limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1.0, burst=1))
 
     async def scenario() -> bool:
         acquired = await limiter.acquire()

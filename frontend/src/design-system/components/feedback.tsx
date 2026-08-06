@@ -2,7 +2,7 @@
  * Feedback — Toolbar, Empty State e Loading Skeleton (UI 3.4)
  */
 import { CSSProperties, ReactNode } from "react";
-import { colors, radii, spacing, typography } from "../tokens";
+import { colors, elevation, radii, spacing, typography } from "../tokens";
 
 /* ------------------------------ Toolbar --------------------------------- */
 
@@ -21,9 +21,10 @@ export function Toolbar({ left, right, style }: ToolbarProps) {
         justifyContent: "space-between",
         gap: spacing["3"],
         padding: `${spacing["2"]} ${spacing["3"]}`,
-        background: colors.surface,
+        background: `linear-gradient(90deg, color-mix(in srgb, ${colors.surfaceAlt} 46%, ${colors.surface}) 0%, ${colors.surface} 100%)`,
         border: `1px solid ${colors.border}`,
         borderRadius: radii.lg,
+        boxShadow: elevation.floating,
         marginBottom: spacing["3"],
         ...style,
       }}
@@ -72,7 +73,7 @@ export function EmptyState({ title, text, description, icon = "◌", action, onR
           alignItems: "center",
           justifyContent: "center",
           fontSize: 20,
-          background: colors.surfaceAlt,
+          background: `linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 13%, ${colors.surfaceAlt}), ${colors.surfaceAlt})`,
           border: `1px solid ${colors.border}`,
           color: colors.textSecondary,
           marginBottom: spacing["1"],
@@ -100,7 +101,7 @@ export function EmptyState({ title, text, description, icon = "◌", action, onR
             padding: "7px 16px",
             border: `1px solid ${colors.border}`,
             borderRadius: radii.md,
-            background: colors.surfaceAlt,
+            background: `linear-gradient(145deg, color-mix(in srgb, var(--color-accent) 13%, ${colors.surfaceAlt}), ${colors.surfaceAlt})`,
             color: colors.textPrimary,
             fontFamily: typography.family.ui,
             fontSize: typography.size.sm,
@@ -144,14 +145,14 @@ const skeletonCss = `
 }
 .skeleton-line {
   border-radius: 6px;
-  background: linear-gradient(90deg, var(--sk-base, #1a2130) 25%, #222b3d 37%, var(--sk-base, #1a2130) 63%);
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, color-mix(in srgb, var(--color-accent) 10%, var(--color-surface-alt)) 45%, var(--color-surface-alt) 63%);
   background-size: 640px 100%;
   animation: skeleton-shimmer 1.4s linear infinite;
 }
 .skeleton-card {
   border-radius: 12px;
-  border: 1px solid #202938;
-  background: #141a26;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   padding: 18px;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -2,7 +2,7 @@
  * Card, Input e Table — componentes base (UI 3.1)
  */
 import { CSSProperties, ReactNode } from "react";
-import { colors, density, motion, radii, spacing, typography } from "../tokens";
+import { colors, density, elevation, motion, radii, spacing, typography } from "../tokens";
 
 /* ------------------------------- Card ----------------------------------- */
 
@@ -19,9 +19,10 @@ export function Card({ children, title, style }: CardProps) {
       style={{
         position: "relative",
         overflow: "hidden",
-        background: colors.surface,
+        background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 28%, ${colors.surface}) 100%)`,
         border: `1px solid ${colors.border}`,
         borderRadius: radii.lg,
+        boxShadow: elevation.floating,
         ...style,
       }}
     >
@@ -35,7 +36,7 @@ export function Card({ children, title, style }: CardProps) {
           right: 0,
           height: 1,
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(47,129,247,0.5) 50%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-accent) 50%, transparent) 50%, transparent 100%)",
           opacity: 0.5,
         }}
       />
@@ -79,6 +80,8 @@ export function Input({ placeholder, value, onChange, style }: InputProps) {
       placeholder={placeholder}
       value={value}
       onChange={(e) => onChange?.(e.target.value)}
+      onFocus={(e) => { e.currentTarget.style.borderColor = colors.accent; e.currentTarget.style.boxShadow = elevation.focus; }}
+      onBlur={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.boxShadow = "none"; }}
       style={{
         fontFamily: typography.family.ui,
         fontSize: typography.size.sm,

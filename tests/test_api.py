@@ -35,6 +35,26 @@ def test_health_endpoint(client: TestClient) -> None:
     assert "cases" in body["components"]
 
 
+@pytest.mark.asyncio
+async def test_health_marks_components_as_error_when_checks_fail() -> None:
+    """Falhas isoladas de engine não podem derrubar o endpoint de saúde."""
+    from edysiem.api.routes.health import health
+
+    class FailingEngine:
+        async def health_check(self) -> dict[str, str]:
+            raise RuntimeError("engine unavailable")
+
+    class FailingContainer:
+        enrichment = FailingEngine()
+        correlation = FailingEngine()
+        detection = type("Detection", (), {"rule_engine": FailingEngine()})()
+
+    response = await health(FailingContainer())  # type: ignore[arg-type]
+    assert response.components["enrichment"].status == "error"
+    assert response.components["correlation"].status == "error"
+    assert response.components["detection"].status == "error"
+
+
 def test_metrics_endpoint(client: TestClient) -> None:
     r = client.get("/api/v1/metrics")
     assert r.status_code == 200

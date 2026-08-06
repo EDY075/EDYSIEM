@@ -32,11 +32,11 @@ export function Timeline({ items }: TimelineProps) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, border: `2px solid ${colors.surface}` }} />
               {i < items.length - 1 && (
-                <div style={{ width: 2, flex: 1, minHeight: 24, background: colors.border }} />
+                <div style={{ width: 2, flex: 1, minHeight: 24, background: `linear-gradient(${colors.border}, ${colors.borderSubtle})` }} />
               )}
             </div>
             {/* content */}
-            <div style={{ paddingBottom: spacing["4"], flex: 1 }}>
+            <div style={{ padding: `0 0 ${spacing["4"]} ${spacing["2"]}`, flex: 1, borderBottom: i < items.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ fontSize: typography.size.sm, fontWeight: typography.weight.medium, color: colors.textPrimary }}>
                   {item.icon && <span style={{ marginRight: 4 }}>{item.icon}</span>}

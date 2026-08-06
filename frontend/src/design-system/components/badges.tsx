@@ -25,8 +25,8 @@ export function SeverityBadge({ severity, children, style }: SeverityBadgeProps)
         padding: `${spacing["1"]} ${spacing["2"]}`,
         borderRadius: radii.full,
         color,
-        background: `${color}1f`,
-        border: `1px solid ${color}40`,
+        background: `color-mix(in srgb, ${color} 14%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${color} 34%, transparent)`,
         textTransform: "uppercase",
         letterSpacing: "0.04em",
         whiteSpace: "nowrap",
@@ -71,7 +71,7 @@ export function StatusBadge({ tone = "neutral", children, style }: StatusBadgePr
         ...style,
       }}
     >
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, display: "inline-block" }} />
+      <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, display: "inline-block", boxShadow: `0 0 0 3px color-mix(in srgb, ${color} 12%, transparent)` }} />
       {children}
     </span>
   );

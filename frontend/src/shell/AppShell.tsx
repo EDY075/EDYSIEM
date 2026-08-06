@@ -3,7 +3,7 @@
  * Shell de 3 zonas: Sidebar + (Topbar + Conteúdo) + Footer.
  * Responsivo: sidebar colapsa em telas pequenas. Rota aninhada via <Outlet/>.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { colors } from "../design-system";
 import { Sidebar } from "./Sidebar";
@@ -12,11 +12,33 @@ import { Footer } from "./Footer";
 import { LiveOperationsBar } from "./LiveOperationsBar";
 
 export function AppShell() {
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia("(max-width: 768px)").matches);
+  const [sidebarVisible, setSidebarVisible] = useState(() => !window.matchMedia("(max-width: 768px)").matches);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 768px)");
+    const syncViewport = () => {
+      setIsMobile(query.matches);
+      setSidebarVisible(!query.matches);
+    };
+    query.addEventListener("change", syncViewport);
+    return () => query.removeEventListener("change", syncViewport);
+  }, []);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      {sidebarVisible && <Sidebar />}
+      {sidebarVisible && (
+        <div
+          style={isMobile ? {
+            position: "fixed",
+            inset: "0 auto 0 0",
+            zIndex: 700,
+            boxShadow: "16px 0 36px rgba(4, 10, 18, 0.28)",
+          } : undefined}
+        >
+          <Sidebar />
+        </div>
+      )}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Topbar />
         <LiveOperationsBar />
@@ -30,11 +52,12 @@ export function AppShell() {
       <button
         onClick={() => setSidebarVisible((v) => !v)}
         data-floating
+        aria-label={sidebarVisible ? "Fechar navegação" : "Abrir navegação"}
         style={{
           position: "fixed",
           left: 8,
           bottom: 8,
-          zIndex: 500,
+          zIndex: 800,
           background: colors.surfaceAlt,
           color: colors.textPrimary,
           border: `1px solid ${colors.border}`,
@@ -43,7 +66,7 @@ export function AppShell() {
           cursor: "pointer",
         }}
       >
-        \u2630
+        {sidebarVisible ? "×" : "☰"}
       </button>
 
       <style>{`

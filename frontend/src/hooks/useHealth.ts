@@ -30,6 +30,7 @@ export function useHealth() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -50,6 +51,7 @@ export function useHealth() {
           storage: components.storage?.status || "online",
           api: components.api?.status || "online",
         });
+        setLastUpdated(new Date());
       } else {
         setError(response.error?.message || "Failed to fetch health");
       }
@@ -64,5 +66,5 @@ export function useHealth() {
     fetchHealth();
   }, [fetchHealth]);
 
-  return { health, loading, error, refetch: fetchHealth };
+  return { health, loading, error, lastUpdated, refetch: fetchHealth };
 }

@@ -1,23 +1,17 @@
-/**
- * Case Management UI (Sprint 2.16 WP3) â€” dados reais.
- * Lista de casos + painel de detalhe (timeline, evidÃªncias, investigaÃ§Ã£o) +
- * aÃ§Ãµes: comentar, anexar evidÃªncia, resolver e encerrar.
- */
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { colors, radii, spacing, typography } from "../design-system/tokens";
 import { Button } from "../design-system";
-import { MetricCard } from "../design-system/components/cards";
-import { StatusBadge } from "../design-system/components/badges";
-import { Toolbar, EmptyState, LoadingSkeleton } from "../design-system/components/feedback";
-import { Breadcrumb } from "../shell/Breadcrumb";
+import { SeverityBadge, StatusBadge } from "../design-system/components/badges";
+import { EmptyState, LoadingSkeleton } from "../design-system/components/feedback";
 import { useCases } from "../hooks";
 import type { Case } from "../hooks/useCases";
 import { apiClient } from "../api/client";
 import { useToast } from "../state/toast";
+import type { SeverityColor } from "../design-system/tokens/colors";
 
-interface Investigate {
-  related_alerts: unknown[];
+interface CaseInvestigation {
+  related_alerts: { alert_id: string; title: string; severity: string; risk_score: number }[];
   iocs: string[];
   assets: string[];
   users: string[];
@@ -26,145 +20,83 @@ interface Investigate {
   evidence: { kind: string; value: string; label: string }[];
 }
 
-const fmt = (iso: string) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "â€”");
+const toSeverity = (value: string): SeverityColor => value === "critical" ? "critical" : value === "high" ? "high" : value === "medium" ? "medium" : value === "low" ? "low" : "info";
+const statusTone = (value: string) => value === "closed" || value === "resolved" ? "online" as const : value === "on_hold" ? "degraded" as const : "neutral" as const;
+const formatDate = (value: string) => value ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export function CaseCenterPage() {
   const { cases, loading, error, refetch } = useCases(100);
+  const { toast } = useToast();
   const [selected, setSelected] = useState<Case | null>(null);
-  const [inv, setInv] = useState<Investigate | null>(null);
-  const [invLoading, setInvLoading] = useState(false);
+  const [details, setDetails] = useState<CaseInvestigation | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
   const [comment, setComment] = useState("");
   const [evidence, setEvidence] = useState("");
+  const [owner, setOwner] = useState("");
   const [busy, setBusy] = useState(false);
-  const { toast } = useToast();
 
-  async function loadInvestigation(c: Case) {
-    setSelected(c);
-    setInvLoading(true);
-    setInv(null);
-    const r = await apiClient.get<Investigate>(`/soc/cases/${c.id}/investigate`);
-    if (r.success && r.data) setInv(r.data);
-    setInvLoading(false);
-  }
+  useEffect(() => { if (!selected && cases[0]) setSelected(cases[0]); }, [cases, selected]);
+  useEffect(() => { setOwner(selected?.owner ?? ""); }, [selected]);
+  useEffect(() => {
+    if (!selected) return;
+    let alive = true;
+    setDetailsLoading(true); setDetails(null);
+    apiClient.get<CaseInvestigation>(`/soc/cases/${selected.id}/investigate`).then((response) => { if (alive && response.success && response.data) setDetails(response.data); if (alive) setDetailsLoading(false); });
+    return () => { alive = false; };
+  }, [selected]);
 
-async function doPost(path: string, params: Record<string, string>) {
+  const filteredCases = useMemo(() => cases.filter((item) => {
+    const matchesQuery = `${item.id} ${item.title} ${item.owner} ${item.priority}`.toLowerCase().includes(query.toLowerCase().trim());
+    const matchesStatus = status === "all" || item.status === status;
+    return matchesQuery && matchesStatus;
+  }), [cases, query, status]);
+  const openCount = cases.filter((item) => !["resolved", "closed"].includes(item.status)).length;
+  const highPriority = cases.filter((item) => ["critical", "high"].includes(item.severity)).length;
+
+  const post = async (path: string, params: Record<string, string>) => {
+    if (!selected) return;
     setBusy(true);
-    const res = await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
-    if (res.success) toast("Operação realizada", "success");
-    else toast("Falha na operação", "error");
-    const r = await apiClient.get<Investigate>(`/soc/cases/${selected?.id}/investigate`);
-    if (r.success && r.data) setInv(r.data);
-    refetch();
+    const result = await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
+    if (result.success) { toast("Atualização registrada", "success"); refetch(); const updated = await apiClient.get<CaseInvestigation>(`/soc/cases/${selected.id}/investigate`); if (updated.success && updated.data) setDetails(updated.data); }
+    else toast(result.error?.message || "Não foi possível concluir a ação", "error");
     setBusy(false);
-  }
+  };
 
-  const addComment = () => { if (selected && comment) { doPost(`/soc/cases/${selected.id}/comment`, { body: comment, author: "analista.soc" }); setComment(""); } };
-  const addEvidence = () => { if (selected && evidence) { doPost(`/soc/cases/${selected.id}/evidence`, { kind: "ioc", value: evidence }); setEvidence(""); } };
-
-  return (
-    <div style={{ display: "flex", height: "100vh", background: colors.background }} className="cl-center">
-      <div style={{ width: 420, borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", minWidth: 320 }}>
-        <div style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.border}`, background: colors.surface }}>
-          <Breadcrumb items={[{ label: "Dashboard", to: "/" }, { label: "Cases", to: "/cases" }]} />
-          <h1 style={{ margin: "6px 0 0", fontSize: typography.size["2xl"], color: colors.textPrimary }}>Case Management</h1>
-        </div>
-        <div style={{ padding: spacing["3"] }}>
-          <Toolbar left={<span style={{ fontSize: typography.size.sm, color: colors.textMuted }}>{cases.length} casos</span>} right={<Button variant="ghost" onClick={refetch}>â†»</Button>} />
-        </div>
-        <div style={{ flex: 1, overflow: "auto", padding: `0 ${spacing["3"]} ${spacing["3"]}`, display: "flex", flexDirection: "column", gap: 8 }}>
-          {loading ? <LoadingSkeleton rows={6} /> : error ? (
-            <EmptyState title="Casos indisponÃ­veis" description={error} onRetry={refetch} />
-          ) : cases.length === 0 ? (
-            <EmptyState title="Sem casos" description="Execute o fluxo SOC para gerar casos." />
-          ) : cases.map((c) => (
-            <button key={c.id} onClick={() => loadInvestigation(c)} style={{ textAlign: "left", padding: spacing["3"], background: selected?.id === c.id ? colors.surfaceAlt : colors.surface, border: `1px solid ${selected?.id === c.id ? colors.accent : colors.border}`, borderRadius: radii.md, cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 600, color: colors.textPrimary, fontSize: typography.size.sm }}>{c.title}</span>
-                <StatusBadge tone="neutral">{c.statusLabel}</StatusBadge>
-              </div>
-              <div style={{ marginTop: 6, fontSize: typography.size.xs, color: colors.textMuted }}>
-                {c.id} â€¢ evid:{c.evidenceCount} Â· com:{c.commentsCount} Â· {c.owner || "sem owner"}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ flex: 1, overflow: "auto", padding: spacing["4"] }}>
-        {!selected ? (
-          <EmptyState title="Selecione um caso" description="Escolha um caso Ã  esquerda para visualizar timeline, evidÃªncias, IOCs, MITRE e histÃ³rico." icon="â–¤" />
-        ) : invLoading ? (
-          <LoadingSkeleton rows={10} variant="card" />
-        ) : (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: spacing["4"] }}>
-              <div>
-                <h2 style={{ margin: 0, color: colors.textPrimary }}>{selected.title}</h2>
-                <div style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
-                  {selected.id} Â· {selected.statusLabel} Â· severity {selected.severity} Â· {selected.resolution ? `resoluÃ§Ã£o: ${selected.resolution}` : "sem resoluÃ§Ã£o"}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Button variant="secondary" disabled={busy} onClick={() => selected && doPost(`/soc/cases/${selected.id}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button>
-                <Button variant="danger" disabled={busy} onClick={() => selected && doPost(`/soc/cases/${selected.id}/close`, { resolution: "encerrado" })}>Encerrar</Button>
-              </div>
-            </div>
-
-            {/* ComentÃ¡rio + evidÃªncia */}
-            <div style={{ display: "flex", gap: 8, marginBottom: spacing["4"] }}>
-              <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Novo comentÃ¡rio..." style={inputStyle} />
-              <Button variant="primary" disabled={busy || !comment} onClick={addComment}>Comentar</Button>
-              <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="EvidÃªncia (IOC/IP)â€¦" style={inputStyle} />
-              <Button variant="secondary" disabled={busy || !evidence} onClick={addEvidence}>Anexar evidÃªncia</Button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing["4"] }}>
-              <MetricCard title="Timeline">
-                {inv?.timeline?.length ? inv.timeline.map((t, i) => (
-                  <div key={i} style={{ padding: `6px 0`, borderBottom: `1px solid ${colors.borderSubtle}`, fontSize: typography.size.sm }}>
-                    <span style={{ color: colors.textMuted, fontSize: 11, fontFamily: typography.family.mono }}>{fmt(t.created_at)}</span>{" "}
-                    <span style={{ color: colors.accent }}>[{t.action}]</span>
-                    <div style={{ color: colors.textSecondary }}>{t.detail || t.actor}</div>
-                  </div>
-                )) : <div style={{ color: colors.textMuted }}>Sem eventos.</div>}
-              </MetricCard>
-              <div style={{ display: "flex", flexDirection: "column", gap: spacing["4"] }}>
-                <MetricCard title={`EvidÃªncias (${inv?.evidence.length || 0})`}>
-                  {inv?.evidence.length ? inv.evidence.map((e, i) => (
-                    <div key={i} style={{ fontSize: typography.size.sm, padding: `4px 0` }}>
-                      <span style={{ color: colors.textMuted }}>{e.kind}: </span>
-                      <span style={{ fontFamily: typography.family.mono, color: colors.textPrimary }}>{e.value}</span>
-                    </div>
-                  )) : <div style={{ color: colors.textMuted }}>Nenhuma evidÃªncia.</div>}
-                </MetricCard>
-                <MetricCard title="Contexto da investigaÃ§Ã£o">
-                  <Detail label="IOC" value={inv?.iocs.length || 0} />
-                  <Detail label="MITRE" value={inv?.mitre.length || 0} />
-                  <Detail label="Assets" value={inv?.assets.length || 0} />
-                  <Detail label="UsuÃ¡rios" value={inv?.users.length || 0} />
-                </MetricCard>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <style>{`.cl-center { }
-@media (max-width: 1100px) { .cl-center { flex-direction: column; } .cl-center>div:first-child { width: 100% !important; } }`}</style>
+  return <div style={{ display: "flex", flexDirection: "column", gap: spacing["4"] }}>
+    <header style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: spacing["4"], flexWrap: "wrap" }}><div><div style={eyebrow}>RESPONSE OPERATIONS</div><h1 style={pageTitle}>Central de cases</h1><p style={pageSubtitle}>Fila, ownership e evidências em uma única superfície operacional.</p></div><Button variant="ghost" onClick={refetch}>Atualizar fila</Button></header>
+    <section className="case-summary" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: spacing["3"] }}>
+      <Metric label="Casos na fila" value={cases.length} color={colors.accent} />
+      <Metric label="Em tratamento" value={openCount} color={colors.severity.medium} />
+      <Metric label="Prioridade alta" value={highPriority} color={colors.severity.critical} />
+      <Metric label="Artefatos" value={cases.reduce((total, item) => total + item.evidenceCount + item.attachmentsCount, 0)} color={colors.status.online} />
+    </section>
+    <div className="cases-workspace" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.15fr) minmax(390px, .85fr)", overflow: "hidden", border: `1px solid ${colors.border}`, borderRadius: radii.xl, background: colors.surface }}>
+      <section style={{ minWidth: 0, borderRight: `1px solid ${colors.border}` }}>
+        <div style={{ display: "flex", gap: spacing["2"], padding: spacing["3"], borderBottom: `1px solid ${colors.borderSubtle}` }}><input aria-label="Buscar cases" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar ID, título ou owner…" style={inputStyle} /><select aria-label="Filtrar status dos cases" value={status} onChange={(event) => setStatus(event.target.value)} style={{ ...inputStyle, flex: "0 0 136px" }}><option value="all">Todos</option><option value="open">Abertos</option><option value="in_progress">Em tratamento</option><option value="on_hold">Em espera</option><option value="resolved">Resolvidos</option><option value="closed">Encerrados</option></select></div>
+        <div style={{ overflowX: "auto" }}><table style={{ width: "100%", minWidth: 650, borderCollapse: "collapse" }}><thead><tr>{["Case", "Prioridade", "Owner", "Artefatos", "Status"].map((label) => <th key={label} style={{ padding: "11px 14px", borderBottom: `1px solid ${colors.border}`, color: colors.textMuted, fontSize: 10, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: typography.weight.semibold }}>{label}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={5} style={{ padding: spacing["4"] }}><LoadingSkeleton rows={5} /></td></tr> : error ? <tr><td colSpan={5}><EmptyState compact title="Fila indisponível" description={error} onRetry={refetch} /></td></tr> : filteredCases.length === 0 ? <tr><td colSpan={5}><EmptyState compact title="Nenhum case encontrado" description="Altere os filtros para revisar a fila." /></td></tr> : filteredCases.map((item) => <tr key={item.id} onClick={() => setSelected(item)} className="case-row" style={{ cursor: "pointer", background: selected?.id === item.id ? "color-mix(in srgb, var(--color-accent) 8%, transparent)" : "transparent", transition: "background 140ms ease" }}><td style={cellStyle}><span style={{ display: "block", color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{item.id}</span><strong style={{ display: "block", marginTop: 4, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: colors.textPrimary, fontSize: typography.size.sm }}>{item.title}</strong></td><td style={cellStyle}><SeverityBadge severity={toSeverity(item.severity)}>{item.priority}</SeverityBadge></td><td style={cellStyle}><span style={{ color: item.owner ? colors.textSecondary : colors.textMuted, fontSize: typography.size.xs }}>{item.owner || "Não atribuído"}</span></td><td style={cellStyle}><span style={{ color: colors.textSecondary, fontFamily: typography.family.mono, fontSize: typography.size.xs }}>{item.evidenceCount} ev. · {item.attachmentsCount} arq.</span></td><td style={cellStyle}><StatusBadge tone={statusTone(item.status)}>{item.statusLabel}</StatusBadge></td></tr>)}</tbody></table></div>
+      </section>
+      <section className="case-detail" style={{ minWidth: 0, display: "flex", flexDirection: "column", background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.background} 42%, ${colors.surface}) 100%)` }}>
+        {!selected ? <EmptyState title="Selecione um case" description="Escolha um item na fila para abrir o contexto operacional." /> : <>
+          <header style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.borderSubtle}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: spacing["3"] }}><div><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selected.id}</span><h2 style={{ margin: "5px 0", color: colors.textPrimary, fontSize: typography.size.lg }}>{selected.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>{selected.statusLabel} · criado {formatDate(selected.createdAt)}</span></div><SeverityBadge severity={toSeverity(selected.severity)}>{selected.severity}</SeverityBadge></div><div className="case-actions" style={{ display: "flex", gap: 8, marginTop: spacing["3"], flexWrap: "wrap" }}><Button variant="secondary" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button><Button variant="danger" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/close`, { resolution: "encerrado pelo SOC" })}>Encerrar</Button></div></header>
+          {detailsLoading ? <div style={{ padding: spacing["4"] }}><LoadingSkeleton rows={8} /></div> : <div style={{ padding: spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: spacing["4"] }}>
+            <section style={detailPanel}><PanelHeader title="Ownership" subtitle="Responsável e prioridade operacional" /><div style={{ display: "flex", gap: 8 }}><input aria-label="Responsável do case" value={owner} onChange={(event) => setOwner(event.target.value)} placeholder="analyst@edy" style={inputStyle} /><Button variant="secondary" disabled={busy || !owner.trim()} onClick={() => post(`/soc/cases/${selected.id}/assign`, { owner: owner.trim() })}>Atribuir</Button></div></section>
+            <section style={detailPanel}><PanelHeader title="Registrar atividade" subtitle="Comentários e evidências entram na timeline do case" /><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 8 }}><input aria-label="Comentário do case" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Adicionar comentário operacional…" style={inputStyle} /><Button variant="primary" disabled={busy || !comment.trim()} onClick={() => { post(`/soc/cases/${selected.id}/comment`, { body: comment.trim(), author: "analyst@edy" }); setComment(""); }}>Comentar</Button></div><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><input aria-label="Evidência do case" value={evidence} onChange={(event) => setEvidence(event.target.value)} placeholder="IOC, IP ou artefato…" style={inputStyle} /><Button variant="secondary" disabled={busy || !evidence.trim()} onClick={() => { post(`/soc/cases/${selected.id}/evidence`, { kind: "ioc", value: evidence.trim() }); setEvidence(""); }}>Anexar</Button></div></section>
+            <div className="case-context-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(180px,.7fr)", gap: spacing["3"] }}><section style={detailPanel}><PanelHeader title="Timeline" subtitle={`${details?.timeline.length ?? 0} eventos registrados`} />{details?.timeline?.length ? <div>{details.timeline.map((item, index) => <div key={`${item.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 8, padding: "8px 0", borderBottom: index < details.timeline.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{formatDate(item.created_at)}</span><span><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.xs }}>{item.action}</strong><span style={{ display: "block", marginTop: 2, color: colors.textSecondary, fontSize: typography.size.xs }}>{item.detail || item.actor}</span></span></div>)}</div> : <EmptyState compact title="Sem atividade" description="Comentários e ações aparecerão aqui." />}</section><section style={detailPanel}><PanelHeader title="Artefatos" subtitle={`${details?.evidence.length ?? 0} evidências`} />{details?.evidence?.length ? details.evidence.map((item, index) => <div key={`${item.value}-${index}`} style={{ marginBottom: 8 }}><span style={{ display: "block", color: colors.textMuted, fontSize: 10, textTransform: "uppercase" }}>{item.kind}</span><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: 10 }}>{item.value}</span></div>) : <span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Nenhuma evidência.</span>}</section></div>
+          </div>}
+        </>}
+      </section>
     </div>
-  );
+    <style>{`.case-row:hover { background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important; } @media (max-width: 1120px) { .cases-workspace { grid-template-columns:1fr !important; } .cases-workspace > section:first-child { border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } } @media (max-width: 680px) { .case-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .case-context-grid { grid-template-columns:1fr !important; } .case-actions > button { flex:1; } }`}</style>
+  </div>;
 }
 
-const inputStyle: CSSProperties = {
-  flex: 1, minWidth: 120, padding: "8px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md,
-  background: colors.surface, color: colors.textPrimary, fontFamily: typography.family.ui, fontSize: typography.size.sm,
-};
-
-function Detail({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: typography.size.sm, padding: "4px 0" }}>
-      <span style={{ color: colors.textMuted }}>{label}</span>
-      <span style={{ color: colors.textPrimary, fontWeight: 600 }}>{value}</span>
-    </div>
-  );
-}
+function Metric({ label, value, color }: { label: string; value: number; color: string }) { return <div style={{ padding: spacing["3"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: `linear-gradient(145deg, color-mix(in srgb, ${color} 8%, ${colors.surface}) 0%, ${colors.surface} 70%)`, borderTop: `2px solid ${color}` }}><strong style={{ color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: typography.size.xl }}>{value}</strong><span style={{ display: "block", marginTop: 4, color: colors.textMuted, fontSize: typography.size.xs }}>{label}</span></div>; }
+function PanelHeader({ title, subtitle }: { title: string; subtitle: string }) { return <header style={{ marginBottom: spacing["3"] }}><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.sm }}>{title}</strong><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{subtitle}</span></header>; }
+const eyebrow: CSSProperties = { color: colors.accentHover, fontSize: 10, fontWeight: typography.weight.semibold, letterSpacing: "0.12em" };
+const pageTitle: CSSProperties = { margin: "6px 0 3px", color: colors.textPrimary, fontSize: typography.size["2xl"], letterSpacing: "-0.035em" };
+const pageSubtitle: CSSProperties = { margin: 0, color: colors.textMuted, fontSize: typography.size.sm };
+const inputStyle: CSSProperties = { flex: 1, minWidth: 0, padding: "9px 10px", border: `1px solid ${colors.border}`, borderRadius: radii.md, outline: "none", background: colors.background, color: colors.textPrimary, fontFamily: typography.family.ui, fontSize: typography.size.xs };
+const cellStyle: CSSProperties = { padding: "12px 14px", borderBottom: `1px solid ${colors.borderSubtle}`, verticalAlign: "middle" };
+const detailPanel: CSSProperties = { padding: spacing["3"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface };

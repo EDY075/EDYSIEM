@@ -1,75 +1,41 @@
-/**
- * Topbar (UI 3.3 / polish 6.0 — Enterprise)
- * Barra superior: Breadcrumb dinâmico por rota + Global Search + Theme Switch + Notificações + User.
- * Polish 6.0: breadcrumb reativo à rota, sombra de elevação sutil,
- * ações com hover/focus ring e hierarquia visual mais limpa.
- */
 import { useLocation } from "react-router-dom";
-import { colors, spacing } from "../design-system/tokens";
+import { colors, spacing, typography } from "../design-system/tokens";
 import { Breadcrumb, Crumb } from "./Breadcrumb";
 import { GlobalSearch } from "./GlobalSearch";
-import { UserMenu, Notifications } from "./UserMenu";
+import { Notifications, UserMenu } from "./UserMenu";
 import { ThemeSwitch } from "./ThemeSwitch";
 
-const CRUMB_MAP: Record<string, Crumb[]> = {
+const crumbs: Record<string, Crumb[]> = {
   "/": [{ label: "Overview" }],
-  "/war-room": [{ label: "Overview", to: "/" }, { label: "War Room" }],
-  "/triage": [{ label: "Overview", to: "/" }, { label: "Triage" }],
-  "/alerts": [{ label: "Overview", to: "/" }, { label: "Alertas" }],
-  "/incidents": [{ label: "Overview", to: "/" }, { label: "Incidentes" }],
-  "/investigate": [{ label: "Overview", to: "/" }, { label: "Investigar" }],
+  "/war-room": [{ label: "Operação", to: "/" }, { label: "War Room" }],
+  "/triage": [{ label: "Operação", to: "/" }, { label: "Triage" }],
+  "/alerts": [{ label: "Operação", to: "/" }, { label: "Alertas" }],
+  "/incidents": [{ label: "Operação", to: "/" }, { label: "Incidentes" }],
+  "/investigate": [{ label: "Operação", to: "/" }, { label: "Investigar" }],
   "/cases": [{ label: "Resposta", to: "/" }, { label: "Cases" }],
   "/playbooks": [{ label: "Resposta", to: "/" }, { label: "Playbooks" }],
-  "/rules": [{ label: "Gestão", to: "/" }, { label: "Regras" }],
-  "/intel": [{ label: "Gestão", to: "/" }, { label: "Intelligence" }],
-  "/settings": [{ label: "Gestão", to: "/" }, { label: "Configuração" }],
+  "/rules": [{ label: "Detecção", to: "/" }, { label: "Regras" }],
+  "/intel": [{ label: "Detecção", to: "/" }, { label: "Intelligence" }],
+  "/settings": [{ label: "Administração", to: "/" }, { label: "Configurações" }],
 };
 
 export function Topbar() {
-  const { pathname } = useLocation();
-  const crumbs = CRUMB_MAP[pathname] ?? [{ label: "Overview" }];
+  const location = useLocation();
+  const currentCrumbs = crumbs[location.pathname] ?? [{ label: "Overview" }];
 
-  return (
-    <header
-      style={{
-        height: 56,
-        background: colors.surface,
-        borderBottom: `1px solid ${colors.border}`,
-        boxShadow: "0 1px 0 rgba(0,0,0,0.15)",
-        display: "flex",
-        alignItems: "center",
-        gap: spacing["4"],
-        padding: `0 ${spacing["4"]}`,
-        position: "sticky",
-        top: 0,
-        zIndex: 200,
-      }}
-    >
-      <div style={{ flex: "0 0 auto", minWidth: 0 }}>
-        <Breadcrumb items={crumbs} />
-      </div>
-
-      <div style={{ flex: 1, maxWidth: 460, marginLeft: spacing["2"] }}>
-        <GlobalSearch />
-      </div>
-
-      <div
-        style={{
-          flex: "0 0 auto",
-          display: "flex",
-          alignItems: "center",
-          gap: spacing["1"],
-          marginLeft: "auto",
-          paddingLeft: spacing["3"],
-          borderLeft: `1px solid ${colors.borderSubtle}`,
-        }}
-      >
-        <ThemeSwitch />
-        <Notifications />
-        <div style={{ marginLeft: spacing["1"] }}>
-          <UserMenu />
-        </div>
-      </div>
-    </header>
-  );
+  return <header className="edy-topbar" style={{ minHeight: 72, display: "flex", alignItems: "center", gap: spacing["4"], padding: `0 ${spacing["5"]}`, position: "sticky", top: 0, zIndex: 200, borderBottom: `1px solid ${colors.border}`, background: `linear-gradient(90deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 45%, ${colors.surface}) 100%)`, boxShadow: "0 8px 24px color-mix(in srgb, var(--color-text-primary) 6%, transparent)" }}>
+    <div className="workspace-context" style={{ minWidth: 184, paddingRight: spacing["4"], borderRight: `1px solid ${colors.borderSubtle}` }}>
+      <div style={{ color: colors.textMuted, fontSize: 10, fontWeight: typography.weight.semibold, letterSpacing: "0.12em" }}>WORKSPACE</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}><span style={{ color: colors.textPrimary, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, letterSpacing: "0.02em" }}>EDY / PRIMARY SOC</span><span aria-label="Online" style={{ width: 7, height: 7, borderRadius: "50%", background: colors.status.online, boxShadow: `0 0 0 3px color-mix(in srgb, ${colors.status.online} 13%, transparent)` }} /></div>
+      <div className="workspace-breadcrumb" style={{ marginTop: 4 }}><Breadcrumb items={currentCrumbs} /></div>
+    </div>
+    <div className="edy-topbar-search" style={{ flex: 1, maxWidth: 620, minWidth: 220 }}><GlobalSearch /></div>
+    <div className="edy-topbar-actions" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: spacing["2"] }}>
+      <span className="header-mode-label" style={{ color: colors.textMuted, paddingRight: spacing["2"], borderRight: `1px solid ${colors.borderSubtle}`, fontFamily: typography.family.mono, fontSize: 10, letterSpacing: "0.07em" }}>SOC · LIVE</span>
+      <ThemeSwitch />
+      <Notifications />
+      <UserMenu />
+    </div>
+    <style>{`@media (max-width: 980px) { .workspace-context { min-width: 150px !important; padding-right: 12px !important; } .workspace-context > div:nth-child(2) > span:nth-child(1) { font-size: 11px !important; } .header-mode-label { display: none; } } @media (max-width: 720px) { .edy-topbar { min-height: 58px !important; gap: 8px !important; padding: 0 12px !important; } .workspace-context { min-width: 82px !important; border-right: 0 !important; padding-right: 0 !important; } .workspace-context > div:first-child, .workspace-breadcrumb, .edy-topbar-search { display: none !important; } .workspace-context > div:nth-child(2) > span:nth-child(1) { font-size: 10px !important; } .edy-topbar-actions { gap: 5px !important; } [data-user-label] { display: none !important; } }`}</style>
+  </header>;
 }

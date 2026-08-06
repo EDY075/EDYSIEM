@@ -10,6 +10,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { colors, motion, spacing, typography, radii } from "../design-system";
+import { BrandMark } from "../design-system/components/BrandMark";
 
 type IconName = "overview" | "warroom" | "triage" | "alerts" | "incidents" | "investigate" | "cases" | "playbooks" | "rules" | "intel" | "settings";
 
@@ -47,12 +48,15 @@ const sections: NavSection[] = [
     ],
   },
   {
-    label: "Gestão",
+    label: "Detecção",
     items: [
       { to: "/rules", label: "Regras", icon: "rules" },
       { to: "/intel", label: "Intelligence", icon: "intel" },
-      { to: "/settings", label: "Config", icon: "settings" },
     ],
+  },
+  {
+    label: "Administração",
+    items: [{ to: "/settings", label: "Configurações", icon: "settings" }],
   },
 ];
 
@@ -83,18 +87,17 @@ const COLLAPSED = 56;
 const EXPANDED = 240;
 
 const sidebarCss = `
-@keyframes luminaPulseSide {
-  0%, 100% { box-shadow: 0 0 4px currentColor; opacity: 0.65; }
-  50%      { box-shadow: 0 0 10px currentColor; opacity: 1; }
-}
 .lumina-nav {
   position: relative;
+  display: block;
+  text-decoration: none;
+  color: inherit;
   transition: background 140ms cubic-bezier(0.2, 0, 0, 1), color 140ms cubic-bezier(0.2, 0, 0, 1),
               transform 140ms cubic-bezier(0.2, 0, 0, 1), box-shadow 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 .lumina-nav:hover {
-  transform: translateX(2px);
-  background: rgba(47, 129, 247, 0.09) !important;
+  transform: translateX(1px);
+  background: color-mix(in srgb, var(--color-accent) 9%, transparent) !important;
 }
 .lumina-nav:hover .lumina-nav-icon {
   color: ${colors.accentHover};
@@ -103,57 +106,26 @@ const sidebarCss = `
   outline: 2px solid ${colors.focusRing};
   outline-offset: -2px;
 }
-.lumina-pulse-side { animation: luminaPulseSide 2s ease-in-out infinite; }
+.lumina-side-badge {
+  transition: box-shadow 140ms cubic-bezier(0.2, 0, 0, 1), transform 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+.lumina-nav:hover .lumina-side-badge { transform: translateY(-1px); }
 .lumina-sidebar-btn {
   transition: background 140ms cubic-bezier(0.2, 0, 0, 1), color 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 .lumina-sidebar-btn:hover {
-  background: rgba(47, 129, 247, 0.08);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
   color: ${colors.textPrimary};
 }
 .lumina-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .lumina-scroll::-webkit-scrollbar-thumb { background: ${colors.border}; border-radius: 3px; }
-.lumina-scroll::-webkit-scrollbar-thumb:hover { background: ${colors.textMuted}66; }
+.lumina-scroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, ${colors.textMuted} 40%, transparent); }
 .lumina-scroll::-webkit-scrollbar-track { background: transparent; }
 @media (prefers-reduced-motion: reduce) {
   .lumina-nav:hover { transform: none; }
-  .lumina-pulse-side { animation: none !important; }
+  .lumina-nav:hover .lumina-side-badge { transform: none; }
 }
 `;
-
-/** Marca SVG discreta (escudo) para o logo. */
-function ShieldMark({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      style={{ flex: "none" }}
-    >
-      <defs>
-        <linearGradient id="side-shield" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={colors.accent} />
-          <stop offset="100%" stopColor={colors.accentHover} />
-        </linearGradient>
-      </defs>
-      <path
-        d="M12 2.5 20 5.6v5.1c0 4.6-3.2 8.7-8 10.8-4.8-2.1-8-6.2-8-10.8V5.6L12 2.5Z"
-        stroke="url(#side-shield)"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m8.8 11.6 2.2 2.2 4.2-4.6"
-        stroke="url(#side-shield)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -162,7 +134,7 @@ export function Sidebar() {
     <aside
       style={{
         width: collapsed ? COLLAPSED : EXPANDED,
-        background: colors.surface,
+        background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 45%, ${colors.surface}) 100%)`,
         borderRight: `1px solid ${colors.border}`,
         transition: `width ${motion.transition.normal}`,
         overflow: "hidden",
@@ -189,22 +161,12 @@ export function Sidebar() {
           letterSpacing: collapsed ? "0.02em" : "0.04em",
           fontSize: collapsed ? 15 : 16,
           position: "relative",
-          minHeight: 56,
+          minHeight: 68,
         }}
       >
-        <ShieldMark />
+        <span style={{ color: colors.accent, display: "inline-flex" }}><BrandMark size={collapsed ? 16 : 20} /></span>
         {!collapsed && (
-          <span
-            style={{
-              backgroundImage: `linear-gradient(92deg, ${colors.accent} 0%, ${colors.accentHover} 100%)`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              color: "transparent",
-            }}
-          >
-            EDY SIEM
-          </span>
+          <span style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ color: colors.textPrimary, fontSize: 15, letterSpacing: "0.04em" }}>EDY SIEM</span><span style={{ color: colors.textMuted, fontSize: "9px", fontWeight: typography.weight.semibold, letterSpacing: "0.13em" }}>SECURITY OPERATIONS</span></span>
         )}
         <span
           aria-hidden
@@ -215,7 +177,7 @@ export function Sidebar() {
             right: 16,
             height: 1,
             background:
-              "linear-gradient(90deg, transparent, rgba(47,129,247,0.5), transparent)",
+              "linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-accent) 50%, transparent), transparent)",
             opacity: 0.6,
           }}
         />
@@ -223,18 +185,18 @@ export function Sidebar() {
 
       <nav
         className="lumina-scroll"
-        style={{ flex: 1, padding: collapsed ? spacing["2"] : "6px 8px", overflowY: "auto" }}
+        style={{ flex: 1, padding: collapsed ? spacing["2"] : "12px 10px", overflowY: "auto" }}
       >
         {sections.map((section) => (
-          <div key={section.label} style={{ marginBottom: collapsed ? spacing["3"] : 12 }}>
+          <div key={section.label} style={{ marginBottom: collapsed ? spacing["4"] : 22 }}>
             {!collapsed && (
               <div
                 style={{
-                  fontSize: typography.size.xs,
+                  fontSize: "10px",
                   color: colors.textMuted,
                   textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  padding: `8px ${spacing["2"]} 4px`,
+                  letterSpacing: "0.14em",
+                  padding: `12px ${spacing["2"]} 7px`,
                   fontWeight: typography.weight.semibold,
                 }}
               >
@@ -255,19 +217,19 @@ export function Sidebar() {
                       display: "flex",
                       alignItems: "center",
                       gap: spacing["3"],
-                      padding: collapsed ? `${spacing["2"]} 0` : `7px ${spacing["2"]}`,
+                      padding: collapsed ? `${spacing["2"]} 0` : `8px ${spacing["2"]}`,
                       justifyContent: collapsed ? "center" : "flex-start",
                       width: "100%",
-                      borderRadius: radii.md,
+                      borderRadius: radii.lg,
                       fontSize: typography.size.sm,
                       fontWeight: isActive ? typography.weight.semibold : typography.weight.regular,
                       color: isActive ? colors.accentHover : colors.textSecondary,
                       background: isActive
-                        ? `linear-gradient(90deg, rgba(47,129,247,0.16) 0%, rgba(47,129,247,0.05) 100%)`
+                        ? `linear-gradient(90deg, color-mix(in srgb, var(--color-accent) 14%, transparent) 0%, transparent 100%)`
                         : "transparent",
                       borderLeft: isActive ? `3px solid ${colors.accent}` : "3px solid transparent",
                       boxShadow: isActive
-                        ? `inset 0 0 0 1px rgba(47,129,247,0.18), 0 0 12px rgba(47,129,247,0.08)`
+                        ? `inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 26%, transparent), 0 5px 14px color-mix(in srgb, var(--color-accent) 11%, transparent)`
                         : "none",
                       whiteSpace: "nowrap",
                     }}
@@ -291,7 +253,8 @@ export function Sidebar() {
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           fontSize: typography.size.sm,
-                          letterSpacing: "0.01em",
+                          letterSpacing: "0.025em",
+                          textTransform: "none",
                         }}
                       >
                         {item.label}
@@ -299,30 +262,28 @@ export function Sidebar() {
                     )}
                     {item.badge && !collapsed && (
                       <span
-                        className={item.tone === "online" ? "lumina-pulse-side" : undefined}
+                        className="lumina-side-badge"
                         style={{
                           marginLeft: "auto",
                           flex: "none",
-                          fontSize: typography.size.xs,
+                          fontSize: "10px",
                           fontWeight: typography.weight.semibold,
                           padding: "1px 8px",
                           borderRadius: radii.full,
                           background:
                             item.tone === "online"
-                              ? "rgba(63,185,80,0.16)"
-                              : "rgba(248,81,73,0.16)",
+                              ? "color-mix(in srgb, var(--status-online) 14%, transparent)" : "color-mix(in srgb, var(--severity-critical) 14%, transparent)",
                           color:
                             item.tone === "online"
                               ? colors.status.online
                               : colors.severity.critical,
                           border:
                             item.tone === "online"
-                              ? `1px solid ${colors.status.online}55`
-                              : `1px solid ${colors.severity.critical}55`,
+                              ? "1px solid color-mix(in srgb, var(--status-online) 35%, transparent)"
+                              : "1px solid color-mix(in srgb, var(--severity-critical) 35%, transparent)",
                           boxShadow:
                             item.tone === "online"
-                              ? "0 0 8px rgba(63,185,80,0.35)"
-                              : "0 0 6px rgba(248,81,73,0.2)",
+                              ? "0 0 8px color-mix(in srgb, var(--status-online) 22%, transparent)" : "0 0 8px color-mix(in srgb, var(--severity-critical) 18%, transparent)",
                           fontFamily: typography.family.mono,
                         }}
                       >
@@ -339,7 +300,7 @@ export function Sidebar() {
 
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="lumina-sidebar-btn"
+        className="lumina-sidebar-btn" aria-label={collapsed ? "Expandir navegação" : "Colapsar navegação"}
         style={{
           padding: spacing["3"],
           background: "transparent",

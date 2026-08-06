@@ -20,27 +20,23 @@ interface LiveOpsData {
   openCases: number;
   ingestionStatus: "online" | "degraded" | "offline";
   dbStatus: "online" | "degraded" | "offline";
-  apiLatencyMs: number;
+  apiLatencyMs: number | null;
 }
 
 export function LiveOperationsBar() {
-  const { health, loading: healthLoading, error: healthError } = useHealth();
-  const { metrics, loading: metricsLoading, error: metricsError } = useMetrics("1h");
+  const { health, loading: healthLoading, error: healthError, lastUpdated: healthUpdatedAt } = useHealth();
+  const { metrics, loading: metricsLoading, error: metricsError, lastUpdated: metricsUpdatedAt } = useMetrics("1h");
 
-  const [internalLatency, setInternalLatency] = useState<number>(0);
+  const [localTime, setLocalTime] = useState(() => new Date());
 
-  // Simula latência de API (pois backend não retorna latência real em /metrics)
   useEffect(() => {
-    const timer = setInterval(() => {
-      const fakeLatency = Math.floor(Math.random() * 40 + 20); // 20-60ms
-      setInternalLatency(fakeLatency);
-    }, 5000);
-
-    return () => clearInterval(timer);
+    const clock = window.setInterval(() => setLocalTime(new Date()), 1000);
+    return () => window.clearInterval(clock);
   }, []);
 
   const isLoading = healthLoading || metricsLoading;
   const hasError = !!healthError || !!metricsError;
+  const lastResponseAt = [healthUpdatedAt, metricsUpdatedAt].filter((value): value is Date => value !== null).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 
   // Constrói dados a partir dos hooks conectados
   const data: LiveOpsData = {
@@ -50,7 +46,7 @@ export function LiveOperationsBar() {
     openCases: metrics.openCases || 0,
     ingestionStatus: health.ingestion as "online" | "degraded" | "offline",
     dbStatus: health.storage as "online" | "degraded" | "offline",
-    apiLatencyMs: internalLatency,
+    apiLatencyMs: null,
   };
 
   const statusColors = {
@@ -81,14 +77,14 @@ export function LiveOperationsBar() {
   return (
     <div
       style={{
-        background: colors.surfaceAlt,
+        background: `linear-gradient(90deg, color-mix(in srgb, ${colors.surfaceAlt} 86%, ${colors.surface}) 0%, ${colors.surfaceAlt} 100%)`,
         borderBottom: `1px solid ${colors.border}`,
-        padding: `${spacing["2"]} ${spacing["4"]}`,
+        padding: `${spacing["2"]} ${spacing["5"]}`,
         display: "flex",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
         flexWrap: "wrap",
-        minHeight: 40,
+        minHeight: 42,
         opacity: isLoading ? 0.7 : 1,
         transition: "opacity 0.2s ease",
       }}
@@ -101,8 +97,8 @@ export function LiveOperationsBar() {
           gap: spacing["2"],
           padding: "3px 10px",
           borderRadius: 9999,
-          background: `${statusColors[data.systemStatus]}18`,
-          border: `1px solid ${statusColors[data.systemStatus]}40`,
+          background: `color-mix(in srgb, ${statusColors[data.systemStatus]} 12%, transparent)`,
+          border: `1px solid color-mix(in srgb, ${statusColors[data.systemStatus]} 32%, transparent)`,
         }}
       >
         <span
@@ -111,7 +107,7 @@ export function LiveOperationsBar() {
             height: 7,
             borderRadius: "50%",
             background: statusColors[data.systemStatus],
-            boxShadow: `0 0 8px ${statusColors[data.systemStatus]}`,
+            boxShadow: `0 0 0 3px color-mix(in srgb, ${statusColors[data.systemStatus]} 12%, transparent)`,
             flex: "none",
           }}
         />
@@ -305,11 +301,11 @@ export function LiveOperationsBar() {
           style={{
             fontSize: typography.size.sm,
             fontWeight: typography.weight.semibold,
-            color: data.apiLatencyMs > 100 ? colors.severity.high : colors.textPrimary,
+            color: data.apiLatencyMs === null ? colors.textMuted : data.apiLatencyMs > 100 ? colors.severity.high : colors.textPrimary,
             fontFamily: typography.family.mono,
           }}
         >
-          {data.apiLatencyMs}ms
+          {data.apiLatencyMs === null ? "—" : `${data.apiLatencyMs}ms`}
         </span>
       </div>
 
@@ -319,7 +315,7 @@ export function LiveOperationsBar() {
             fontSize: typography.size.xs,
             color: colors.severity.medium,
             padding: "2px 8px",
-            background: colors.severity.medium + "20",
+            background: "color-mix(in srgb, var(--severity-medium) 14%, transparent)",
             borderRadius: 4,
           }}
           title={healthError || metricsError || ""}
@@ -331,9 +327,10 @@ export function LiveOperationsBar() {
       <div style={{ flex: 1 }} />
 
       {/* Última atualização */}
-      <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
-        Atualizado: {new Date().toLocaleTimeString()}
-      </span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, fontFamily: typography.family.mono, fontSize: typography.size.xs, color: colors.textMuted, whiteSpace: "nowrap" }}>
+        <span>Última resposta API: {lastResponseAt ? lastResponseAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }) : "—"}</span>
+        <span aria-live="off">Horário local: {localTime.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })}</span>
+      </div>
     </div>
   );
 }

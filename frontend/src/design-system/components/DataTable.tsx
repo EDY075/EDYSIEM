@@ -62,14 +62,15 @@ export function DataTable({
   }
 
   return (
-    <div style={{ overflowX: "auto", maxHeight: "65vh", overflowY: "auto", ...style }}>
+    <div style={{ overflowX: "auto", maxHeight: "65vh", overflowY: "auto", borderTop: `1px solid ${colors.borderSubtle}`, ...style }}>
       <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
         <thead>
           <tr>
-            {onToggleRow && <th style={{ width: 32, ...headCell }} />}
+            {onToggleRow && <th scope="col" style={{ width: 32, ...headCell }} />}
             {columns.map((c) => (
               <th
                 key={c.key}
+                scope="col"
                 onClick={c.sortable && onSort ? () => onSort(c.key) : undefined}
                 style={{
                   ...headCell,
@@ -96,19 +97,26 @@ export function DataTable({
                   height: rowHeight,
                   borderBottom: `1px solid ${colors.borderSubtle}`,
                   background: selected ? colors.accentSubtle : "transparent",
-                  transition: motion.transition.fast,
+                  transition: `background ${motion.transition.fast}, box-shadow ${motion.transition.fast}`,
                 }}
                 onMouseEnter={(e) => {
-                  if (!selected) e.currentTarget.style.background = colors.surfaceAlt;
+                  if (!selected) {
+                    e.currentTarget.style.background = `color-mix(in srgb, var(--color-accent) 4%, ${colors.surfaceAlt})`;
+                    e.currentTarget.style.boxShadow = `inset 2px 0 0 var(--color-accent)`;
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  if (!selected) e.currentTarget.style.background = "transparent";
+                  if (!selected) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.boxShadow = "none";
+                  }
                 }}
               >
                 {onToggleRow && (
                   <td style={{ ...cell }}>
                     <input
                       type="checkbox"
+                      aria-label={`Selecionar linha ${i + 1}`}
                       checked={selected}
                       onChange={() => onToggleRow(key)}
                     />
@@ -145,15 +153,17 @@ function cellValue(value: ReactNode): ReactNode {
 
 const headCell: CSSProperties = {
   textAlign: "left",
-  fontSize: typography.size.xs,
+  fontSize: "10px",
   fontWeight: typography.weight.semibold,
-  color: colors.textMuted,
-  padding: spacing["2"],
+  color: colors.textSubtle,
+  padding: `${spacing["3"]} ${spacing["3"]}`,
+  textTransform: "uppercase",
+  letterSpacing: "0.075em",
   borderBottom: `1px solid ${colors.border}`,
   whiteSpace: "nowrap",
   position: "sticky",
   top: 0,
-  background: colors.surface,
+  background: `color-mix(in srgb, ${colors.surfaceAlt} 52%, ${colors.surface})`,
   zIndex: 1,
 };
 

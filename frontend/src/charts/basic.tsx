@@ -1,9 +1,9 @@
 /**
  * Security Line Chart / Area Chart / Bar Chart (UI 3.5 / sprint 5.1.1)
  * Grid horizontal discreto, eixo X com intervalo (sem labels sobrepostas),
- * tooltip customizado com tipografia tÃ©cnica e leitura limpa.
+ * tooltip customizado com tipografia técnica e leitura limpa.
  *
- * Sprint 2.14 / WP5: legend interativa (clique alterna sÃ©ries) + estado vazio.
+ * Sprint 2.14 / WP5: legend interativa (clique alterna séries) + estado vazio.
  */
 import { useState } from "react";
 import { LineChart as RLineChart, Line, AreaChart as RAreaChart, Area, BarChart as RBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -16,9 +16,9 @@ const axisStyle = {
   fontFamily: typography.family.mono,
   fill: tokens.textMuted,
 };
-const gridStyle = { stroke: tokens.border, strokeDasharray: "4 4", strokeOpacity: 0.6, vertical: false };
+const gridStyle = { stroke: tokens.borderSubtle, strokeDasharray: "2 5", strokeOpacity: 0.82, vertical: false };
 
-/** Formata nÃºmero de forma compacta (12.4K, 3.1M). */
+/** Formata número de forma compacta (12.4K, 3.1M). */
 function fmt(n: number): string {
   if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (Math.abs(n) >= 1000) return (n / 1000).toFixed(1) + "K";
@@ -44,7 +44,7 @@ function ChartLegend({ series, hidden, onToggle }: ChartLegendProps) {
             type="button"
             onClick={() => onToggle(s.key)}
             aria-pressed={!isHidden}
-            title={isHidden ? "Exibir sÃ©rie" : "Ocultar sÃ©rie"}
+            title={isHidden ? "Exibir série" : "Ocultar série"}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -70,7 +70,7 @@ function ChartLegend({ series, hidden, onToggle }: ChartLegendProps) {
   );
 }
 
-/** Hook que gerencia sÃ©ries ocultas na legend. */
+/** Hook que gerencia séries ocultas na legend. */
 function useSeriesToggle(_yKeys: string[]) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
@@ -101,7 +101,7 @@ function ChartEmpty({ message }: { message?: string }) {
         fontFamily: typography.family.ui,
       }}
     >
-      {message ?? "Sem dados no perÃ­odo"}
+      {message ?? "Sem dados no período"}
     </div>
   );
 }
@@ -128,11 +128,11 @@ export function SecurityLineChart({ data, xKey, yKeys, height = 240, smooth = tr
     <div style={{ display: "flex", flexDirection: "column" }}>
       {legend && <ChartLegend series={series} hidden={hidden} onToggle={toggle} />}
       <ResponsiveContainer width="100%" height={height}>
-        <RLineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <RLineChart data={data} margin={{ top: 12, right: 14, bottom: 2, left: 2 }}>
           <CartesianGrid {...gridStyle} />
           <XAxis dataKey={xKey} {...axisStyle} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} tickMargin={8} />
           <YAxis {...axisStyle} tickLine={false} axisLine={false} width={42} tickCount={5} tickFormatter={fmt} />
-          <Tooltip content={<SecurityTooltip />} cursor={{ stroke: tokens.textMuted, strokeOpacity: 0.4 }} />
+          <Tooltip content={<SecurityTooltip />} cursor={{ stroke: tokens.accent, strokeOpacity: 0.34, strokeDasharray: "3 3" }} />
           {series.map((s) => (
             <Line
               key={s.key}
@@ -158,7 +158,7 @@ export interface SecurityAreaChartProps {
   xKey: string;
   yKeys: string[];
   height?: number;
-  /** Intervalo entre ticks do eixo X (Ã­ndice). Ex.: 11 â†’ 6 rÃ³tulos em 60 pontos. */
+  /** Intervalo entre ticks do eixo X (índice). Ex.: 11 → 6 rótulos em 60 pontos. */
   xInterval?: number;
   legend?: boolean;
   emptyMessage?: string;
@@ -173,7 +173,7 @@ export function SecurityAreaChart({ data, xKey, yKeys, height = 240, xInterval =
     <div style={{ display: "flex", flexDirection: "column" }}>
       {legend && <ChartLegend series={series} hidden={hidden} onToggle={toggle} />}
       <ResponsiveContainer width="100%" height={height}>
-        <RAreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <RAreaChart data={data} margin={{ top: 12, right: 14, bottom: 2, left: 2 }}>
           <CartesianGrid {...gridStyle} />
           <XAxis
             dataKey={xKey}
@@ -184,7 +184,7 @@ export function SecurityAreaChart({ data, xKey, yKeys, height = 240, xInterval =
             tickMargin={8}
           />
           <YAxis {...axisStyle} tickLine={false} axisLine={false} width={42} tickCount={4} tickFormatter={fmt} />
-          <Tooltip content={<SecurityTooltip valueFormatter={(v) => fmt(Number(v))} />} cursor={{ stroke: tokens.textMuted, strokeOpacity: 0.4 }} />
+          <Tooltip content={<SecurityTooltip valueFormatter={(v) => fmt(Number(v))} />} cursor={{ stroke: tokens.accent, strokeOpacity: 0.34, strokeDasharray: "3 3" }} />
           {series.map((s) => (
             <Area
               key={s.key}
@@ -192,7 +192,7 @@ export function SecurityAreaChart({ data, xKey, yKeys, height = 240, xInterval =
               dataKey={s.key}
               stroke={s.color}
               fill={s.color}
-              fillOpacity={0.12}
+              fillOpacity={0.16}
               strokeWidth={2}
               dot={false}
               activeDot={{ r: 4, strokeWidth: 0 }}
@@ -225,7 +225,7 @@ export function SecurityBarChart({ data, xKey, yKeys, height = 240, legend = yKe
     <div style={{ display: "flex", flexDirection: "column" }}>
       {legend && <ChartLegend series={series} hidden={hidden} onToggle={toggle} />}
       <ResponsiveContainer width="100%" height={height}>
-        <RBarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+        <RBarChart data={data} margin={{ top: 12, right: 14, bottom: 2, left: 2 }}>
           <CartesianGrid {...gridStyle} />
           <XAxis dataKey={xKey} {...axisStyle} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={28} tickMargin={8} />
           <YAxis {...axisStyle} tickLine={false} axisLine={false} width={42} tickCount={5} tickFormatter={fmt} />
@@ -265,8 +265,8 @@ export function SecurityTooltip({ active, label, payload, labelFormatter, valueF
         background: tokens.surfaceAlt,
         border: `1px solid ${tokens.border}`,
         borderRadius: 8,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-        padding: "8px 12px",
+        boxShadow: "0 14px 32px rgba(0,0,0,0.28)",
+        padding: "10px 12px",
         fontFamily: typography.family.mono,
         fontSize: 12,
         minWidth: 140,

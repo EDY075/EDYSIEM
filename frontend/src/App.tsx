@@ -8,6 +8,7 @@ import { ToastProvider } from "./state/toast";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { router } from "./routing/routes";
 import { colors } from "./design-system";
+import { cardMotionCss } from "./design-system/components/cards";
 
 /** Estilos globais de acessibilidade + scrollbar enterprise (Sprint 2.14 / WP9). */
 const globalStyle = `
@@ -30,6 +31,7 @@ export default function App() {
     <ThemeProvider>
       <AppStateProvider>
         <style>{globalStyle}</style>
+        <style>{cardMotionCss}</style>
         <div style={{ background: colors.background, minHeight: "100vh" }}>
           <ToastProvider>
             <RouterProvider router={router} />

@@ -26,7 +26,7 @@ const microAnimCss = `
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(340px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(255,255,255,0.05), transparent 65%);
+  background: radial-gradient(280px circle at var(--spot-x, 50%) var(--spot-y, 50%), color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 68%);
   opacity: 0;
   transition: opacity 0.28s ease;
 }
@@ -122,12 +122,25 @@ function deltaChipColors(trend: "up" | "down" | "flat") {
   }
 }
 
+
+function AutoKpiGlyph({ label }: { label: string }) {
+  const key = label.toLocaleLowerCase();
+  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.65, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const shape = key.includes("alert") || key.includes("crít") ? <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 21h4" /></>
+    : key.includes("cas") ? <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M8 5V3h8v2M8 11h8" /></>
+    : key.includes("mttr") || key.includes("mtta") ? <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>
+    : key.includes("score") || key.includes("risk") ? <><path d="M4 18a8 8 0 0 1 16 0" /><path d="m12 12 4-3" /><path d="M4 18h16" /></>
+    : key.includes("saúde") || key.includes("health") ? <><path d="M3 12h4l2-5 4 10 2-5h4" /><circle cx="12" cy="12" r="9" /></>
+    : <><path d="M3 15h3l2-7 4 11 3-7h6" /></>;
+  return <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>{shape}</svg>;
+}
 export function KpiCard({ label, value, icon, delta, trend = "flat", severity, mono, onClick, style }: KpiCardProps) {
   const accent = severity ? colors.severity[severity] : colors.accent;
   const dirArrow = trend === "up" ? "▲" : trend === "down" ? "▼" : "•";
   const sp = sparklinePath(`${label}:${value}`, trend);
   const gradId = `kpi-${label.replace(/\W+/g, "")}`;
   const chip = delta ? deltaChipColors(trend) : null;
+  const visualIcon = icon ?? <AutoKpiGlyph label={label} />;
 
   return (
     <button
@@ -139,21 +152,21 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
         position: "relative",
         overflow: "hidden",
         fontFamily: typography.family.ui,
-        background: `linear-gradient(165deg, ${accent}10 0%, ${colors.surface} 58%)`,
+        background: `linear-gradient(142deg, color-mix(in srgb, ${accent} 10%, ${colors.surface}) 0%, ${colors.surface} 48%, color-mix(in srgb, ${colors.surfaceAlt} 42%, ${colors.surface}) 100%)`,
         border: `1px solid ${colors.border}`,
         borderRadius: radii.lg,
-        padding: `${spacing["4"]} ${spacing["5"]}`,
+        padding: `${spacing["3"]} ${spacing["4"]} ${spacing["4"]}`,
         textAlign: "left",
         cursor: onClick ? "pointer" : "default",
         transition: `transform ${motion.transition.fast}, border-color ${motion.transition.fast}, box-shadow ${motion.transition.fast}, background ${motion.transition.fast}`,
         minWidth: 160,
-        minHeight: 104,
+        minHeight: 126,
         ...style,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.borderColor = `${accent}55`;
-        e.currentTarget.style.boxShadow = `0 4px 20px ${accent}1a, 0 0 0 1px ${accent}12`;
+        e.currentTarget.style.borderColor = `color-mix(in srgb, ${accent} 36%, transparent)`;
+        e.currentTarget.style.boxShadow = `0 10px 26px color-mix(in srgb, ${accent} 12%, transparent), 0 0 0 1px color-mix(in srgb, ${accent} 10%, transparent)`;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "none";
@@ -171,11 +184,11 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
         style={{
           position: "absolute",
           top: 0,
-          left: 16,
-          right: 16,
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-          opacity: 0.7,
+          left: 0,
+          width: 3,
+          height: "100%",
+          background: `linear-gradient(180deg, ${accent}, color-mix(in srgb, ${accent} 0%, transparent) 76%)`,
+          opacity: 0.92,
         }}
       />
 
@@ -195,12 +208,12 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
         >
           {label}
         </div>
-        {icon && (
+        {visualIcon && (
           <span
             aria-hidden
-            style={{ fontSize: 15, color: colors.textSecondary, opacity: 0.9, flex: "none", lineHeight: 1 }}
+            style={{ width: 25, height: 25, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: accent, background: `color-mix(in srgb, ${accent} 11%, transparent)`, border: `1px solid color-mix(in srgb, ${accent} 24%, transparent)`, borderRadius: radii.md, flex: "none", lineHeight: 1 }}
           >
-            {icon}
+            {visualIcon}
           </span>
         )}
       </div>
@@ -222,11 +235,11 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
           {value}
         </div>
         <svg
-          width={76}
+          width={70}
           height={30}
           viewBox={`0 0 72 26`}
           aria-hidden="true"
-          style={{ display: "block", flex: "none", opacity: 0.85, marginTop: 2 }}
+          style={{ display: "block", flex: "none", opacity: 0.9, marginTop: 2 }}
         >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -253,10 +266,10 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
             alignItems: "center",
             gap: 5,
             marginTop: spacing["3"],
-            padding: "2px 8px",
-            borderRadius: radii.full,
-            background: chip.bg,
-            border: `1px solid ${chip.border}`,
+            padding: "3px 0 0",
+            borderRadius: 0,
+            background: "transparent",
+            border: "none",
             fontSize: typography.size.xs,
             fontWeight: typography.weight.semibold,
             color: chip.fg,
@@ -268,7 +281,6 @@ export function KpiCard({ label, value, icon, delta, trend = "flat", severity, m
           </span>
         </div>
       )}
-      <style>{microAnimCss}</style>
     </button>
   );
 }
@@ -290,7 +302,7 @@ export function MetricCard({ title, children, footer, style }: MetricCardProps) 
       style={{
         position: "relative",
         overflow: "hidden",
-        background: colors.surface,
+        background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 34%, ${colors.surface}) 100%)`,
         border: `1px solid ${colors.border}`,
         borderRadius: radii.lg,
         display: "flex",
@@ -309,8 +321,8 @@ export function MetricCard({ title, children, footer, style }: MetricCardProps) 
           right: 0,
           height: 1,
           background:
-            "linear-gradient(90deg, transparent 0%, rgba(47,129,247,0.55) 50%, transparent 100%)",
-          opacity: 0.5,
+            "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--color-accent) 58%, transparent) 50%, transparent 100%)",
+          opacity: 0.72,
         }}
       />
       {/* Header separado */}
@@ -323,10 +335,10 @@ export function MetricCard({ title, children, footer, style }: MetricCardProps) 
         <h3
           style={{
             margin: 0,
-            fontSize: typography.size.lg,
+            fontSize: typography.size.base,
             fontWeight: typography.weight.semibold,
             color: colors.textPrimary,
-            letterSpacing: "-0.01em",
+            letterSpacing: "-0.015em",
           }}
         >
           {title}
@@ -354,7 +366,9 @@ export function MetricCard({ title, children, footer, style }: MetricCardProps) 
           {footer}
         </div>
       )}
-      <style>{microAnimCss}</style>
     </section>
   );
 }
+
+/** Injete uma vez no app para evitar repetir o mesmo CSS dentro de cada card. */
+export const cardMotionCss = microAnimCss;

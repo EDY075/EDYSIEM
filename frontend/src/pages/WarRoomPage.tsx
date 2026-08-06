@@ -83,12 +83,12 @@ export function WarRoomPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: colors.background }} aria-busy={loading}>
       {/* Cabeçalho */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: spacing["3"], padding: `${spacing["3"]} ${spacing["4"]}`, borderBottom: `1px solid ${colors.border}`, background: colors.surface, position: "sticky", top: 0, zIndex: 100 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: spacing["3"], padding: `${spacing["3"]} ${spacing["4"]}`, borderBottom: `1px solid ${colors.border}`, background: `linear-gradient(100deg, color-mix(in srgb, ${colors.surfaceAlt} 54%, ${colors.surface}) 0%, ${colors.surface} 68%)`, position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Breadcrumb items={[{ label: "Operação", to: "/war-room" }, { label: "War Room", to: "/war-room" }]} />
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: colors.textPrimary }}>War Room</h1>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: typography.size.xs, color: colors.status.online, padding: "3px 10px", background: "rgba(63,185,80,0.12)", borderRadius: 9999 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: colors.status.online, boxShadow: `0 0 8px ${colors.status.online}` }} />
+          <div><div style={{ color: colors.severity.high, fontSize: "10px", fontWeight: typography.weight.semibold, letterSpacing: "0.11em", marginBottom: 3 }}>INCIDENT COMMAND</div><h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", margin: 0, color: colors.textPrimary }}>War Room</h1></div>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: typography.size.xs, color: colors.status.online, padding: "3px 10px", background: "color-mix(in srgb, var(--status-online) 12%, transparent)", borderRadius: 9999 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: colors.status.online, boxShadow: "0 0 0 3px color-mix(in srgb, var(--status-online) 12%, transparent)" }} />
             LIVE
           </span>
         </div>
@@ -99,13 +99,13 @@ export function WarRoomPage() {
 
       <div style={{ padding: spacing["4"], display: "flex", flexDirection: "column", gap: spacing["4"] }}>
         {alertsError && (
-          <div style={{ padding: `${spacing["2"]} ${spacing["3"]}`, background: colors.severity.medium + "14", border: `1px solid ${colors.severity.medium}44`, borderRadius: 8, fontSize: typography.size.sm, color: colors.textSecondary }}>
+          <div style={{ padding: `${spacing["2"]} ${spacing["3"]}`, background: "color-mix(in srgb, var(--severity-medium) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--severity-medium) 30%, transparent)", borderRadius: 8, fontSize: typography.size.sm, color: colors.textSecondary }}>
             ⚠ {alertsError}
           </div>
         )}
 
         {/* KPIs operacionais — dados reais */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: spacing["3"] }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: spacing["3"] }}>
           <KpiCard label="Events/sec" value={String(metrics.eps)} delta="real" trend="flat" mono />
           <KpiCard label="Alertas críticos" value={String(criticals.length)} delta="ativos" trend="up" severity={criticals.length ? "critical" : undefined} />
           <KpiCard label="Casos abertos" value={String(metrics.openCases)} delta="reais" trend="flat" severity="high" />
@@ -162,7 +162,7 @@ export function WarRoomPage() {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: spacing["2"] }}>
                   {criticals.slice(0, 5).map((a) => (
-                    <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: `${spacing["2"]} ${spacing["3"]}`, background: colors.surfaceAlt, border: `1px solid ${colors.severity.critical}33`, borderLeft: `3px solid ${colors.severity.critical}`, borderRadius: radii.md }}>
+                    <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: `${spacing["2"]} ${spacing["3"]}`, background: colors.surfaceAlt, border: "1px solid color-mix(in srgb, var(--severity-critical) 25%, transparent)", borderLeft: `3px solid ${colors.severity.critical}`, borderRadius: radii.md }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: typography.size.sm, fontWeight: typography.weight.semibold, color: colors.textPrimary, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.title}</div>
                         <div style={{ fontSize: typography.size.xs, color: colors.textMuted }}>{a.host} • regra: {a.rule}</div>
@@ -197,7 +197,7 @@ export function WarRoomPage() {
       </div>
 
       <style>{`.wr-grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-@media (max-width: 1280px) { .wr-grid-main { grid-template-columns: 1fr !important; } }`}</style>
+@media (max-width: 1024px) { .wr-grid-main { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   );
 }

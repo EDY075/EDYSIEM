@@ -1,167 +1,21 @@
-/**
- * Intelligence Page (Sprint 2.17 WP6) — Rules Manager, Rule Simulator, IOC e Assets.
- * Consome as APIs reais /soc/rules, /soc/simulator, /soc/iocs, /soc/assets.
- * Sem mocks.
- */
-import { useState } from "react";
-import { colors, radii, spacing, typography } from "../design-system/tokens";
-import { Button } from "../design-system";
-import { SeverityBadge } from "../design-system/components/badges";
+/** Threat Intelligence — IOC and asset context only. Detection rules live in RulesPage. */
+import { useEffect, useMemo, useState } from "react";
 import { EmptyState, LoadingSkeleton } from "../design-system/components/feedback";
-import { Breadcrumb } from "../shell/Breadcrumb";
+import { colors } from "../design-system/tokens";
 import { apiClient } from "../api/client";
-import { useToast } from "../state/toast";
 
-type Tab = "rules" | "simulator" | "iocs" | "assets";
-
-interface RuleDto { rule_id: string; name: string; severity: string; category: string; mitre: string[]; tags: string[]; description: string; enabled: boolean; fire_count: number; last_fired: string | null; }
 interface IocDto { value: string; ioc_type: string; reputation: string; first_seen: string; last_seen: string; hits: number; labels: string[]; }
 interface AssetDto { hostname: string; ip: string; os: string; criticality: string; owner: string; status: string; last_seen: string; }
+function shortDate(value: string) { const d = new Date(value); return Number.isNaN(d.getTime()) ? value : `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function intelTone(rep: string) { const v = rep.toLowerCase(); if (v.includes("malicious") || v.includes("malicioso")) return colors.severity.critical; if (v.includes("suspicious") || v.includes("suspeito")) return colors.severity.high; return colors.status.online; }
 
 export function IntelligencePage() {
-  const [tab, setTab] = useState<Tab>("rules");
-  return (
-    <div style={{ background: colors.background, minHeight: "100vh", padding: spacing["4"] }}>
-      <Breadcrumb items={[{ label: "Operação", to: "/" }, { label: "Intelligence", to: "/intel" }]} />
-      <h1 style={{ fontSize: typography.size["2xl"], color: colors.textPrimary, margin: "6px 0 16px" }}>Detection Intelligence</h1>
-      <div style={{ display: "flex", gap: 8, marginBottom: spacing["4"], flexWrap: "wrap" }}>
-        {(["rules", "simulator", "iocs", "assets"] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ padding: "7px 14px", borderRadius: radii.md, border: `1px solid ${tab === t ? colors.accent : colors.border}`, background: tab === t ? colors.accent + "18" : colors.surface, color: colors.textPrimary, cursor: "pointer", fontFamily: typography.family.ui }}>
-            {t.toUpperCase()}
-          </button>
-        ))}
-      </div>
-      {tab === "rules" && <RulesPanel />}
-      {tab === "simulator" && <SimulatorPanel />}
-      {tab === "iocs" && <IocPanel />}
-      {tab === "assets" && <AssetPanel />}
-    </div>
-  );
-}
-
-/* ---------------- Rules ---------------- */
-
-function RulesPanel() {
-  const [rules, setRules] = useState<RuleDto[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
-
-  if (rules === null && loading) { loadRules().then((r) => { setRules(r); setLoading(false); }); }
-
-  async function loadRules(): Promise<RuleDto[]> {
-    const res = await apiClient.get<{ items: RuleDto[] }>("/soc/rules");
-    return res.success && res.data ? res.data.items : [];
-  }
-
-  async function toggle(ruleId: string, enabled: boolean) {
-    const r = await apiClient.post(`/soc/rules/${ruleId}/${enabled ? "enable" : "disable"}`);
-    toast(r.success ? `Regra ${enabled ? "habilitada" : "desabilitada"}` : "Falha ao alterar regra", r.success ? "success" : "error");
-    const items = await loadRules();
-    setRules(items);
-  }
-
-  if (loading) return <LoadingSkeleton rows={6} />;
-  if (!rules || rules.length === 0) return <EmptyState title="Nenhuma regra" description="Registre regras via POST /soc/rules ou aguarde o catálogo." />;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {rules.map((r) => (
-        <div key={r.rule_id} style={{ display: "flex", justifyContent: "space-between", gap: spacing["3"], padding: spacing["3"], background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radii.lg, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontFamily: typography.family.mono, fontSize: 12, color: colors.textMuted }}>{r.rule_id}</span>
-              <SeverityBadge severity={r.severity as any}>{r.severity}</SeverityBadge>
-              <span style={{ fontSize: typography.size.xs, color: r.enabled ? colors.status.online : colors.textMuted }}>{r.enabled ? "enabled" : "disabled"}</span>
-              <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>fire: {r.fire_count}</span>
-            </div>
-            <div style={{ fontWeight: 600, color: colors.textPrimary, marginTop: 4 }}>{r.name}</div>
-            {r.category && <div style={{ fontSize: typography.size.xs, color: colors.textSecondary }}>{r.category}</div>}
-            {(r.mitre.length || r.tags.length) && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                {r.mitre.map((m) => <Chip key={m}>{m}</Chip>)}
-                {r.tags.map((t) => <Chip key={t} muted>{t}</Chip>)}
-              </div>
-            )}
-          </div>
-          <Button variant={r.enabled ? "secondary" : "primary"} onClick={() => toggle(r.rule_id, !r.enabled)}>
-            {r.enabled ? "Desabilitar" : "Habilitar"}
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------------- Simulator ---------------- */
-
-function SimulatorPanel() {
-  const [event, setEvent] = useState(JSON.stringify({ rule_id: "brute-force-ssh", category: "authentication" }, null, 2));
-  const [result, setResult] = useState<{ applied: unknown[]; matches: number } | null>(null);
-
-  async function run() {
-    try {
-      const payload = JSON.parse(event) as Record<string, unknown>;
-      const r = await apiClient.post<{ applied: unknown[]; matches: number }>("/soc/simulator", { event: payload });
-      if (r.success && r.data) setResult(r.data);
-    } catch {
-      setResult(null);
-    }
-  }
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing["4"] }}>
-      <div>
-        <textarea value={event} onChange={(e) => setEvent(e.target.value)} rows={12} style={{ width: "100%", fontFamily: typography.family.mono, fontSize: 12, background: colors.surface, color: colors.textPrimary, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding: spacing["3"] }} />
-        <div style={{ marginTop: 8 }}><Button variant="primary" onClick={run}>▶ Simular</Button></div>
-      </div>
-      <div style={{ fontFamily: typography.family.mono, fontSize: 12 }}>
-        {result ? (
-          <pre style={{ background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radii.md, padding: spacing["3"], color: colors.textPrimary }}>{JSON.stringify(result, null, 2)}</pre>
-        ) : (
-          <EmptyState title="Sem resultado" description="Edite o evento JSON e clique em Simular." />
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- IOC / Assets (compartilhado) ---------------- */
-
-function IocPanel() {
-  const [items, setItems] = useState<IocDto[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  if (items === null && loading) apiClient.get<{ items: IocDto[] }>("/soc/iocs").then((r) => { setItems(r.success && r.data ? r.data.items : []); setLoading(false); });
-  if (loading) return <LoadingSkeleton rows={6} />;
-  return <EntityList items={items || []} ioc />;
-}
-
-function AssetPanel() {
-  const [items, setItems] = useState<AssetDto[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  if (items === null && loading) {
-    apiClient.get<{ items: AssetDto[] }>("/soc/assets").then((r) => { setItems(r.success && r.data ? r.data.items : []); setLoading(false); });
-  }
-  if (loading) return <LoadingSkeleton rows={6} />;
-  return <EntityList items={items || []} />;
-}
-
-function EntityList({ items, ioc }: { items: unknown[]; ioc?: boolean }) {
-  if (!items || items.length === 0) return <EmptyState title={`Nenhum ${ioc ? "IOC" : "asset"}`} description={ioc ? "Registre IOCs para reputação e rastreio." : "Registre assets no inventário."} />;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {items.map((it: any) => (
-        <div key={it.value || it.hostname} style={{ padding: spacing["3"], background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radii.md }}>
-          <Chip muted>{ioc ? it.ioc_type : it.criticality}</Chip>{" "}
-          <span style={{ fontFamily: typography.family.mono, color: colors.textPrimary }}>{it.value || it.hostname}</span>
-          <div style={{ fontSize: typography.size.xs, color: colors.textMuted, marginTop: 4 }}>
-            {ioc ? `${it.reputation} · hits ${it.hits} · ${it.last_seen}` : `${it.ip} · ${it.os} · ${it.owner} · ${it.status} · ${it.last_seen}`}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Chip({ children, muted }: { children: string; muted?: boolean }) {
-  return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 9999, background: muted ? colors.surfaceAlt : colors.surfaceAlt, border: `1px solid ${colors.border}`, color: muted ? colors.textMuted : colors.textSecondary, fontFamily: typography.family.mono }}>{children}</span>;
+  const [iocs, setIocs] = useState<IocDto[]>([]); const [assets, setAssets] = useState<AssetDto[]>([]); const [loading, setLoading] = useState(true);
+  useEffect(() => { let active = true; void Promise.all([apiClient.get<{items:IocDto[]}>("/soc/iocs"),apiClient.get<{items:AssetDto[]}>("/soc/assets")]).then(([iocResponse,assetResponse]) => { if(!active)return; setIocs(iocResponse.success && iocResponse.data ? iocResponse.data.items : []); setAssets(assetResponse.success && assetResponse.data ? assetResponse.data.items : []); setLoading(false); }); return () => {active=false;}; }, []);
+  const summary = useMemo(() => ({ hits:iocs.reduce((sum,ioc)=>sum+ioc.hits,0), high:iocs.filter((ioc)=>{const r=ioc.reputation.toLowerCase();return r.includes("malicious")||r.includes("suspicious")||r.includes("malicioso")||r.includes("suspeito");}).length, assets:assets.length }),[iocs,assets]);
+  return <div className="intel-page">
+    <style>{`.intel-page{display:flex;flex-direction:column;gap:16px}.intel-hero{padding:20px;border:1px solid var(--color-border);border-radius:12px;background:linear-gradient(115deg,color-mix(in srgb,var(--severity-high) 7%,var(--color-surface)) 0%,var(--color-surface) 62%)}.intel-eye{color:var(--severity-high);font-size:10px;font-weight:600;letter-spacing:.12em}.intel-hero h1{margin:6px 0 0;color:var(--color-text-primary);font-size:26px;letter-spacing:-.03em}.intel-hero p{margin:6px 0 0;color:var(--color-text-muted);font-size:13px}.intel-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:18px}.intel-summary div{padding:10px 12px;border:1px solid var(--color-border);border-radius:7px;background:color-mix(in srgb,var(--color-surface-alt) 58%,transparent)}.intel-summary span{display:block;color:var(--color-text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.intel-summary strong{display:block;margin-top:5px;color:var(--color-text-primary);font:600 20px 'JetBrains Mono',monospace}.intel-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,.8fr);gap:14px;align-items:start}.intel-panel{overflow:hidden;border:1px solid var(--color-border);border-radius:9px;background:linear-gradient(180deg,var(--color-surface),color-mix(in srgb,var(--color-surface-alt) 30%,var(--color-surface)))}.intel-panel h2{margin:0;padding:14px 16px;border-bottom:1px solid var(--color-border-subtle);color:var(--color-text-primary);font-size:14px}.ioc-row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--color-border-subtle)}.ioc-row:last-child{border:0}.ioc-value{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-text-primary);font:600 12px 'JetBrains Mono',monospace}.ioc-detail{margin-top:4px;color:var(--color-text-muted);font-size:11px}.ioc-side{text-align:right}.ioc-rep{font-size:10px;font-weight:600;text-transform:uppercase}.ioc-hits{margin-top:4px;color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace}.asset-row{padding:12px 16px;border-bottom:1px solid var(--color-border-subtle)}.asset-row:last-child{border:0}.asset-name{color:var(--color-text-primary);font:600 12px 'JetBrains Mono',monospace}.asset-detail{margin-top:5px;color:var(--color-text-muted);font-size:11px;line-height:1.45}.intel-note{padding:12px 16px;border-top:1px solid var(--color-border-subtle);color:var(--color-text-muted);font-size:11px}@media(max-width:960px){.intel-grid{grid-template-columns:1fr}}@media(max-width:600px){.intel-summary{grid-template-columns:1fr}.ioc-row{grid-template-columns:7px minmax(0,1fr)}}`}</style>
+    <section className="intel-hero"><div className="intel-eye">THREAT INTELLIGENCE</div><h1>Contexto de ameaça</h1><p>Indicadores observados, reputação, volume de hits e ativos envolvidos na operação.</p><div className="intel-summary"><div><span>Indicadores</span><strong>{iocs.length}</strong></div><div><span>Contexto prioritário</span><strong style={{color:summary.high?colors.severity.high:colors.textPrimary}}>{summary.high}</strong></div><div><span>Hits correlacionados</span><strong>{summary.hits}</strong></div></div></section>
+    {loading ? <LoadingSkeleton rows={5} variant="card" /> : <div className="intel-grid"><section className="intel-panel"><h2>IOC Manager</h2>{iocs.length ? iocs.map((ioc) => {const tone=intelTone(ioc.reputation);return <div className="ioc-row" key={`${ioc.ioc_type}:${ioc.value}`}><span style={{width:7,height:7,borderRadius:"50%",background:tone}}/><div><div className="ioc-value">{ioc.value}</div><div className="ioc-detail">{ioc.ioc_type} · última observação {shortDate(ioc.last_seen)}</div></div><div className="ioc-side"><div className="ioc-rep" style={{color:tone}}>{ioc.reputation}</div><div className="ioc-hits">{ioc.hits} hits</div></div></div>;}) : <EmptyState title="Nenhum IOC disponível" description="Indicadores recebidos pelos feeds aparecerão nesta área." compact />}<div className="intel-note">A confiança e reputação são exibidas conforme retornadas pelo catálogo de indicadores.</div></section><section className="intel-panel"><h2>Contexto de ativos</h2>{assets.length ? assets.map((asset)=><div className="asset-row" key={asset.hostname}><div className="asset-name">{asset.hostname || asset.ip}</div><div className="asset-detail">{asset.ip} · {asset.os || "SO não informado"}<br />{asset.owner || "Owner não informado"} · {asset.criticality || "criticidade não informada"}</div></div>) : <EmptyState title="Sem ativos correlacionados" description="Ativos associados aos indicadores aparecerão aqui." compact />}<div className="intel-note">Feeds, campanhas e TTPs exigem dados próprios no contrato atual e não são simulados nesta interface.</div></section></div>}
+  </div>;
 }

@@ -3,7 +3,7 @@
  * Injeta os tokens CSS e fornece o tema dark default + opção light.
  * Sem lógica de negócio — apenas infraestrutura de tema.
  */
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import { colors, tokensCss } from "../design-system";
 
 export type ThemeMode = "dark" | "light";
@@ -19,21 +19,17 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<ThemeMode>("dark");
+  const [mode, setMode] = useState<ThemeMode>(() => localStorage.getItem("edysiem-theme") === "light" ? "light" : "dark");
 
   useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = tokensCss;
-    document.head.appendChild(style);
     document.body.dataset.theme = mode;
-    return () => {
-      document.head.removeChild(style);
-    };
+    localStorage.setItem("edysiem-theme", mode);
   }, [mode]);
 
   const toggle = () => setMode((m) => (m === "dark" ? "light" : "dark"));
 
-  return <ThemeContext.Provider value={{ mode, toggle }}>{children}</ThemeContext.Provider>;
+  const value = useMemo(() => ({ mode, toggle }), [mode]);
+  return <ThemeContext.Provider value={value}><style>{tokensCss}</style>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme() {

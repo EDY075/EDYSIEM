@@ -151,24 +151,7 @@ export function AlertCenterPage() {
     );
    };
 
-  const handleBulkAction = (action: string) => {
-    console.log("Bulk action:", action, selectedAlerts);
-  };
-
   const columns = [
-    {
-      key: "select",
-      header: "",
-      width: "48px",
-      sortable: false,
-      render: (row: any) => (
-        <input
-          type="checkbox"
-          checked={selectedAlerts.includes(row.id)}
-          onChange={() => handleToggleSelect(row.id)}
-        />
-      ),
-    },
     {
       key: "severity",
       header: "Severidade",
@@ -247,11 +230,13 @@ export function AlertCenterPage() {
       header: "Primeira vez",
       width: "140px",
       sortable: true,
+      render: (row: any) => formatTime(row.firstSeen),
     },
     {
       key: "lastSeen",
       header: "Última vez",
       sortable: true,
+      render: (row: any) => formatTime(row.lastSeen),
     },
     {
       key: "eventCount",
@@ -313,94 +298,6 @@ export function AlertCenterPage() {
     },
   ];
 
-  const rows = pagedAlerts.map((alert) => ({
-    id: alert.id,
-    select: (
-      <input
-        type="checkbox"
-        checked={selectedAlerts.includes(alert.id)}
-        onChange={() => handleToggleSelect(alert.id)}
-      />
-    ),
-    severity: (
-      <SeverityBadge severity={alert.severity}>
-        {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
-      </SeverityBadge>
-    ),
-    title: (
-      <div>
-        <div style={{ fontWeight: 600 }}>{alert.title}</div>
-        <div style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
-          Regra: {alert.ruleId}
-        </div>
-      </div>
-    ),
-    sourceHost: alert.sourceHost,
-    user: alert.user || "—",
-    owner: (
-      <span style={{ color: alert.owner === "—" ? colors.textMuted : colors.textSecondary, fontSize: typography.size.sm }}>
-        {alert.owner || "—"}
-      </span>
-    ),
-    mitre: (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {(alert.mitre || []).map((t) => (
-          <span
-            key={t}
-            style={{
-              fontFamily: "monospace",
-              fontSize: typography.size.xs,
-              padding: "2px 6px",
-              background: colors.surfaceAlt,
-              border: `1px solid ${colors.border}`,
-              borderRadius: 9999,
-              color: colors.textSecondary,
-            }}
-          >
-            {t}
-          </span>
-        ))}
-      </div>
-    ),
-    firstSeen: formatTime(alert.firstSeen),
-    lastSeen: formatTime(alert.lastSeen),
-    eventCount: alert.eventCount,
-    riskScore: (
-      <span
-        style={{
-          fontWeight: 600,
-          color:
-            alert.riskScore >= 80
-              ? colors.severity.critical
-              : alert.riskScore >= 60
-                ? colors.severity.high
-                : alert.riskScore >= 40
-                  ? colors.severity.medium
-                  : colors.severity.low,
-        }}
-      >
-        {alert.riskScore}
-      </span>
-    ),
-    status: (
-      <StatusBadge tone="neutral">
-        {statusLabels[alert.status] || alert.status}
-      </StatusBadge>
-    ),
-    actions: (
-      <div style={{ display: "flex", gap: 4 }}>
-        <Button
-          variant="ghost"
-          style={{ padding: "4px 8px", fontSize: "12px" }}
-          onClick={() => openDrawer(alert)}
-          title="Investigar"
-        >
-          🔍
-        </Button>
-      </div>
-    ),
-  }));
-
    return (
     <div
       style={{
@@ -443,7 +340,7 @@ export function AlertCenterPage() {
                   fontSize: typography.size.xs,
                   color: colors.warning,
                   padding: "4px 10px",
-                  border: `1px solid ${colors.warning}55`,
+                  border: "1px solid color-mix(in srgb, var(--severity-medium) 35%, transparent)",
                   borderRadius: 9999,
                   background: "rgba(210,153,34,0.1)",
                   whiteSpace: "nowrap",
@@ -452,12 +349,7 @@ export function AlertCenterPage() {
                 ⚠ API indisponível
               </span>
             )}
-            <Button
-              variant="primary"
-              onClick={() => {
-                /* novo alerta */
-              }}
-            >
+            <Button variant="secondary" disabled title="Criação de alertas indisponível nesta interface">
               <span style={{ marginRight: 8 }}>+</span> Novo Alerta
             </Button>
           </div>
@@ -468,7 +360,7 @@ export function AlertCenterPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
           gap: spacing["3"],
           padding: `${spacing["4"]} ${spacing["4"]} 0`,
         }}
@@ -572,8 +464,9 @@ export function AlertCenterPage() {
                   </span>
                   <Button
                     variant="secondary"
+                    disabled
                     style={{ padding: "4px 12px", minWidth: "auto", fontSize: "12px" }}
-                    onClick={() => handleBulkAction("resolve")}
+                    title="Ação em lote indisponível nesta interface"
                   >
                     Resolver selecionados
                   </Button>
@@ -589,9 +482,18 @@ export function AlertCenterPage() {
         <Card>
           <DataTable
             columns={columns}
-            rows={rows}
+            rows={pagedAlerts as unknown as Array<Record<string, React.ReactNode>>}
             selectedKeys={selectedAlerts}
             onToggleRow={handleToggleSelect}
+            rowKey={(row) => String(row.id)}
+            sortKey={sortBy}
+            sortDirection={sortDir}
+            onSort={(key) => {
+              const next = key as typeof sortBy;
+              if (!(["firstSeen", "lastSeen", "severity", "riskScore"] as const).includes(next)) return;
+              setSortDir((direction) => sortBy === next ? (direction === "asc" ? "desc" : "asc") : "desc");
+              setSortBy(next);
+            }}
             loading={alertsLoading}
             emptyText={alertsError ? `Erro ao carregar: ${alertsError}` : "Nenhum alerta encontrado"}
           />

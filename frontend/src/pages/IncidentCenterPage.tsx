@@ -1,6 +1,6 @@
 /**
- * Incident UI (Sprint 2.16 WP2) â€” dados reais do backend.
- * Lista incidentes com severidade/status/SLA/owner, assumir, transiÃ§Ã£o e drawer.
+ * Incident UI (Sprint 2.16 WP2) — dados reais do backend.
+ * Lista incidentes com severidade/status/SLA/owner, assumir, transição e drawer.
  */
 import { useState } from "react";
 import { colors, spacing, typography } from "../design-system/tokens";
@@ -22,7 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_FLOW = ["triage", "in_progress", "contained", "resolved", "closed"];
 
-const fmt = (iso: string) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "â€”");
+const fmt = (iso: string) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
 type Row = {
   id: string;
@@ -71,11 +71,11 @@ export function IncidentCenterPage() {
 
   const columns = [
     { key: "incident_id", header: "ID", width: "150px", render: (r: any) => <span style={{ fontFamily: typography.family.mono, fontSize: 12 }}>{r.incident_id}</span> },
-    { key: "title", header: "TÃ­tulo", render: (r: any) => <span style={{ fontWeight: 600 }}>{r.title}</span> },
+    { key: "title", header: "Título", render: (r: any) => <span style={{ fontWeight: 600 }}>{r.title}</span> },
     { key: "severity", header: "Severidade", width: "110px", render: (r: any) => <SeverityBadge severity={r.severity}>{r.severity}</SeverityBadge> },
     { key: "status", header: "Status", width: "140px", render: (r: any) => <StatusBadge tone="neutral">{STATUS_LABELS[r.status] || r.status}</StatusBadge> },
-    { key: "owner", header: "ResponsÃ¡vel", width: "140px", render: (r: any) => <span style={{ color: r.owner ? colors.textSecondary : colors.textMuted }}>{r.owner || "â€”"}</span> },
-    { key: "slaState", header: "SLA", width: "90px", render: (r: any) => <span style={{ color: r.slaState === "overdue" ? colors.severity.critical : colors.textMuted }}>{r.slaState || "â€”"}</span> },
+    { key: "owner", header: "Responsável", width: "140px", render: (r: any) => <span style={{ color: r.owner ? colors.textSecondary : colors.textMuted }}>{r.owner || "—"}</span> },
+    { key: "slaState", header: "SLA", width: "90px", render: (r: any) => <span style={{ color: r.slaState === "overdue" ? colors.severity.critical : colors.textMuted }}>{r.slaState || "—"}</span> },
     { key: "alerts_count", header: "Alertas", width: "70px", render: (r: any) => r.alerts_count },
     { key: "created_at", header: "Criado", width: "120px", render: (r: any) => fmt(r.created_at) },
     { key: "actions", header: "", width: "150px", render: (r: any) => {
@@ -97,14 +97,14 @@ export function IncidentCenterPage() {
       </div>
 
       <div style={{ padding: spacing["4"] }}>
-        <Toolbar left={<span style={{ fontSize: typography.size.sm, color: colors.textMuted }}>{incidents.length} incidentes</span>} right={<Button variant="ghost" onClick={refetch}>â†» Atualizar</Button>} />
+        <Toolbar left={<span style={{ fontSize: typography.size.sm, color: colors.textMuted }}>{incidents.length} incidentes</span>} right={<Button variant="ghost" onClick={refetch}>↻ Atualizar</Button>} />
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: `0 ${spacing["4"]} ${spacing["4"]}` }}>
         {loading ? <LoadingSkeleton rows={8} /> : error ? (
-          <EmptyState title="Incidentes indisponÃ­veis" description={error} icon="âš " onRetry={refetch} compact />
+          <EmptyState title="Incidentes indisponíveis" description={error} icon="⚠" onRetry={refetch} compact />
         ) : incidents.length === 0 ? (
-          <EmptyState title="Sem incidentes" description="Nenhum incidente persistido. Execute o fluxo SOC (GET /soc/pipeline/demo) para gerar dados." icon="â—Œ" />
+          <EmptyState title="Sem incidentes" description="Nenhum incidente persistido. Execute o fluxo SOC (GET /soc/pipeline/demo) para gerar dados." icon="◌" />
         ) : (
           <Card><DataTable columns={columns} rows={rows} /></Card>
         )}
@@ -114,15 +114,15 @@ export function IncidentCenterPage() {
         <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: 420, background: colors.surface, borderLeft: `1px solid ${colors.border}`, padding: spacing["4"], overflow: "auto", zIndex: 200, boxShadow: "-8px 0 24px rgba(0,0,0,0.35)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: spacing["3"] }}>
             <h2 style={{ margin: 0, fontSize: typography.size.lg, color: colors.textPrimary }}>{detail.title}</h2>
-            <button onClick={() => setDetail(null)} style={{ border: "none", background: "transparent", color: colors.textMuted, fontSize: 18, cursor: "pointer" }}>âœ•</button>
+            <button onClick={() => setDetail(null)} style={{ border: "none", background: "transparent", color: colors.textMuted, fontSize: 18, cursor: "pointer" }}>✕</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: spacing["2"], marginBottom: spacing["4"] }}>
             <DrawerRow label="ID" value={detail.incidentId} />
             <DrawerRow label="Severidade" value={detail.severity} />
             <DrawerRow label="Status" value={STATUS_LABELS[detail.status] || detail.status} />
-            <DrawerRow label="ResponsÃ¡vel" value={detail.owner || "â€”"} />
+            <DrawerRow label="Responsável" value={detail.owner || "—"} />
             <DrawerRow label="Risk" value={String(detail.riskScore)} />
-            <DrawerRow label="SLA" value={detail.sla?.state || "â€”"} />
+            <DrawerRow label="SLA" value={detail.sla?.state || "—"} />
             <DrawerRow label="Criado" value={fmt(detail.created_at)} />
             <DrawerRow label="Alertas" value={String(detail.alertsCount)} />
           </div>
