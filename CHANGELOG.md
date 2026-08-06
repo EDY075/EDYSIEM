@@ -7,7 +7,18 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não publicado]
 
-### Sprint 2.17 — Detection Engineering + Threat Intelligence
+### Sprint UI/UX Polish
+
+> Frontend apenas (sem features novas, sem alteração de backend/arquitetura).
+
+- **Design System**: contraste elevado de `textMuted`/`textSecondary`; token `textSubtle`.
+- **Tabelas (`DataTable`)**: cabeçalho sticky, hover por linha, EmptyCell discreto, `vertical-align`.
+- **KPI Cards**: sparkline variada por card (seed `label+value`) — leitura menos "decorativa".
+- **Drawer**: largura 460px, header sticky, sombra/backdrop refinados.
+- **Detection Dashboard**: cards `Mini` com acento semântico por indicador (sem repetição).
+- **Auditoria**: screenshots antes/depois em `UX_REVIEW/` (fora do versionamento).
+
+## Sprint 2.17 — Detection Engineering + Threat Intelligence
 
 > Capacidade de detectar/enriquecer/contextualizar eventos. Reutiliza `SocService`
 > e a API `/soc/*` existentes — sem duplicar lógica, sem quebrar arquitetura.

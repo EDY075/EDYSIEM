@@ -40,10 +40,10 @@ export function DetectionDashboardPage() {
       <h1 style={{ fontSize: typography.size["2xl"], color: colors.textPrimary, margin: "6px 0 16px" }}>Detection Dashboard</h1>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px,1fr))", gap: spacing["3"], marginBottom: spacing["4"] }}>
-        <Mini label="Regras" value={String(data.rules_total)} sub={`${data.rules_enabled} habilitadas`} />
-        <Mini label="Top MITRE" value={String(data.top_mitre.length)} sub="técnicas" />
-        <Mini label="Top IOC" value={String(data.top_iocs.length)} sub="indicadores" />
-        <Mini label="Assets críticos" value={String(data.critical_assets.length)} sub="ativos" />
+        <Mini label="Regras" value={String(data.rules_total)} sub={`${data.rules_enabled} habilitadas`} color={colors.accent} />
+        <Mini label="Top MITRE" value={String(data.top_mitre.length)} sub="técnicas" color={colors.severity.high} />
+        <Mini label="Top IOC" value={String(data.top_iocs.length)} sub="indicadores" color={colors.severity.medium} />
+        <Mini label="Assets críticos" value={String(data.critical_assets.length)} sub="ativos" color={colors.severity.critical} />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: spacing["4"] }}>
@@ -74,11 +74,11 @@ export function DetectionDashboardPage() {
   );
 }
 
-function Mini({ label, value, sub }: { label: string; value: string; sub: string }) {
+function Mini({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
   return (
-    <div style={{ padding: spacing["4"], background: colors.surface, border: `1px solid ${colors.border}`, borderRadius: radii.lg }}>
+    <div style={{ padding: spacing["4"], background: colors.surface, border: `1px solid ${colors.border}`, borderLeft: `3px solid ${color}`, borderRadius: radii.lg }}>
       <div style={{ fontSize: typography.size.xs, color: colors.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
-      <div style={{ fontSize: typography.size.display, fontWeight: 700, color: colors.textPrimary, fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      <div style={{ fontSize: typography.size.display, fontWeight: 700, color: color, fontVariantNumeric: "tabular-nums" }}>{value}</div>
       <div style={{ fontSize: typography.size.xs, color: colors.textMuted }}>{sub}</div>
     </div>
   );

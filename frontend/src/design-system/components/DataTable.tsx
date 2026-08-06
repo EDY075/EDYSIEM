@@ -62,8 +62,8 @@ export function DataTable({
   }
 
   return (
-    <div style={{ overflowX: "auto", ...style }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div style={{ overflowX: "auto", maxHeight: "65vh", overflowY: "auto", ...style }}>
+      <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
         <thead>
           <tr>
             {onToggleRow && <th style={{ width: 32, ...headCell }} />}
@@ -98,6 +98,12 @@ export function DataTable({
                   background: selected ? colors.accentSubtle : "transparent",
                   transition: motion.transition.fast,
                 }}
+                onMouseEnter={(e) => {
+                  if (!selected) e.currentTarget.style.background = colors.surfaceAlt;
+                }}
+                onMouseLeave={(e) => {
+                  if (!selected) e.currentTarget.style.background = "transparent";
+                }}
               >
                 {onToggleRow && (
                   <td style={{ ...cell }}>
@@ -117,7 +123,7 @@ export function DataTable({
                       fontVariantNumeric: c.mono ? "tabular-nums" : undefined,
                     }}
                   >
-                    {c.render ? c.render(row) : (row[c.key] as ReactNode) ?? "—"}
+                    {c.render ? c.render(row) : cellValue(row[c.key])}
                   </td>
                 ))}
               </tr>
@@ -129,6 +135,14 @@ export function DataTable({
   );
 }
 
+/** Célula vazia discreta (evita o "—" ruidoso repetido). */
+function cellValue(value: ReactNode): ReactNode {
+  if (value === null || value === undefined || value === "") {
+    return <span style={{ color: colors.textSubtle, fontSize: typography.size.xs }}>—</span>;
+  }
+  return value as ReactNode;
+}
+
 const headCell: CSSProperties = {
   textAlign: "left",
   fontSize: typography.size.xs,
@@ -137,10 +151,15 @@ const headCell: CSSProperties = {
   padding: spacing["2"],
   borderBottom: `1px solid ${colors.border}`,
   whiteSpace: "nowrap",
+  position: "sticky",
+  top: 0,
+  background: colors.surface,
+  zIndex: 1,
 };
 
 const cell: CSSProperties = {
   fontSize: typography.size.sm,
   color: colors.textPrimary,
   padding: spacing["2"],
+  verticalAlign: "middle",
 };

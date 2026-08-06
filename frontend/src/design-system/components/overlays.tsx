@@ -34,13 +34,13 @@ export function Drawer({ open, title, onClose, side = "right", children }: Drawe
       <aside
         style={{
           position: "relative",
-          width: 420,
-          maxWidth: "90vw",
+          width: 460,
+          maxWidth: "94vw",
           height: "100%",
           background: colors.surface,
           borderLeft: side === "right" ? `1px solid ${colors.border}` : "none",
           borderRight: side === "left" ? `1px solid ${colors.border}` : "none",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+          boxShadow: "-12px 0 32px rgba(0,0,0,0.55)",
           display: "flex",
           flexDirection: "column",
           animation: `drawer-in ${motion.duration.normal} ${motion.easing.standard}`,
@@ -53,11 +53,15 @@ export function Drawer({ open, title, onClose, side = "right", children }: Drawe
             alignItems: "center",
             padding: spacing["4"],
             borderBottom: `1px solid ${colors.border}`,
+            background: colors.surface,
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
           }}
         >
-          <span style={{ fontWeight: typography.weight.semibold, color: colors.textPrimary }}>{title}</span>
+          <span style={{ fontWeight: typography.weight.semibold, color: colors.textPrimary, fontSize: typography.size.xs, textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</span>
           {onClose && (
-            <button onClick={onClose} style={closeBtn}>✕</button>
+            <button onClick={onClose} style={closeBtn} aria-label="Fechar">✕</button>
           )}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: spacing["4"] }}>{children}</div>

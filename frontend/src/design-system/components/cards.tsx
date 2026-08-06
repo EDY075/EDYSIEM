@@ -125,7 +125,7 @@ function deltaChipColors(trend: "up" | "down" | "flat") {
 export function KpiCard({ label, value, icon, delta, trend = "flat", severity, mono, onClick, style }: KpiCardProps) {
   const accent = severity ? colors.severity[severity] : colors.accent;
   const dirArrow = trend === "up" ? "▲" : trend === "down" ? "▼" : "•";
-  const sp = sparklinePath(label, trend);
+  const sp = sparklinePath(`${label}:${value}`, trend);
   const gradId = `kpi-${label.replace(/\W+/g, "")}`;
   const chip = delta ? deltaChipColors(trend) : null;
 

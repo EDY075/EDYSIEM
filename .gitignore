@@ -68,3 +68,8 @@ logs/
 # Desenvolvimento local (banco do dev runner)
 instance/
 *.db
+
+# Screenshots gerados (a manter fora do versionamento)
+UX_REVIEW/screenshots/
+UX_REVIEW/screenshots_after/
+UX_REVIEW/*.zip

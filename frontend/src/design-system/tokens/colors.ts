@@ -17,9 +17,12 @@ export const colors = {
 
   // Texto (contraste elevado p/ dark theme — WCAG AA)
   textPrimary: "#F0F6FC",
-  textSecondary: "#AFBAC5",
-  textMuted: "#8B949E",
+  textSecondary: "#B8C2CC",
+  textMuted: "#9EA9B4",
   textOnAccent: "#0F1218",
+
+  // Realce de destaque (dados técnicos / primary)
+  textSubtle: "#7A8590",
 
   // Foco / interação
   focusRing: "#58A6FF",
