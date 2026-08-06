@@ -12,6 +12,7 @@ import { Breadcrumb } from "../shell/Breadcrumb";
 import { useIncidents } from "../hooks";
 import type { Incident } from "../hooks/useIncidents";
 import { apiClient } from "../api/client";
+import { useToast } from "../state/toast";
 
 const STATUS_LABELS: Record<string, string> = {
   open: "Aberto", in_progress: "Em Andamento", on_hold: "Em espera",
@@ -39,6 +40,7 @@ export function IncidentCenterPage() {
   const { incidents, loading, error, refetch } = useIncidents(100);
   const [detail, setDetail] = useState<Incident | null>(null);
   const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   const rows: Row[] = incidents.map((r) => ({
     id: r.id,
@@ -54,7 +56,9 @@ export function IncidentCenterPage() {
 
   async function act(path: string, params: Record<string, string>, onDone: () => void) {
     setBusy(true);
-    await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
+    const res = await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
+    if (res.success) toast("Operação realizada", "success");
+    else toast("Falha na operação", "error");
     onDone();
     setBusy(false);
   }

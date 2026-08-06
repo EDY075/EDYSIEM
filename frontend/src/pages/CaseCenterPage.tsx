@@ -14,6 +14,7 @@ import { Breadcrumb } from "../shell/Breadcrumb";
 import { useCases } from "../hooks";
 import type { Case } from "../hooks/useCases";
 import { apiClient } from "../api/client";
+import { useToast } from "../state/toast";
 
 interface Investigate {
   related_alerts: unknown[];
@@ -35,6 +36,7 @@ export function CaseCenterPage() {
   const [comment, setComment] = useState("");
   const [evidence, setEvidence] = useState("");
   const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   async function loadInvestigation(c: Case) {
     setSelected(c);
@@ -45,10 +47,11 @@ export function CaseCenterPage() {
     setInvLoading(false);
   }
 
-  async function doPost(path: string, params: Record<string, string>) {
+async function doPost(path: string, params: Record<string, string>) {
     setBusy(true);
-    await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
-    // recarrega detalhe para refletir mudanÃ§as
+    const res = await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
+    if (res.success) toast("Operação realizada", "success");
+    else toast("Falha na operação", "error");
     const r = await apiClient.get<Investigate>(`/soc/cases/${selected?.id}/investigate`);
     if (r.success && r.data) setInv(r.data);
     refetch();

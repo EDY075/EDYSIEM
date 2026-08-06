@@ -4,6 +4,7 @@
  */
 import { RouterProvider } from "react-router-dom";
 import { AppStateProvider } from "./state/AppState";
+import { ToastProvider } from "./state/toast";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { router } from "./routing/routes";
 import { colors } from "./design-system";
@@ -30,7 +31,9 @@ export default function App() {
       <AppStateProvider>
         <style>{globalStyle}</style>
         <div style={{ background: colors.background, minHeight: "100vh" }}>
-          <RouterProvider router={router} />
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
         </div>
       </AppStateProvider>
     </ThemeProvider>
