@@ -1,7 +1,6 @@
 /**
- * Hook: useCases — fetch recent cases (UI 4.0)
- * Backend não expõe GET /cases (apenas POST). Mantém fallback mock
- * para desenvolvimento offline. Conectado ao endpoint real quando disponível.
+ * Hook: useCases — cases reais do backend (Sprint 2.16)
+ * Consome GET /api/v1/soc/cases. Sem fallback mock.
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
@@ -9,66 +8,60 @@ import { apiClient } from "../api/client";
 export interface Case {
   id: string;
   title: string;
-  description: string;
-  status: "open" | "in_progress" | "on_hold" | "resolved" | "closed" | "reopened";
+  status: string;
+  statusLabel: string;
   severity: "critical" | "high" | "medium" | "low" | "info";
-  priority: "P1" | "P2" | "P3" | "P4" | "P5";
+  priority: string;
   owner?: string;
-  incidentId: string;
-  alerts: string[];
-  assets: string[];
-  users: string[];
-  iocs: string[];
-  mitre: string[];
-  riskScore: number;
+  incidentId?: string;
+  commentsCount: number;
+  evidenceCount: number;
+  tasksCount: number;
+  attachmentsCount: number;
+  resolution?: string | null;
   createdAt: string;
-  updatedAt: string;
-  closedAt?: string;
-  tags: string[];
+  closedAt?: string | null;
 }
 
-const MOCK_CASES: Case[] = [
-  {
-    id: "CASE-001",
-    title: "Investigação: Campanha SSH + PowerShell",
-    description: "Análise de ataques coordenados",
-    status: "in_progress",
-    severity: "critical",
-    priority: "P1",
-    owner: "analyst@soc",
-    incidentId: "INC-001",
-    alerts: ["ALT-001", "ALT-002"],
-    assets: ["wks-042", "web-01"],
-    users: ["john.doe", "root"],
-    iocs: ["18.220.1.2"],
-    mitre: ["T1110.001", "T1059.001"],
-    riskScore: 95,
-    createdAt: "2026-08-04T14:30:00",
-    updatedAt: "2026-08-04T15:00:00",
-    tags: ["authentication", "malware", "lateral-movement"],
-  },
-  {
-    id: "CASE-002",
-    title: "Investigação: Exfiltração de Dados via Nuvem",
-    description: "Análise de transferência não autorizada",
-    status: "open",
-    severity: "high",
-    priority: "P2",
-    owner: undefined,
-    incidentId: "INC-002",
-    alerts: ["ALT-004"],
-    assets: ["proxy-01"],
-    users: ["jane.doe"],
-    iocs: [],
-    mitre: ["T1567.001"],
-    riskScore: 92,
-    createdAt: "2026-08-04T08:30:00",
-    updatedAt: "2026-08-04T08:35:00",
-    tags: ["data-loss"],
-  },
-];
+interface SocCaseDto {
+  case_id: string;
+  title: string;
+  status: string;
+  status_label: string;
+  severity: string;
+  priority: string;
+  owner: string | null;
+  incident_id: string | null;
+  comments_count: number;
+  evidence_count: number;
+  tasks_count: number;
+  attachments_count: number;
+  resolution: string | null;
+  created_at: string;
+  closed_at: string | null;
+}
 
-export function useCases(limit: number = 10) {
+function toCase(c: SocCaseDto): Case {
+  return {
+    id: c.case_id,
+    title: c.title,
+    status: c.status,
+    statusLabel: c.status_label || c.status,
+    severity: c.severity as Case["severity"],
+    priority: c.priority,
+    owner: c.owner || "",
+    incidentId: c.incident_id || "",
+    commentsCount: c.comments_count,
+    evidenceCount: c.evidence_count,
+    tasksCount: c.tasks_count,
+    attachmentsCount: c.attachments_count,
+    resolution: c.resolution,
+    createdAt: c.created_at,
+    closedAt: c.closed_at,
+  };
+}
+
+export function useCases(limit: number = 50) {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,19 +70,19 @@ export function useCases(limit: number = 10) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get<Case[]>(
-        `/cases?limit=${limit}&sort=updatedAt&order=desc`
+      const response = await apiClient.get<{ total: number; items: unknown[] }>(
+        `/soc/cases?limit=${limit}`
       );
       if (response.success && response.data) {
-        setCases(response.data);
-      } else if (response.error?.status === 404) {
-        // Backend não implementou GET /cases — usar mock
-        setCases(MOCK_CASES.slice(0, limit));
+        const items = (response.data.items || []).map((i) => toCase(i as SocCaseDto));
+        setCases(items);
       } else {
-        setError(response.error?.message || "Failed to fetch cases");
+        setError(response.error?.message || "Falha ao carregar cases");
+        setCases([]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch cases");
+      setError(err instanceof Error ? err.message : "Falha ao carregar cases");
+      setCases([]);
     } finally {
       setLoading(false);
     }
@@ -99,5 +92,5 @@ export function useCases(limit: number = 10) {
     fetchCases();
   }, [fetchCases]);
 
-  return { cases, loading, error, refetch: fetchCases, usingMock: !error && cases.length > 0 };
+  return { cases, loading, error, refetch: fetchCases };
 }

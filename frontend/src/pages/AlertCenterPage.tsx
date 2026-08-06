@@ -62,7 +62,7 @@ export function AlertCenterPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Hook conectado ao backend real
-  const { alerts: apiAlerts, loading: alertsLoading, error: alertsError, usingMock } = useAlerts(50);
+  const { alerts: apiAlerts, loading: alertsLoading, error: alertsError } = useAlerts(50);
 
   const closeDrawer = () => {
     setDrawerOpen(false);
@@ -432,7 +432,7 @@ export function AlertCenterPage() {
           </div>
           <div style={{ display: "flex", gap: spacing["3"], alignItems: "center" }}>
             <GlobalSearch />
-            {usingMock && (
+            {alertsError && (
               <span
                 style={{
                   fontSize: typography.size.xs,
@@ -444,7 +444,7 @@ export function AlertCenterPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                ● Amostra de demonstração
+                ⚠ API indisponível
               </span>
             )}
             <Button

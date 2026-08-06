@@ -1,7 +1,7 @@
 /**
- * Hook: useAlerts — fetch recent alerts (UI 4.0)
- * Backend não expõe GET /alerts (apenas POST). Mantém fallback mock
- * para desenvolvimento offline. Conectado ao endpoint real quando disponível.
+ * Hook: useAlerts — alertas reais do backend (Sprint 2.16)
+ * Consome GET /api/v1/soc/alerts (lista persistida).
+ * Sem fallback mock — erro vai para o estado `error` (UI mostra Empty/Retry).
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
@@ -17,17 +17,40 @@ export interface RecentAlert {
   rule: string;
   firstSeen: string;
   riskScore: number;
+  mitre: string[];
 }
 
-const MOCK_ALERTS: RecentAlert[] = [
-  { id: "ALT-001", title: "Brute Force SSH", severity: "critical", status: "open", source: "web-01", host: "web-01", user: "root", rule: "brute-force-ssh", firstSeen: "2026-08-04T10:15:00", riskScore: 95 },
-  { id: "ALT-002", title: "Malware Execution - PowerShell", severity: "critical", status: "open", source: "wks-042", host: "wks-042", user: "john.doe", rule: "malware-exec", firstSeen: "2026-08-04T14:22:00", riskScore: 95 },
-  { id: "ALT-003", title: "Impossible Travel - geo impossível", severity: "high", status: "in_progress", source: "vpn-gateway", host: "vpn-gw", user: "jane.smith", rule: "impossible-travel", firstSeen: "2026-08-04T09:15:00", riskScore: 78 },
-  { id: "ALT-004", title: "Data Exfiltration - Cloud Storage", severity: "critical", status: "in_progress", source: "proxy-01", host: "proxy-01", user: "jane.doe", rule: "data-exfiltration", firstSeen: "2026-08-04T08:30:00", riskScore: 92 },
-  { id: "ALT-005", title: "Crypto Miner - XMRig", severity: "high", status: "open", source: "wks-033", host: "wks-033", user: "svc-backup", rule: "crypto-miner", firstSeen: "2026-08-04T06:00:00", riskScore: 88 },
-];
+interface SocAlertDto {
+  alert_id: string;
+  title: string;
+  rule_id: string;
+  severity: string;
+  status: string;
+  risk_score: number;
+  source: string;
+  occurrences: number;
+  iocs: string[];
+  mitre: string[];
+  created_at: string;
+  sla: { state: string };
+}
 
-export function useAlerts(limit: number = 10) {
+function toRecentAlert(a: SocAlertDto): RecentAlert {
+  return {
+    id: a.alert_id,
+    title: a.title,
+    severity: a.severity as RecentAlert["severity"],
+    status: a.status as RecentAlert["status"],
+    source: a.source,
+    host: a.source,
+    rule: a.rule_id,
+    firstSeen: a.created_at,
+    riskScore: a.risk_score,
+    mitre: a.mitre,
+  };
+}
+
+export function useAlerts(limit: number = 50) {
   const [alerts, setAlerts] = useState<RecentAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +59,19 @@ export function useAlerts(limit: number = 10) {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get<RecentAlert[]>(
-        `/alerts?limit=${limit}&sort=lastSeen&order=desc`
+      const response = await apiClient.get<{ total: number; items: unknown[] }>(
+        `/soc/alerts?limit=${limit}`
       );
       if (response.success && response.data) {
-        setAlerts(response.data);
-      } else if (response.error?.status === 404 || response.error?.status === 405) {
-        // Backend ainda não expõe GET /alerts (404) ou retorna Method Not Allowed (405) — usar mock
-        setAlerts(MOCK_ALERTS.slice(0, limit));
+        const items = (response.data.items || []).map((i) => toRecentAlert(i as SocAlertDto));
+        setAlerts(items);
       } else {
-        setError(response.error?.message || "Failed to fetch alerts");
+        setError(response.error?.message || "Falha ao carregar alertas");
+        setAlerts([]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch alerts");
+      setError(err instanceof Error ? err.message : "Falha ao carregar alertas");
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
@@ -58,5 +81,5 @@ export function useAlerts(limit: number = 10) {
     fetchAlerts();
   }, [fetchAlerts]);
 
-  return { alerts, loading, error, refetch: fetchAlerts, usingMock: !error && alerts.length > 0 };
+  return { alerts, loading, error, refetch: fetchAlerts };
 }

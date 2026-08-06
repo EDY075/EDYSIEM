@@ -45,21 +45,6 @@ function formatTime(iso: string): string {
   return `${dd}/${mo} ${hh}:${mm}`;
 }
 
-/** Gera série temporal legível de eventos (rótulos HH:MM). */
-function buildEventSeries(eps: number, loading: boolean) {
-  const now = new Date();
-  const base = now.getMinutes();
-  return Array.from({ length: 60 }, (_, i) => {
-    const t = new Date(now);
-    t.setMinutes(base - (59 - i));
-    const label = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
-    if (loading || eps === 0) {
-      return { time: label, events: Math.floor(Math.random() * 50) + 10 };
-    }
-    return { time: label, events: Math.max(0, Math.floor(eps / 10 + Math.random() * 50 - 25)) };
-  });
-}
-
 export function DashboardOverview() {
   const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d">("1h");
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -67,22 +52,19 @@ export function DashboardOverview() {
   // Conexão real com a API
   const { metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useMetrics(timeRange);
   const { health, loading: healthLoading, error: healthError, refetch: refetchHealth } = useHealth();
-  const { alerts: apiAlerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts, usingMock } = useAlerts(10);
+  const { alerts: apiAlerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(10);
 
-  // Série temporal de eventos por minuto (60 pontos, rótulos HH:MM)
-  const eventsPerMinuteData = useMemo(
-    () => buildEventSeries(metrics.eps, metricsLoading),
-    [metrics.eps, metricsLoading],
-  );
+  // Série temporal real (eventos por minuto) do /soc/metrics
+  const eventsPerMinuteData = metrics.eventsSeries;
 
-  // Severity chart data (baseado nos alertas atuais ou valores de referência)
+  // Severity chart baseado nos alertas reais
   const severityData = useMemo(
     () => [
-      { name: "Crítico", value: apiAlerts.filter((a) => a.severity === "critical").length || 3, color: colors.severity.critical },
-      { name: "Alto", value: apiAlerts.filter((a) => a.severity === "high").length || 8, color: colors.severity.high },
-      { name: "Médio", value: apiAlerts.filter((a) => a.severity === "medium").length || 12, color: colors.severity.medium },
-      { name: "Baixo", value: apiAlerts.filter((a) => a.severity === "low").length || 5, color: colors.severity.low },
-      { name: "Info", value: apiAlerts.filter((a) => a.severity === "info").length || 2, color: colors.severity.info },
+      { name: "Crítico", value: apiAlerts.filter((a) => a.severity === "critical").length, color: colors.severity.critical },
+      { name: "Alto", value: apiAlerts.filter((a) => a.severity === "high").length, color: colors.severity.high },
+      { name: "Médio", value: apiAlerts.filter((a) => a.severity === "medium").length, color: colors.severity.medium },
+      { name: "Baixo", value: apiAlerts.filter((a) => a.severity === "low").length, color: colors.severity.low },
+      { name: "Info", value: apiAlerts.filter((a) => a.severity === "info").length, color: colors.severity.info },
     ],
     [apiAlerts],
   );
@@ -399,20 +381,6 @@ export function DashboardOverview() {
                 Últimos Alertas
               </h3>
               <div style={{ display: "flex", alignItems: "center", gap: spacing["2"] }}>
-                {usingMock && (
-                  <span
-                    style={{
-                      fontSize: typography.size.xs,
-                      color: colors.textMuted,
-                      background: colors.surfaceAlt,
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: 9999,
-                      padding: "1px 8px",
-                    }}
-                  >
-                    demo
-                  </span>
-                )}
                 <span data-mono style={{ fontSize: typography.size.xs, color: colors.textMuted }}>
                   {timeRange}
                 </span>
