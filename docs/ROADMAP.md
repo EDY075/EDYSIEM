@@ -2,13 +2,13 @@
 
 > Planejamento por sprints. **Regra Nº 1: arquitetura aprovada antes de funcionalidade.**
 > Toda sprint de feature exige: docs → ADR (se preciso) → contrato → código → testes → docs.
-## Release candidate 0.2.0-rc.1
+## Release 0.2.0
 
 | Frente | Estado | Observação |
 |---|---|---|
 | Shell, design system e telas SOC | Concluído | Identidade Echelon e responsividade revisadas. |
-| Qualidade de código | Concluído | TypeScript, Ruff, MyPy e 793 testes com 95,05% de cobertura. |
-| Publicação | Pendente | Configurar CI, variáveis de ambiente, banco e observabilidade de produção. |
+| Qualidade de código | Concluído | TypeScript, Ruff, MyPy e 800 testes com 95,07% de cobertura. |
+| Publicação no Git | Concluído localmente | Commit e tag `release-0.2.0`; o push depende de um remoto configurado. |
 | Evolução de contratos | Pendente | Triage, Playbooks e detalhes enriquecidos de alerta aguardam endpoints próprios. |
 
 ## Fase 0 — Fundação (atual)

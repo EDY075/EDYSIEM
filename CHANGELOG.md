@@ -1,5 +1,5 @@
 # Changelog
-## [0.2.0-rc.1] - 2026-08-06
+## [0.2.0] - 2026-08-06
 
 ### Finalização de release
 
@@ -7,7 +7,9 @@
 - Telas operacionais revisadas: Overview, War Room, Triage, Alertas, Incidentes, Investigação, Cases, Regras, Intelligence, Playbooks e Configurações.
 - O detalhe de alertas deixou de mostrar eventos, evidências, correlações e históricos inventados; abas sem contrato de API agora comunicam a indisponibilidade de dados de forma explícita.
 - Estabilizados testes de rate limiting e cobertos os caminhos de degradação do endpoint de saúde.
-- Validação local: TypeScript, ruff, mypy, compileall e 793 testes automatizados (95,05% de cobertura).
+- Healthcheck agregado considera corretamente componentes `healthy` e `online`, evitando falso estado `degraded` quando todos os serviços estão operacionais.
+- Saneado mojibake no serviço SOC, inclusive a mensagem retornada pelo simulador de regras.
+- Validação final local: TypeScript, ruff, mypy e 800 testes automatizados (95,07% de cobertura).
 
 Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 

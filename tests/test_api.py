@@ -33,6 +33,7 @@ def test_health_endpoint(client: TestClient) -> None:
     assert "components" in body
     assert "alerts" in body["components"]
     assert "cases" in body["components"]
+    assert body["status"] == "healthy"
 
 
 @pytest.mark.asyncio
@@ -53,6 +54,7 @@ async def test_health_marks_components_as_error_when_checks_fail() -> None:
     assert response.components["enrichment"].status == "error"
     assert response.components["correlation"].status == "error"
     assert response.components["detection"].status == "error"
+    assert response.status == "degraded"
 
 
 def test_metrics_endpoint(client: TestClient) -> None:

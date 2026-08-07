@@ -4,26 +4,16 @@ Plataforma profissional de Security Information and Event Management (SIEM).
 Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
 ## Estado de release
 
-A base está em **release candidate `0.2.0-rc.1`**. O produto reúne o shell Echelon, a operação SOC, detecção, investigação, cases e administração em uma experiência consistente, responsiva e acessível.
+A versão **`0.2.0`** está pronta para publicação no Git. O produto reúne o shell Echelon, a operação SOC, detecção, investigação, cases e administração em uma experiência consistente, responsiva e acessível.
 
-- Validação de código: TypeScript, Ruff, MyPy e suíte Python automatizada.
+- Validação de código: TypeScript, Ruff, MyPy e 800 testes Python automatizados (95,07% de cobertura).
 - Dados de operação: as telas consomem os contratos `/api/v1/soc/*` já disponíveis; ações que ainda não possuem contrato são explicitamente desabilitadas.
-- Antes de publicar: consulte o [relatório de release](docs/RELEASE_CANDIDATE_REPORT.md) e conclua os itens de infraestrutura indicados.
+- Consulte o [relatório de release 0.2.0](docs/RELEASE_0.2.0_REPORT.md) para os resultados dos gates e pendências não bloqueantes.
 
-> **Status:** Sprint 1 (Foundation Core) — tag `v0.1.0`. Sprints 2.1–2.12
-> concluídas: pipeline oficial (ADR-008), infraestrutura de ingestão (ADR-009),
-> parsers + normalizer, Enrichment Engine, Correlation Engine, Rule/Detection
-> Framework (DSL declarativa), Alert Engine Enterprise (risk/fingerprint/dedup/
-> lifecycle), Incident Engine Enterprise (grouping/correlator/lifecycle), Case
-> Engine (Investigation Workspace), API v1 + CLI Enterprise (FastAPI),
-> Persistence Foundation + Engine + Event Store (SQLite, repos por agregado,
-> UnitOfWork, pipeline persistida), Search Engine + Audit Trail (busca
-> desacoplada, auditoria completa) — frameworks desacoplados com regras
-> declarativas, janelas temporais, isolamento de falhas e métricas.
-> **Sprint 2.13 — Estabilização do Projeto concluída** (checkpoint v0.2.0):
-> projeto consistente entre código, Git e documentação; UI 4.x formalizada.
-> Próxima: Sprint 2.14 (integração E2E Pipeline → Alert → Incident → Case).
-> **Regra Nº 1:** qualidade de arquitetura antes de velocidade.
+> **Status:** Sprints 2.1–2.17 concluídas. O release inclui pipeline persistida,
+> operação SOC, Alert Center, incidentes, cases, investigação, catálogo e
+> simulador de regras, IOC Manager, Assets e Detection Dashboard. A próxima etapa
+> é a Sprint 2.18 (escala: Kafka, storage PostgreSQL por protocolo e SSO).
 
 ## Rodando o projeto (um comando)
 
@@ -74,6 +64,7 @@ cd frontend && npm run dev
 | `Port 8080 already in use` | Encerre o processo anterior (`Get-NetTCPConnection -LocalPort 8080`) e rode de novo |
 | `node/npm não encontrado` | Instale Node.js 18+ (https://nodejs.org) |
 | Frontend abre sem dados | Verifique o backend em `/docs`; o Vite faz proxy `/api` → `:8080` |
+| Aviso de seed `POST /soc/pipeline/demo` | Em banco local já populado, inicie com `python run.py --no-seed`; o aviso não impede as APIs ou telas SOC já persistidas. |
 | Dados resetados | O banco dev fica em `instance/edysiem.db` (remova o arquivo para recomeçar) |
 | POST retorna 422 ao testar com curl | Não passe JSON inline via shell (aspas são removidas) — use `/docs` (Swagger), Python `requests`, ou `curl --data-binary @arquivo.json` |
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import sqlite3
 
-# ruff: noqa: RUF002, E501
+# ruff: noqa: E501
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -40,7 +40,7 @@ from .sla import SlaPolicy, SlaSnapshot, compute_sla
 
 
 class SocService:
-    """Orquestrador SOC persistido construÃƒÂ­do sobre os engines da plataforma."""
+    """Orquestrador SOC persistido construído sobre os engines da plataforma."""
 
     def __init__(
         self,
@@ -101,7 +101,7 @@ class SocService:
         description: str = "",
         enabled: bool = True,
     ) -> dict[str, Any]:
-        """Registra/atualiza uma regra no catÃƒÂ¡logo persistido."""
+        """Registra/atualiza uma regra no catálogo persistido."""
         conn = self._manager.connect()
         import json as _json
 
@@ -152,7 +152,7 @@ class SocService:
             )
 
     def simulate_rule(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
-        """Simula a aplicaÃƒÂ§ÃƒÂ£o de regras sobre um evento JSON (sem tocar a pipeline)."""
+        """Simula a aplicação de regras sobre um evento JSON (sem tocar a pipeline)."""
         payload_lower = {k.strip().lower(): v for k, v in payload.items()}
         text = " ".join(str(v).lower() for v in payload.values())
         results: list[dict[str, Any]] = []
@@ -160,7 +160,7 @@ class SocService:
             if not rule.get("enabled", True):
                 continue
             matched = False
-            reason = "sem correspondÃƒÂªncia"
+            reason = "sem correspondência"
             if payload_lower.get("rule_id") and rule["rule_id"] in str(payload_lower["rule_id"]):
                 matched = True
                 reason = "payload cita a regra"
@@ -214,7 +214,7 @@ class SocService:
         source: str = "analyst",
         labels: tuple[str, ...] = (),
     ) -> dict[str, Any]:
-        """Registra/atualiza um IOC (IP/domÃƒÂ­nio/URL/hash/e-mail)."""
+        """Registra/atualiza um IOC (IP/domínio/URL/hash/e-mail)."""
         conn = self._manager.connect()
         import json as _json
 
@@ -284,7 +284,7 @@ class SocService:
         status: str = "active",
         now: datetime | None = None,
     ) -> dict[str, Any]:
-        """Registra/atualiza um asset do inventÃƒÂ¡rio."""
+        """Registra/atualiza um asset do inventário."""
         conn = self._manager.connect()
         last_seen = (now or _utcnow()).isoformat()
         with Transaction(conn):
@@ -335,7 +335,7 @@ class SocService:
     # --- Detection Dashboard ---------------------------------------------------
 
     def detection_stats(self) -> dict[str, Any]:
-        """AgregaÃƒÂ§ÃƒÂµes para o Detection Dashboard (dados reais)."""
+        """Agregações para o Detection Dashboard (dados reais)."""
         alerts = self.list_alerts(limit=10000)
         rules = self.list_rules()
 
@@ -373,7 +373,7 @@ class SocService:
     # --- Persistencia (ponte engines -> repos) ------------------------------
 
     def persist_alert(self, alert: Alert) -> Alert:
-        """Insere ou atualiza um alerta no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
+        """Insere ou atualiza um alerta no repositório (transação atômica)."""
         with Transaction(self._manager.connect()):
             if self._alerts.get(alert.id) is None:
                 self._alerts.add(alert)
@@ -387,7 +387,7 @@ class SocService:
         return alert
 
     def persist_incident(self, incident: Incident) -> Incident:
-        """Insere ou atualiza um incidente no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
+        """Insere ou atualiza um incidente no repositório (transação atômica)."""
         with Transaction(self._manager.connect()):
             if self._incidents.get(incident.id) is None:
                 self._incidents.add(incident)
@@ -399,7 +399,7 @@ class SocService:
         return incident
 
     def persist_case(self, case: Case) -> Case:
-        """Insere ou atualiza um caso no repositÃƒÂ³rio (transaÃƒÂ§ÃƒÂ£o atÃƒÂ´mica)."""
+        """Insere ou atualiza um caso no repositório (transação atômica)."""
         with Transaction(self._manager.connect()):
             if self._cases.get(case.id) is None:
                 self._cases.add(case)
@@ -410,7 +410,7 @@ class SocService:
             )
         return case
 
-    # --- Pipeline de criaÃƒÂ§ÃƒÂ£o -----------------------------------------------
+    # --- Pipeline de criação -----------------------------------------------
 
     async def create_incident_from_alerts(
         self,
@@ -470,21 +470,21 @@ class SocService:
         *,
         actor: str = "system",
     ) -> Incident:
-        """Aplica transiÃƒÂ§ÃƒÂ£o de estado (validada) a um incidente persistido."""
+        """Aplica transição de estado (validada) a um incidente persistido."""
         incident = self._require_incident(incident_id)
         if not incident.status.can_transition_to(target):
             from ..incidents import IncidentInvalidStateTransition
 
             raise IncidentInvalidStateTransition(incident.status.value, target.value)
         updated = replace(incident, status=target)
-        # mantÃƒÂ©m o working set do engine em sincronia
+        # mantém o working set do engine em sincronia
         self._incident_engine.context.save(updated)
         return self.persist_incident(updated)
 
     def assign_incident_analyst(
         self, incident_id: str, analyst: str, *, actor: str = "system"
     ) -> Incident:
-        """Atribui um analista responsÃƒÂ¡vel ao incidente."""
+        """Atribui um analista responsável ao incidente."""
         incident = self._require_incident(incident_id)
         updated = replace(incident, owner=analyst)
         self._incident_engine.context.save(updated)
@@ -493,7 +493,7 @@ class SocService:
     # --- Case Management ----------------------------------------------------
 
     def add_case_comment(self, case_id: str, body: str, author: str) -> Case:
-        """Adiciona um comentÃƒÂ¡rio/nota ao caso."""
+        """Adiciona um comentário/nota ao caso."""
         case = self._apply_case_op(
             case_id,
             lambda c: self._case_engine.comments.add(c, body, author),
@@ -509,7 +509,7 @@ class SocService:
         label: str = "",
         source: str = "analyst",
     ) -> Case:
-        """Anexa uma evidÃƒÂªncia ao caso."""
+        """Anexa uma evidência ao caso."""
         case = self._apply_case_op(
             case_id,
             lambda c: self._case_engine.evidence.add(c, kind, value, label=label, source=source),
@@ -536,14 +536,14 @@ class SocService:
         return self.persist_case(case)
 
     def assign_case_owner(self, case_id: str, owner: str, *, assigned_by: str = "system") -> Case:
-        """Transfere o responsÃƒÂ¡vel do caso."""
+        """Transfere o responsável do caso."""
         case = self._apply_case_op(
             case_id, lambda c: self._case_engine.owners.transfer(c, owner, assigned_by=assigned_by)
         )
         return self.persist_case(case)
 
     def resolve_case(self, case_id: str, resolution: str, *, actor: str = "system") -> Case:
-        """Resolve um caso registrando a resoluÃƒÂ§ÃƒÂ£o."""
+        """Resolve um caso registrando a resolução."""
         case = self._apply_case_op(case_id, lambda c: replace(c, resolution=resolution))
         updated = self._case_engine.timeline.record_resolution(case, actor=actor)
         return self.persist_case(updated)
@@ -551,7 +551,7 @@ class SocService:
     def close_case(
         self, case_id: str, resolution: str | None = None, *, actor: str = "system"
     ) -> Case:
-        """Encerra um caso (RESOLVED -> CLOSED), registrando resoluÃƒÂ§ÃƒÂ£o e data."""
+        """Encerra um caso (RESOLVED -> CLOSED), registrando resolução e data."""
         case = self._require_case(case_id)
         if not case.status.can_transition_to(CaseStatus.CLOSED):
             from ..cases import CaseInvalidStateTransition
@@ -583,7 +583,7 @@ class SocService:
         return case
 
     def _apply_case_op(self, case_id: str, op: Callable[[Case], Case]) -> Case:
-        """Aplica uma operaÃƒÂ§ÃƒÂ£o engine sobre um caso persistido (sincronizando contexto)."""
+        """Aplica uma operação engine sobre um caso persistido (sincronizando contexto)."""
         case = self._require_case(case_id)
         self._case_engine.context.save(case)
         return op(case)
@@ -591,7 +591,7 @@ class SocService:
     # --- Investigation ------------------------------------------------------
 
     def investigate(self, case_id: str) -> dict[str, Any]:
-        """PivÃƒÂ´s de investigaÃƒÂ§ÃƒÂ£o de um caso: alertas/IOCs/assets/contexto."""
+        """Pivôs de investigação de um caso: alertas/IOCs/assets/contexto."""
         case = self._require_case(case_id)
         related_alerts = [
             self._alert_summary(a)
@@ -650,7 +650,7 @@ class SocService:
     # --- SLA -----------------------------------------------------------------
 
     def sla_of(self, entity: Alert | Incident | Case) -> SlaSnapshot:
-        """SLA de uma entidade (por severidade e datas de criaÃƒÂ§ÃƒÂ£o/encerramento)."""
+        """SLA de uma entidade (por severidade e datas de criação/encerramento)."""
         if isinstance(entity, Alert):
             closed_at: datetime | None = None
         else:
@@ -662,10 +662,10 @@ class SocService:
             policy=self._sla,
         )
 
-    # --- MÃƒÂ©tricas reais (dashboard) ------------------------------------------
+    # --- Métricas reais (dashboard) ------------------------------------------
 
     def metrics(self) -> dict[str, Any]:
-        """KPIs do dashboard alimentados por dados reais da persistÃƒÂªncia."""
+        """KPIs do dashboard alimentados por dados reais da persistência."""
         alerts = self.list_alerts(limit=10000)
         incidents = self.list_incidents(limit=10000)
         cases = self.list_cases(limit=10000)

@@ -43,7 +43,10 @@ async def health(container: ApplicationContainer = Depends(get_container)) -> He
     components["incidents"] = HealthComponent(status="online")
     components["cases"] = HealthComponent(status="online")
 
-    overall = "healthy" if all(c.status == "online" for c in components.values()) else "degraded"
+    healthy_statuses = {"healthy", "online"}
+    overall = (
+        "healthy" if all(c.status in healthy_statuses for c in components.values()) else "degraded"
+    )
     return HealthResponse(status=overall, version=version(), components=components)
 
 
