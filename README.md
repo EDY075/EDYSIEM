@@ -1,111 +1,115 @@
-# EDY SIEM
+<p align="center">
+  <img src="assets/branding/edysiem-banner.png" alt="EDY SIEM — Open Source Security Information and Event Management Platform">
+</p>
 
-Plataforma profissional de Security Information and Event Management (SIEM).
-Python 3.12 (backend) + TypeScript (frontend) — arquitetura limpa, modular e didática.
-## Estado de release
+<p align="center">
+  <a href="https://github.com/EDY075/EDYSIEM/actions/workflows/ci.yml"><img src="https://github.com/EDY075/EDYSIEM/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
+  <img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=111827" alt="React 18">
+  <img src="https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/tests-801-16a34a" alt="801 automated tests">
+  <img src="https://img.shields.io/badge/coverage-95.10%25-16a34a" alt="95.10 percent coverage">
+  <img src="https://img.shields.io/badge/version-0.2.0-2563eb" alt="Version 0.2.0">
+  <img src="https://img.shields.io/badge/license-MIT-f59e0b" alt="MIT License">
+</p>
 
-A versão **`0.2.0`** está pronta para publicação no Git. O produto reúne o shell Echelon, a operação SOC, detecção, investigação, cases e administração em uma experiência consistente, responsiva e acessível.
+<p align="center">
+  <strong>Open-source SIEM and SOC operations platform with detection engineering, incident response, investigation workflows, and threat intelligence.</strong>
+</p>
 
-- Validação de código: TypeScript, Ruff, MyPy e 800 testes Python automatizados (95,07% de cobertura).
-- Dados de operação: as telas consomem os contratos `/api/v1/soc/*` já disponíveis; ações que ainda não possuem contrato são explicitamente desabilitadas.
-- Consulte o [relatório de release 0.2.0](docs/RELEASE_0.2.0_REPORT.md) para os resultados dos gates e pendências não bloqueantes.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#product-tour">Product tour</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="docs/README.md">Documentation</a>
+</p>
 
-> **Status:** Sprints 2.1–2.17 concluídas. O release inclui pipeline persistida,
-> operação SOC, Alert Center, incidentes, cases, investigação, catálogo e
-> simulador de regras, IOC Manager, Assets e Detection Dashboard. A próxima etapa
-> é a Sprint 2.18 (escala: Kafka, storage PostgreSQL por protocolo e SSO).
+![EDY SIEM product tour](assets/demos/edysiem-product-tour.gif)
 
-## Rodando o projeto (um comando)
+## Product tour
 
-Qualquer pessoa que clonar o repositório consegue subir o ambiente completo:
+<table>
+  <tr>
+    <td width="50%"><strong>Dashboard</strong><br><img src="assets/screenshots/dashboard-overview.png" alt="EDY SIEM Dashboard"></td>
+    <td width="50%"><strong>War Room</strong><br><img src="assets/screenshots/war-room.png" alt="EDY SIEM War Room"></td>
+  </tr>
+  <tr>
+    <td><strong>Alert Center</strong><br><img src="assets/screenshots/alert-center.png" alt="EDY SIEM Alert Center"></td>
+    <td><strong>Incidents</strong><br><img src="assets/screenshots/incident-management.png" alt="EDY SIEM Incident Management"></td>
+  </tr>
+  <tr>
+    <td><strong>Investigation</strong><br><img src="assets/screenshots/investigation-workspace.png" alt="EDY SIEM Investigation Workspace"></td>
+    <td><strong>Rules</strong><br><img src="assets/screenshots/rules-engine.png" alt="EDY SIEM Rules Engine"></td>
+  </tr>
+  <tr>
+    <td><strong>IOC and Assets</strong><br><img src="assets/screenshots/intelligence-ioc-assets.jpg" alt="EDY SIEM IOC Manager and asset context"></td>
+    <td><strong>Detection Dashboard</strong><br><img src="assets/screenshots/detection-dashboard.png" alt="EDY SIEM Detection Dashboard"></td>
+  </tr>
+</table>
+
+## Overview
+
+EDY SIEM turns telemetry into an operational SOC workflow. The Python backend
+persists the detection lifecycle, while the React interface gives analysts a
+focused workspace for triage, response, investigation, rules, and intelligence.
+
+**Operational flow:** Event → Rule → Alert → Incident → Case → Investigation.
+
+| Area | What it supports |
+| --- | --- |
+| Operations | Dashboard, War Room, Alert Center, incidents, cases, and playbooks |
+| Detection engineering | Rules, simulator, MITRE context, and detection metrics |
+| Threat intelligence | IOC Manager and asset context connected to SOC data |
+| Platform | FastAPI v1 contracts, SQLite persistence, typed Python, and a React/Vite UI |
+
+## Quick start
+
+Requirements: Python 3.12+ and Node.js 18+.
 
 ```bash
-# 1) instala as dependências (backend + frontend) automaticamente
-# 2) cria o banco e aplica migrações
-# 3) inicia backend (:8080) + frontend (:5173)
-# 4) popula dados de demonstração e abre o navegador
+python -m pip install -e ".[dev,api]"
+cd frontend && npm ci && cd ..
 python run.py
 ```
 
-- Frontend (UI): http://localhost:5173
-- Swagger/API: http://127.0.0.1:8080/docs
+The single command applies migrations, starts backend and frontend, seeds safe
+demonstration data, and opens the UI. Use `--no-seed` or `--no-open` when needed.
 
-Equivalente via CLI instalada: `edysiem dev` (flags `--no-seed`, `--no-open`).
-Scripts prontos: `scripts/dev.ps1` (Windows) e `scripts/dev.sh` (Linux/macOS).
+| Service | URL |
+| --- | --- |
+| SOC workspace | http://localhost:5173 |
+| Health check | http://127.0.0.1:8080/api/v1/health |
+| OpenAPI / Swagger | http://127.0.0.1:8080/docs |
 
-### Instalação manual (opcional)
+## Architecture
 
-```bash
-# Backend (Python 3.12+)
-python -m pip install -e ".[dev]"
-
-# Frontend (Node 18+)
-cd frontend && npm install && cd ..
+```text
+Event sources → Collectors → Parsing → Normalization → Enrichment
+             → Correlation → Detection → Alerts → Incidents → Cases
+             → SQLite persistence → FastAPI v1 → React SOC workspace
 ```
 
-### Modo desenvolvimento
+Read the [architecture overview](docs/architecture/overview.md) and
+[data flow](docs/architecture/data-flow.md) for the complete design.
 
-```bash
-python run.py                 # backend + frontend + seed + abre o navegador
-python run.py --no-seed       # sem dados de demonstração
-python run.py --no-open       # não abre o navegador
-```
+## Roadmap
 
-Servidores individuais (debug):
-```bash
-uvicorn edysiem.api.app:create_app --factory --host 127.0.0.1 --port 8080
-cd frontend && npm run dev
-```
+The current 0.2.x delivery record and the next milestones are in the
+[roadmap](ROADMAP.md). Historical implementation reports are kept in the
+[sprint archive](docs/sprints/README.md).
 
-### Resolução de problemas
+## Documentation
 
-| Problema | Solução |
-|---|---|
-| `Port 8080 already in use` | Encerre o processo anterior (`Get-NetTCPConnection -LocalPort 8080`) e rode de novo |
-| `node/npm não encontrado` | Instale Node.js 18+ (https://nodejs.org) |
-| Frontend abre sem dados | Verifique o backend em `/docs`; o Vite faz proxy `/api` → `:8080` |
-| Seed repetido | O seed é idempotente: alertas e incidentes são reutilizados pelo fingerprint e o case existente é preservado. Use `--no-seed` apenas quando quiser iniciar sem popular demonstração. |
-| Dados resetados | O banco dev fica em `instance/edysiem.db` (remova o arquivo para recomeçar) |
-| POST retorna 422 ao testar com curl | Não passe JSON inline via shell (aspas são removidas) — use `/docs` (Swagger), Python `requests`, ou `curl --data-binary @arquivo.json` |
+| Topic | Entry point |
+| --- | --- |
+| Documentation hub | [docs/README.md](docs/README.md) |
+| Development and quality | [development guide](docs/development/getting-started.md) · [testing](docs/development/testing.md) |
+| Product and UX | [product overview](docs/product/overview.md) · [design system](docs/ux/design-system.md) |
+| Security | [security model](docs/security/security-model.md) |
+| Release notes | [release 0.2.0](docs/releases/release-0.2.0.md) |
 
-## Documentação
+## Contributing and license
 
-| Documento | Conteúdo |
-|---|---|
-| [PRODUCT_VISION.md](docs/PRODUCT_VISION.md) | Visão, público, objetivos |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arquitetura e fluxo |
-| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Componentes e modelagem |
-| [DECISIONS.md](docs/DECISIONS.md) | Índice de ADRs |
-| [ROADMAP.md](docs/ROADMAP.md) | Sprints planejadas |
-| [STUDY_GUIDE.md](docs/STUDY_GUIDE.md) | O que é SIEM (didático) |
-| [STYLE_GUIDE.md](docs/STYLE_GUIDE.md) | Design system |
-| [CODING_STANDARD.md](docs/CODING_STANDARD.md) | Padrão de código |
-
-Índice completo: [docs/](docs/)
-
-## Frontend (React)
-
-- `frontend/` — Design System (tokens + componentes base), estrutura React (AppShell, Sidebar, Topbar, Routing, ThemeProvider, estado global, toasts) e camada conectada ao backend (API client + hooks). Consome a API **`/soc/*`** real: **Dashboard** (`/`), **War Room** (`/war-room`), **Alert Center** (`/alerts`), **Incident Center** (`/incidents`), **Case Management** (`/cases`), **Investigation Workspace** (`/investigate`), **Intelligence** (Rules/IOC/Assets, `/rules` `/intel`) e **Detection Dashboard** (`/detection`). Sem dados mock.
-- Benchmark UX: [docs/ENTERPRISE_UX_BENCHMARK.md](docs/ENTERPRISE_UX_BENCHMARK.md).
-
-```bash
-cd frontend && npm install && npm run dev
-```
-
-> O Vite faz proxy de `/api` para o FastAPI em `http://localhost:8080` (configurável via `VITE_API_URL`).
-
-## Visão do fluxo
-
-```
-Event Sources -> Collectors -> RawEvent -> Parser -> ParsedEvent
--> Normalizer -> CanonicalEvent -> Enrichment -> EnrichedEvent
--> Correlation -> Detection -> Incident -> Persistence
--> REST API -> Dashboard/CLI
-```
-
-## Roadmap resumido
-
-- **S0:** Fundação (docs, ADRs, UX, design system, estrutura) ✅
-- **S1:** Núcleo (core, persistence, pipeline, regras, incidentes, API, CLI, UI v0) — Core ✅
-- **S2:** Operação SOC (dashboard, investigação, regras UI, intel, assets, incident UI)
-- **S3:** Escala (fila externa, storage alternativo, auth, hunting)
+See the [contributing guide](CONTRIBUTING.md), [security guidance](SECURITY.md),
+and [MIT License](LICENSE). Built and maintained by [EDY075](https://github.com/EDY075).
