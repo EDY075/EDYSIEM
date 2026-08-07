@@ -52,6 +52,28 @@ def test_soc_api_full_flow(monkeypatch, tmp_path) -> None:
         assert r.json()["components"]["cases_closed"] >= 1
 
 
+def test_soc_demo_seed_is_idempotent_across_restarts(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        first = client.post("/api/v1/soc/pipeline/demo")
+        assert first.status_code == 200
+        totals = {
+            "alerts": client.get("/api/v1/soc/alerts").json()["total"],
+            "incidents": client.get("/api/v1/soc/incidents").json()["total"],
+            "cases": client.get("/api/v1/soc/cases").json()["total"],
+        }
+
+    with TestClient(create_app()) as client:
+        second = client.post("/api/v1/soc/pipeline/demo")
+        assert second.status_code == 200
+        assert second.json()["alert_ids"] == first.json()["alert_ids"]
+        assert second.json()["incident_id"] == first.json()["incident_id"]
+        assert second.json()["case_id"] == first.json()["case_id"]
+        assert client.get("/api/v1/soc/alerts").json()["total"] == totals["alerts"]
+        assert client.get("/api/v1/soc/incidents").json()["total"] == totals["incidents"]
+        assert client.get("/api/v1/soc/cases").json()["total"] == totals["cases"]
+
+
 def test_soc_api_incident_not_found(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
     with TestClient(create_app()) as client:

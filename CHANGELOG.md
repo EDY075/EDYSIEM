@@ -9,7 +9,8 @@
 - Estabilizados testes de rate limiting e cobertos os caminhos de degradação do endpoint de saúde.
 - Healthcheck agregado considera corretamente componentes `healthy` e `online`, evitando falso estado `degraded` quando todos os serviços estão operacionais.
 - Saneado mojibake no serviço SOC, inclusive a mensagem retornada pelo simulador de regras.
-- Validação final local: TypeScript, ruff, mypy e 800 testes automatizados (95,07% de cobertura).
+- Seed `/soc/pipeline/demo` tornou-se idempotente após reinício: reutiliza alertas e incidentes pelo fingerprint e preserva o case associado, sem apagar dados persistidos.
+- Validação final local: TypeScript, ruff, mypy e 801 testes automatizados.
 
 Todas as mudanças notáveis do EDY SIEM serão documentadas neste arquivo.
 

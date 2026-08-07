@@ -162,8 +162,7 @@ class SocPipeline:
                 finding,
                 identity={"user": user, "asset": host},
             )
-            service.persist_alert(result.alert)
-            alerts.append(result.alert)
+            alerts.append(service.persist_alert(result.alert))
 
         # 2) Incidente a partir dos alertas
         incident = await service.create_incident_from_alerts(

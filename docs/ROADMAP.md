@@ -7,7 +7,7 @@
 | Frente | Estado | Observação |
 |---|---|---|
 | Shell, design system e telas SOC | Concluído | Identidade Echelon e responsividade revisadas. |
-| Qualidade de código | Concluído | TypeScript, Ruff, MyPy e 800 testes com 95,07% de cobertura. |
+| Qualidade de código | Concluído | TypeScript, Ruff, MyPy e 801 testes com cobertura mínima de 95%. |
 | Publicação no Git | Concluído localmente | Commit e tag `release-0.2.0`; o push depende de um remoto configurado. |
 | Evolução de contratos | Pendente | Triage, Playbooks e detalhes enriquecidos de alerta aguardam endpoints próprios. |
 

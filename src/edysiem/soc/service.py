@@ -375,9 +375,14 @@ class SocService:
     def persist_alert(self, alert: Alert) -> Alert:
         """Insere ou atualiza um alerta no repositório (transação atômica)."""
         with Transaction(self._manager.connect()):
-            if self._alerts.get(alert.id) is None:
+            existing = self._alerts.get(alert.id)
+            if existing is None and alert.fingerprint is not None:
+                existing = self._alerts.by_fingerprint(alert.fingerprint.hash)
+            if existing is None:
                 self._alerts.add(alert)
             else:
+                if existing.id != alert.id:
+                    return existing
                 self._alerts.update(alert)
             self._event_store.record_event(PipelineStage.ALERT, alert, alert.id)
             self._manager.connect().execute(
@@ -389,9 +394,14 @@ class SocService:
     def persist_incident(self, incident: Incident) -> Incident:
         """Insere ou atualiza um incidente no repositório (transação atômica)."""
         with Transaction(self._manager.connect()):
-            if self._incidents.get(incident.id) is None:
+            existing = self._incidents.get(incident.id)
+            if existing is None and incident.fingerprint is not None:
+                existing = self._incidents.by_fingerprint(incident.fingerprint.hash)
+            if existing is None:
                 self._incidents.add(incident)
             else:
+                if existing.id != incident.id:
+                    return existing
                 self._incidents.update(incident)
             self._event_store.record_event(
                 PipelineStage.INCIDENT, incident, correlation_id=incident.id
@@ -432,6 +442,9 @@ class SocService:
         owner: str | None = None,
     ) -> Case:
         """Cria um caso a partir de um incidente via Case Engine e persiste."""
+        existing = self._cases.by_incident(incident.id, limit=1).items
+        if existing:
+            return existing[0]
         result = await self._case_engine.create_from_incident(incident, title=title, owner=owner)
         return self.persist_case(result.case)
 

@@ -64,7 +64,7 @@ cd frontend && npm run dev
 | `Port 8080 already in use` | Encerre o processo anterior (`Get-NetTCPConnection -LocalPort 8080`) e rode de novo |
 | `node/npm não encontrado` | Instale Node.js 18+ (https://nodejs.org) |
 | Frontend abre sem dados | Verifique o backend em `/docs`; o Vite faz proxy `/api` → `:8080` |
-| Aviso de seed `POST /soc/pipeline/demo` | Em banco local já populado, inicie com `python run.py --no-seed`; o aviso não impede as APIs ou telas SOC já persistidas. |
+| Seed repetido | O seed é idempotente: alertas e incidentes são reutilizados pelo fingerprint e o case existente é preservado. Use `--no-seed` apenas quando quiser iniciar sem popular demonstração. |
 | Dados resetados | O banco dev fica em `instance/edysiem.db` (remova o arquivo para recomeçar) |
 | POST retorna 422 ao testar com curl | Não passe JSON inline via shell (aspas são removidas) — use `/docs` (Swagger), Python `requests`, ou `curl --data-binary @arquivo.json` |
 

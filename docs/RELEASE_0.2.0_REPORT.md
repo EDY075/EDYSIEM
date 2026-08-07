@@ -10,7 +10,7 @@ das telas.
 
 ## Validações executadas
 
-- `pytest`: 800 aprovados, cobertura total de 95,07%.
+- `pytest`: 801 aprovados, cobertura mínima de 95% atingida.
 - `mypy`: sem problemas em 147 arquivos.
 - `ruff check .`: aprovado.
 - `npx tsc -b` e `npm run build`: aprovados.
@@ -23,13 +23,14 @@ das telas.
   engines (`healthy`) e pelos componentes SOC (`online`).
 - Corrigida codificação quebrada no `SocService`, inclusive a mensagem exibida pelo
   simulador de regras.
+- O seed `/soc/pipeline/demo` passou a reutilizar alertas e incidentes persistidos
+  pelo fingerprint, além do case já vinculado ao incidente.
 
-## Pendência não bloqueante
+## Seed repetível
 
-Em um banco de desenvolvimento já populado, `POST /api/v1/soc/pipeline/demo` pode
-retornar 500 durante o seed. O runner registra o aviso e continua; as APIs e telas
-SOC permanecem utilizáveis. Para reutilizar esse banco sem novo seed, execute
-`python run.py --no-seed`. A investigação da causa raiz fica fora deste release.
+O seed pode ser executado repetidamente, inclusive após reiniciar a aplicação. Os
+dados de demonstração existentes são reutilizados; nenhum registro persistido é
+removido. `python run.py --no-seed` continua disponível para iniciar sem seed.
 
 ## Publicação
 
