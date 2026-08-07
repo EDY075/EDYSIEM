@@ -30,38 +30,38 @@
 ### Sprint 0.1 — Manifesto
 - **Status:** Concluída
 - **Objetivo:** posicionamento Enterprise do produto.
-- **Arquivos:** `PROJECT_MANIFESTO.md`.
+- **Arquivos:** `docs/product/project-manifesto.md`.
 - **Resultado:** missão, visão, valores, não-objetivos, compromisso.
 
 ### Sprint 0.2 — Benchmark
 - **Status:** Concluída
 - **Objetivo:** estudar 9 SIEMs comerciais.
-- **Arquivos:** `docs/research/benchmark.md`.
+- **Arquivos:** `docs/product/research/benchmark.md`.
 - **Resultado:** tabela comparativa + direcionamentos (modelo canônico, MITRE, incident aggregator, entity-centric, risk score).
 - **Lições:** inspiração, nunca cópia.
 
 ### Sprint 0.3 — Design System
 - **Status:** Concluída
 - **Objetivo:** design system completo criado do zero.
-- **Arquivos:** `docs/design/{DESIGN_SYSTEM,COMPONENT_LIBRARY,DESIGN_GUIDE,UI_GUIDE}.md`.
+- **Arquivos:** `docs/ux/{design-system,component-library,design-guide,ui-guide}.md`.
 - **Resultado:** tokens, componentes, padrões, DoR UI.
 
 ### Sprint 0.4 — Arquitetura
 - **Status:** Concluída
 - **Objetivo:** arquitetura completa + dataflow.
-- **Arquivos:** `docs/{ARCHITECTURE,SYSTEM_DESIGN,DATAFLOW}.md`, ADR-007.
+- **Arquivos:** `docs/architecture/{overview,system-design,data-flow}.md`, ADR-007.
 - **Resultado:** fluxo etapa por etapa, Clean Architecture, SOLID, DI, plugin system.
 
 ### Sprint 0.5 — UX Architecture
 - **Status:** Concluída
 - **Objetivo:** projetar toda experiência do usuário.
-- **Arquivos:** `docs/design/{UX_ARCHITECTURE,SCREEN_MAP,USER_JOURNEY,UX_FLOW,WIREFRAMES}.md`.
+- **Arquivos:** `docs/ux/{ux-architecture,screen-map,user-journey,ux-flow,wireframes}.md`.
 - **Resultado:** 4 perguntas por tela, jornadas por perfil, wireframes ASCII.
 
 ### Sprint 0.6 — Enterprise Foundation
 - **Status:** Concluída
 - **Objetivo:** infraestrutura Enterprise (docs de convenções, qualidade, logging, eventos, banco, API, git).
-- **Arquivos:** `docs/{PROJECT_STRUCTURE}.md`, `docs/guides/{CODING,GIT_WORKFLOW,QUALITY,LOGGING_DESIGN,EVENT_BUS}.md`, `docs/{DATABASE_DESIGN,API_DESIGN}.md`, `docs/SPRINT_BOOK.md`.
+- **Arquivos:** `docs/development/project-structure.md`, `docs/development/guides/{coding_guide,git_workflow,quality_guide,logging_design,event_bus}.md`, `docs/{architecture/database-design,development/api-design}.md`, `docs/sprints/sprint-book.md`.
 - **Resultado:** fundação Enterprise pronta para Sprint 1.
 - **Lições:** documentação como produto; nada de código sem contrato.
 
@@ -85,7 +85,7 @@
 - **Status:** Concluída
 - **Data:** 2026-08-03
 - **Objetivo:** infraestrutura de ingestão reutilizável e desacoplada (ADR-009) — sem parsers reais.
-- **Arquivos:** `src/edysiem/ingestion/` (collectors/base, queue, backpressure, retry, dead_letter, rate_limiter, health, metrics), `tests/test_ingestion_*.py` (8 arquivos), `docs/PIPELINE.md`, `docs/adr/ADR-009-ingestion-infrastructure.md`.
+- **Arquivos:** `src/edysiem/ingestion/` (collectors/base, queue, backpressure, retry, dead_letter, rate_limiter, health, metrics), `tests/test_ingestion_*.py` (8 arquivos), `docs/architecture/pipeline.md`, `docs/architecture/adr/ADR-009-ingestion-infrastructure.md`.
 - **Resultado:** 254 testes, cobertura 98.26%, mypy strict 0 (40 arquivos), ruff check+format limpos.
 - **Lições:** fila thread-safe + async-ready com `deque`+Lock+`asyncio.Event` lazy (single-loop); `put_nowait` não consulta backpressure (produtor síncrono usa `can_accept`); `ErrorCode.QUEUE_FULL` adicionado.
 
@@ -172,7 +172,7 @@
 - **Status:** Concluída
 - **Data:** 2026-08-04
 - **Objetivo:** benchmark UX de 6 SIEMs, design system definitivo (dark SOC) e estrutura React (shell, routing, theme, estado global).
-- **Arquivos:** `docs/ENTERPRISE_UX_BENCHMARK.md`, `frontend/` (design-system tokens + componentes base; shell Sidebar/Topbar/AppShell; routing; theme; estado global).
+- **Arquivos:** `docs/ux/enterprise-ux-benchmark.md`, `frontend/` (design-system tokens + componentes base; shell Sidebar/Topbar/AppShell; routing; theme; estado global).
 - **Resultado:** decisões de UX documentadas (dark default, severidade semântica, IA por workflow, master-detail, entidade-cêntrico) + design system novo (tokens cores/spacing/typography/icons/motion/shadows + Button/Badge/Card/Input/Table) + estrutura React sem lógica (AppShell, Sidebar, Topbar, Layout, Routing, ThemeProvider, AppState, responsividade).
 - **Lições:** benchmark define tokens semânticos de severidade (low=azul, medium=âmbar, high=laranja, critical=vermelho); dark theme default; navegação por workflow (Overview->Triage->Investigate->Respond->Manage).
 
@@ -218,7 +218,7 @@
 - **Data:** 2026-08-05
 - **Objetivo:** NÃO criar funcionalidade nova. Tornar o projeto consistente entre **código, Git e documentação**.
 - **Escopo:** auditoria final (working tree, branch, commits, tag); remoção de arquivos experimentais/temporários; commit único e organizado; atualização de ROADMAP/CHANGELOG/MEMORY_LOG/SPRINT_BOOK/relatório; bump de versão `0.1.0 → 0.2.0` + tag `v0.2.0`; validação (pytest, mypy, ruff, npm build, tsc).
-- **Arquivos:** `.gitignore`, `CHANGELOG.md`, `README.md`, `docs/ROADMAP.md`, `docs/SPRINT_BOOK.md`, `MEMORY_LOG.md`, `SPRINT2_13_REPORT.md`, `pyproject.toml`, `src/edysiem/__init__.py`, `frontend/package.json`, `archive/frontend_scratch/` (temporários preservados), `frontend/**` (checkpoint da UI 4.x).
+- **Arquivos:** `.gitignore`, `CHANGELOG.md`, `README.md`, `ROADMAP.md`, `docs/sprints/sprint-book.md`, `MEMORY_LOG.md`, `docs/sprints/sprint-2.13-report.md`, `pyproject.toml`, `src/edysiem/__init__.py`, `frontend/package.json`, `archive/frontend_scratch/` (temporários preservados), `frontend/**` (checkpoint da UI 4.x).
 - **Resultado:** 1 commit de checkpoint, tag **`v0.2.0`**, working tree limpa, backend 95.17% cobertura / mypy strict 0 / ruff limpo, frontend compilando (tsc + vite).
 - **Lições:** sprints de feature anteriores à formalização documental deixam lacunas em ROADMAP/CHANGELOG — a sprint de estabilização fechou essas lacunas; arquivos experimentais (`build_log.txt`, `tsc_*.txt`, `tsconfig.tsbuildinfo`) foram versionados por engano e agora são ignorados.
 

@@ -69,9 +69,10 @@ logs/
 instance/
 *.db
 
-# Screenshots gerados (a manter fora do versionamento)
-UX_REVIEW/screenshots/
-UX_REVIEW/screenshots_after/
-UX_REVIEW/*.zip
+# Material de revisão local (a galeria publicada fica em assets/screenshots/)
+UX_REVIEW/
+
+# Primeira geração local preservada durante a otimização do GIF publicado
+assets/demos/archive/
 *.db-shm
 *.db-wal

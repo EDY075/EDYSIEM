@@ -32,8 +32,8 @@
 
 ### Documentação
 
-- `docs/PIPELINE.md` (novo) — pipeline de ingestão e fluxo ponta a ponta
-- `docs/adr/ADR-009-ingestion-infrastructure.md` (novo) — decisão arquitetural
+- `docs/architecture/pipeline.md` (novo) — pipeline de ingestão e fluxo ponta a ponta
+- `docs/architecture/adr/ADR-009-ingestion-infrastructure.md` (novo) — decisão arquitetural
 
 ---
 
@@ -43,7 +43,7 @@
 - `src/edysiem/result/errors.py` — novo `ErrorCode.QUEUE_FULL`
 - `src/edysiem/__init__.py` — expõe `ingestion` como subpacote
 - `tests/test_init.py`, `tests/test_plugins.py` — ajustados aos novos contratos
-- `docs/ARCHITECTURE.md`, `docs/OBSERVABILITY.md`, `docs/PERFORMANCE_DESIGN.md`, `docs/DECISIONS.md`, `docs/SPRINT_BOOK.md`, `CHANGELOG.md`, `README.md`
+- `docs/architecture/overview.md`, `docs/architecture/observability.md`, `docs/architecture/performance-design.md`, `docs/architecture/decisions.md`, `docs/sprints/sprint-book.md`, `CHANGELOG.md`, `README.md`
 
 ---
 

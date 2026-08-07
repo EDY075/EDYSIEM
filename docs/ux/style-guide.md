@@ -64,4 +64,4 @@ Toda tela responde: **o quê, onde, risco, quem, ação.**
 ## 7. Arquivos
 
 - Design tokens: `app/ui/src/styles/tokens.css` (quando UI iniciar).
-- Referências visuais futuras: `docs/design/`.
+- Referências visuais futuras: `docs/ux/`.

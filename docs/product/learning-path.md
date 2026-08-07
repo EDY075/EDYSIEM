@@ -7,7 +7,7 @@
 
 | Etapa | Teoria | Prática no projeto |
 |---|---|---|
-| 1 | O que é SIEM, ciclo do evento | `STUDY_GUIDE.md` + fluxo no `SYSTEM_DESIGN.md` |
+| 1 | O que é SIEM, ciclo do evento | `docs/product/study-guide.md` + fluxo no `docs/architecture/system-design.md` |
 | 2 | Logs: syslog, Linux, Windows | Parser syslog em `normalization` (S1.3) |
 | 3 | Normalização e modelagem | `core/events.py` + `DATABASE.md` (S1.1) |
 | 4 | Enriquecimento e intel | `enrichment` + IOCs (S1.4) |
@@ -29,4 +29,4 @@
 ## Cadência sugerida
 
 - 1 sessão/semana → sprints de fundação primeiro, depois 1 módulo por semana.
-- Ao final de cada módulo: atualizar `STUDY_GUIDE.md` com o que aprendeu.
+- Ao final de cada módulo: atualizar `docs/product/study-guide.md` com o que aprendeu.

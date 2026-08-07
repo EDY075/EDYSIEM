@@ -1,6 +1,6 @@
 # EDY SIEM — Coding Guide
 
-> Convenções de código obrigatórias. Extensão do `CODING_STANDARD.md` com detalhes
+> Convenções de código obrigatórias. Extensão de `docs/development/coding-standard.md` com detalhes
 > práticos de nomenclatura, tipos, DTOs, Result Pattern e padrões REST.
 
 ## 1. Nomenclatura

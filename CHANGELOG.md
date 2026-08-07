@@ -157,7 +157,7 @@ e o projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 ### Sprint UI 3.0/3.1/3.2 — UX Benchmark + Design System + React Shell
 
 #### Adicionado
-- `docs/ENTERPRISE_UX_BENCHMARK.md`: benchmark profundo de UX de 6 SIEMs (Splunk ES, Sentinel, Elastic, Falcon, Wazuh, QRadar) — layout, navegação, sidebar, topbar, dashboards, alert center, investigation, incident, cores, tipografia, espaçamento, métricas, gráficos, tabelas, filtros, experiência do analista + anti-patterns + decisões.
+- `docs/ux/enterprise-ux-benchmark.md`: benchmark profundo de UX de 6 SIEMs (Splunk ES, Sentinel, Elastic, Falcon, Wazuh, QRadar) — layout, navegação, sidebar, topbar, dashboards, alert center, investigation, incident, cores, tipografia, espaçamento, métricas, gráficos, tabelas, filtros, experiência do analista + anti-patterns + decisões.
 - `frontend/` (estrutura React, sem lógica):
   - `design-system/`: tokens (cores dark + severidade semântica, spacing 4px, typography Inter+JetBrains Mono, radii, shadows, motion) e componentes base (Button, Badge, Card, Input, Table)
   - `theme/ThemeProvider.tsx`: dark default + toggle

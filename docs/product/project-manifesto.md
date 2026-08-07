@@ -89,7 +89,7 @@ O EDY SIEM entrega isso sem sacrificar qualidade de engenharia.
 - **Código autodocumentado** — nomes claros, tipos fortes.
 - **Zero gambiarra, zero duplicação, zero dependências desnecessárias.**
 - **Testes como parte do produto**, não como formalidade.
-- **ADR para toda decisão arquitetural** (ver `docs/DECISIONS.md`).
+- **ADR para toda decisão arquitetural** (ver `docs/architecture/decisions.md`).
 
 ## 7. Experiência do produto
 

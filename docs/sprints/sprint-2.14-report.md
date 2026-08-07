@@ -32,7 +32,7 @@
 - `frontend/src/design-system/components/feedback.tsx` — skeleton/empty/`skeletonCss` export
 - `frontend/src/design-system/components/Timeline.tsx` — ActivityFeed
 - `frontend/src/pages/DashboardOverview.tsx`, `AlertCenterPage.tsx`, `WarRoomPage.tsx`
-- Docs: `CHANGELOG.md`, `docs/ROADMAP.md`, `docs/SPRINT_BOOK.md`, `SPRINT2_14_REPORT.md` (novo), `MEMORY_LOG.md` (fora do repo)
+- Docs: `CHANGELOG.md`, `ROADMAP.md`, `docs/sprints/sprint-book.md`, `docs/sprints/sprint-2.14-report.md` (novo), `MEMORY_LOG.md` (fora do repo)
 
 ## 3. Testes e Cobertura
 

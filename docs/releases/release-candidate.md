@@ -92,10 +92,10 @@ Avisos externos restantes: duas deprecações originadas por `starlette.testclie
 
 ### Documentação
 
-- `README.md`, `CHANGELOG.md`, `docs/ROADMAP.md`
+- `README.md`, `CHANGELOG.md`, `ROADMAP.md`
 - `docs/TRIAGE_PLAYBOOKS_API_CONTRACT.md`
-- `docs/design/ECHELON_BRAND.md`
-- `docs/RELEASE_CANDIDATE_REPORT.md`
+- `docs/ux/echelon-brand.md`
+- `docs/releases/release-candidate.md`
 
 ## Pendências e recomendações para o JR antes da publicação
 

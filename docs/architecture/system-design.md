@@ -53,7 +53,7 @@ Contrato: cada collector emite `RawEvent(source_type, source_host, received_at, 
 - Endpoints: eventos (search), alertas, incidentes, regras, iocs, assets, health.
 
 ### 1.10 UI
-- SPA (frontend próprio, ver `docs/STYLE_GUIDE.md`).
+- SPA (frontend próprio, ver `docs/ux/style-guide.md`).
 - Páginas: Overview, Events, Alerts, Incidents, Rules, Intelligence, Assets, Settings.
 
 ## 2. Diagrama de componentes
@@ -95,5 +95,5 @@ flowchart TB
 
 ## 5. Modelagem de dados (resumo)
 
-Ver `docs/DATABASE.md` para o modelo completo. Entidades raiz:
+Ver `docs/architecture/database.md` para o modelo completo. Entidades raiz:
 `Event`, `Alert`, `Incident`, `DetectionRule`, `CorrelationRule`, `IOC`, `Asset`, `User`, `AuditLog`.

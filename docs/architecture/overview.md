@@ -57,7 +57,7 @@ flowchart LR
 > metadata declarativos, ``CorrelationRegistry`` (ordenacao topologica por prioridade +
 > dependencias), ``CorrelationEngine`` (janelas temporais via ``CorrelationContext``, isolamento
 > de falhas, timeout por regra, metricas). Regras declarativas, sem hardcode. Ver
-> `docs/PIPELINE.md` e `src/edysiem/correlation/plugins/README.md`.
+> `docs/architecture/pipeline.md` e `src/edysiem/correlation/plugins/README.md`.
 | `detection` | Aplicar detection rules e gerar alertas (MITRE) | Resolver incidentes |
 
 > **Implementado (Sprint 2.6):** `src/edysiem/detection/` - ``DetectionRule`` Protocol + ``RuleMetadata``
@@ -101,7 +101,7 @@ flowchart LR
 
 > A infraestrutura de ingestão (`src/edysiem/ingestion/`) é **desacoplada**
 > (ADR-009): fila, backpressure, retry, dead letter, rate limit, health e
-> métricas são reutilizáveis por qualquer coletor. Ver `docs/PIPELINE.md`.
+> métricas são reutilizáveis por qualquer coletor. Ver `docs/architecture/pipeline.md`.
 
 ## 3. Regras de dependência (obrigatórias)
 
@@ -156,7 +156,7 @@ classDiagram
     CanonicalEvent <|-- EnrichedEvent
 ```
 
-Detalhes do schema: `docs/DATABASE.md` e `docs/API_GUIDE.md` (contrato).
+Detalhes do schema: `docs/architecture/database.md` e `docs/development/api-guide.md` (contrato).
 
 ## 5. Estilo de arquitetura
 
@@ -168,10 +168,10 @@ Detalhes do schema: `docs/DATABASE.md` e `docs/API_GUIDE.md` (contrato).
 
 ## 6. Decisões de arquitetura
 
-Toda decisão técnica relevante é registrada em `docs/adr/` com formato:
+Toda decisão técnica relevante é registrada em `docs/architecture/adr/` com formato:
 `ADR-NNN-titulo.md` (status, contexto, decisão, consequências).
 
-Índice de ADRs: `docs/DECISIONS.md`.
+Índice de ADRs: `docs/architecture/decisions.md`.
 
 ## 7. Dependency Injection e Plugin System
 
@@ -179,9 +179,9 @@ Toda decisão técnica relevante é registrada em `docs/adr/` com formato:
   interfaces (Protocol) injetadas — nunca instanciam dependências. Testes usam fakes.
 - **Plugins**: registries tipados para `collectors`, `parsers`, `enrichers`, `rules`.
   Descoberta declarativa (config/setup); falha de plugin degrada, não derruba pipeline.
-- **Detalhes:** `docs/DATAFLOW.md` §5–6 e `ADR-007`.
+- **Detalhes:** `docs/architecture/data-flow.md` §5–6 e `ADR-007`.
 
 ## 8. Critério transversal
 
 Toda decisão deve responder: **como afeta manutenção, escalabilidade e UX daqui a um ano?**
-Registrado no manifesto (`PROJECT_MANIFESTO.md` §9).
+Registrado no manifesto (`docs/product/project-manifesto.md` §9).

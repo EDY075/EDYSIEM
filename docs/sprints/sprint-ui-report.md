@@ -8,7 +8,7 @@
 
 ## 1. UI 3.0 — Enterprise UX Benchmark
 
-### Documento: `docs/ENTERPRISE_UX_BENCHMARK.md`
+### Documento: `docs/ux/enterprise-ux-benchmark.md`
 
 Benchmark profundo de UX dos principais SIEMs: **Splunk Enterprise Security, Microsoft Sentinel,
 Elastic Security, CrowdStrike Falcon, Wazuh Dashboard, IBM QRadar**.

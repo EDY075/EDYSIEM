@@ -458,10 +458,9 @@ integrado, query language sobre modelo normalizado.
 - **Entity-centric** na investigação (host/user/IP como primeiro contexto).
 - **Risk score por entidade** acumulado.
 - **Autônomo e leve**: SQLite → Protocol → storage escalável quando necessário.
-- **Didático**: cada decisão acima documentada em `STUDY_GUIDE.md`.
+- **Didático**: cada decisão acima documentada em `docs/product/study-guide.md`.
 
 > Regra: **inspirar-se, nunca copiar.** O EDY SIEM tem identidade própria.
-
 
 
 

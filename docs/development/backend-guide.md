@@ -77,7 +77,7 @@ Todos seguem **Result Pattern**: as etapas retornam `Result[T]` (nunca `None`).
 3. Implementar etapa (função pura) + testes.
 4. Implementar/atualizar repositório + testes de integração.
 5. Expor via API/CLI + testes e2e.
-6. Documentar no guia correspondente (API_GUIDE, STUDY_GUIDE).
+6. Documentar no guia correspondente (`docs/development/api-guide.md`, `docs/product/study-guide.md`).
 
 ## 7. Testes
 

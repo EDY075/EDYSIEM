@@ -48,11 +48,11 @@ Mudanças separadas por feature (todas do frontend):
 ### ETAPA 4 — Documentação
 Atualizados para refletir exatamente o estado atual do código:
 - `README.md` — status e seção frontend.
-- `docs/ROADMAP.md` — tabela de sprints (2.13 concluída, UI 3.3–4.2 concluídas, 2.14 próxima; linhas stale removidas).
+- `ROADMAP.md` — tabela de sprints (2.13 concluída, UI 3.3–4.2 concluídas, 2.14 próxima; linhas stale removidas).
 - `CHANGELOG.md` — nova seção `[2.13 / v0.2.0]` com a formalização da UI 4.x e das UI 3.3–3.9.
-- `docs/SPRINT_BOOK.md` — registros das UI 3.3/3.4/3.6-3.7/3.8-3.9/4.x e da Sprint 2.13; próximas sprints corrigidas.
+- `docs/sprints/sprint-book.md` — registros das UI 3.3/3.4/3.6-3.7/3.8-3.9/4.x e da Sprint 2.13; próximas sprints corrigidas.
 - `MEMORY_LOG.md` — registro cronológico da sprint (memória compartilhada).
-- `SPRINT2_13_REPORT.md` — este relatório.
+- `docs/sprints/sprint-2.13-report.md` — este relatório.
 
 ### ETAPA 5 — Tag
 - Versão: `0.1.0 → 0.2.0` (`pyproject.toml`, `src/edysiem/__init__.py`, `frontend/package.json`).
@@ -79,10 +79,10 @@ Atualizados para refletir exatamente o estado atual do código:
 - `.gitignore`
 - `README.md`
 - `CHANGELOG.md`
-- `docs/ROADMAP.md`
-- `docs/SPRINT_BOOK.md`
+- `ROADMAP.md`
+- `docs/sprints/sprint-book.md`
 - `MEMORY_LOG.md`
-- `SPRINT2_13_REPORT.md` (novo)
+- `docs/sprints/sprint-2.13-report.md` (novo)
 - `pyproject.toml`, `src/edysiem/__init__.py`, `frontend/package.json` (versão 0.2.0)
 - `frontend/src/**` — fase UI 4.x + polish (checkpoint)
 - `archive/frontend_scratch/` — temporários preservados (não versionados)

@@ -34,7 +34,7 @@
 > **Implementado (Sprint 2.2, ADR-009):** `RawEventQueue` (FIFO thread-safe e
 > async-ready, drop policy, timeout), `BackpressureController` (HIGH/LOW water
 > marks com histerese), `RetryPolicy` (backoff exponencial + jitter),
-> `DeadLetterQueue` (eventos nunca descartados em silêncio). Ver `docs/PIPELINE.md`.
+> `DeadLetterQueue` (eventos nunca descartados em silêncio). Ver `docs/architecture/pipeline.md`.
 
 ## 4. Async Jobs
 
