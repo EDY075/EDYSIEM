@@ -4,6 +4,7 @@
 
 - Reorganized the repository for open-source presentation: documentation taxonomy, community standards, CI, visual assets, README banner, GIF, and product gallery.
 - Fixed CI dependency resolution by updating `pytest-asyncio` to 1.4.0 and declaring `httpx2` for the Starlette test client.
+- Made the two exact-token rate-limiter assertions deterministic with a frozen test clock; product code and runtime behavior remain unchanged.
 - Reproduced the final dependency set in a clean Python 3.12 environment: `pip check`, 801 tests, mypy, and Ruff all passed.
 - GitHub About and topics were updated. The professional release will be created after the pushed CI run is green.
 

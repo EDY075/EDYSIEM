@@ -8,7 +8,14 @@ import time
 
 import pytest
 
+import edysiem.ingestion.rate_limiter as rate_limiter
 from edysiem.ingestion.rate_limiter import RateLimitConfig, TokenBucketRateLimiter
+
+
+class _FrozenClock:
+    @staticmethod
+    def monotonic() -> float:
+        return 1.0
 
 
 def test_config_defaults() -> None:
@@ -31,7 +38,9 @@ def test_burst_tokens_available_then_exhausted() -> None:
     assert limiter.try_acquire() is False
 
 
-def test_tokens_property_and_reset() -> None:
+def test_tokens_property_and_reset(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep exact token assertions independent from runner scheduling."""
+    monkeypatch.setattr(rate_limiter, "time", _FrozenClock)
     limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1.0, burst=5))
     assert limiter.tokens == 5.0
     assert limiter.try_acquire() is True
@@ -40,7 +49,9 @@ def test_tokens_property_and_reset() -> None:
     assert limiter.tokens == 5.0
 
 
-def test_acquire_consumes_token() -> None:
+def test_acquire_consumes_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The synchronous acquire path must consume a whole token exactly."""
+    monkeypatch.setattr(rate_limiter, "time", _FrozenClock)
     limiter = TokenBucketRateLimiter(RateLimitConfig(rate=1.0, burst=1))
 
     async def scenario() -> bool:
