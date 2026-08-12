@@ -9,6 +9,7 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "../shell/AppShell";
 import { colors } from "../design-system/tokens";
+import { RouteErrorBoundary } from "./RouteErrorBoundary";
 
 const DashboardOverview = lazy(() => import("../pages/DashboardOverview").then((m) => ({ default: m.DashboardOverview })));
 const WarRoomPage = lazy(() => import("../pages/WarRoomPage").then((m) => ({ default: m.WarRoomPage })));
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <AppShell />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: withSuspense(<DashboardOverview />) },
       { path: "war-room", element: withSuspense(<WarRoomPage />) },

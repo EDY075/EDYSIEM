@@ -590,3 +590,28 @@ Não iniciar Sprint D automaticamente. Não fazer merge em main.
   um único case/evidência, Case Center abriu o `case_id` exato com proveniência e retornou
   ao mesmo `event_id`.
 - War Room, Ingestion Health e Decision Queue foram preservados. Sprint D segue fora de escopo.
+
+## Sprint D — Shared Design System & Final Product Polish: COMPLETE (2026-08-12)
+
+O refinamento final preservou a identidade SOC azul/ciano do EDY SIEM e limitou-se a
+resiliência de navegação, sem alterar Decision Queue, Ingestion Health ou War Room.
+
+- `frontend/src/routing/RouteErrorBoundary.tsx` substitui a tela crua do router por uma
+  recuperação operacional: explica que nenhum dado foi alterado e oferece retry e retorno
+  ao Overview.
+- `frontend/src/routing/routes.tsx` registra o `errorElement` no shell principal; a
+  cobertura de regressão em `tests/test_frontend_error_boundary.py` bloqueia o fallback
+  padrão do React Router.
+- O fluxo existente Shield → investigação → Case Center continuou apontando para o mesmo
+  `event_id`; o Case Center e a investigação real foram reabertos no Chrome externo.
+
+Validação final: 948 testes, cobertura 95,02%, Ruff, MyPy (152 módulos), `tsc -b`, Vite,
+wheel/sdist e `git diff --check` aprovados. Chrome externo foi revisado em 1920×1080,
+1366×768, 820×900 e 390×844, sem overflow horizontal. A única mensagem não funcional
+observada permaneceu o aviso pré-existente de future flag do React Router e ruído de
+extensão; não houve erro novo da aplicação.
+
+## Próximo passo exato
+
+**FINAL — Release Readiness / final product sign-off.** Não iniciar automaticamente, não
+fazer merge em `main` e não reabrir escopo de produto sem novo prompt.

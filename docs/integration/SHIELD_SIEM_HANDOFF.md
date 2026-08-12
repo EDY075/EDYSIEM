@@ -908,6 +908,36 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
 
+## HANDOFF — Sprint D concluída (2026-08-12)
+
+### Contexto
+
+O EDY SIEM fechou o polimento compartilhado mantendo seu azul/ciano SOC e sem tocar nas
+áreas explicitamente fora de escopo. A única alteração funcional foi uma recuperação de
+rota de baixo risco, vinculada ao shell já existente.
+
+### Artefatos
+
+- `frontend/src/routing/RouteErrorBoundary.tsx`: estado seguro, legível e acionável para
+  falhas de rota, com retry e retorno ao Overview.
+- `frontend/src/routing/routes.tsx`: `errorElement` no shell raiz.
+- `tests/test_frontend_error_boundary.py`: regressão do fallback seguro e sem cópia crua
+  do router.
+
+### Quality Gate
+
+- 948 testes completos; 95,02% de cobertura.
+- Ruff, MyPy, TypeScript/Vite, wheel/sdist e diff-check: PASS.
+- Chrome externo: Decision Center, investigação Shield e Case Center em desktop,
+  notebook, tablet e mobile; sem overflow e sem erro novo da aplicação.
+- O fluxo entre os produtos conservou o `event_id` e o caso exato; o Shield entregue
+  exibiu a CTA que abre a investigação correspondente.
+
+### Próximo passo
+
+**FINAL — Release Readiness / sign-off.** Não iniciar automaticamente e não fazer merge
+em `main`.
+
 ## HANDOFF — Revalidação de recuperação Sprint C3 (2026-08-12)
 
 ### Contexto
