@@ -44,7 +44,9 @@
 ## Git
 
 - Branch: `codex/shield-siem-integration-architecture`.
-- Commit principal desta etapa: pendente de criação após a revisão final do diff.
+- Commit principal desta etapa: `3a62e3e` (`feat(contract): freeze Shield event contract v1`).
+- O commit imediatamente posterior apenas sincroniza este hash no estado da sessão; use
+  `git log -2 --oneline` para confirmar ambos após o clone.
 
 ## Próximo passo exato
 
