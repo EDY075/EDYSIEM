@@ -850,3 +850,60 @@ investigação Shield, casos, MITRE, deep links e APIs existentes.
 **Sprint B3 — Ingestion Health & Sprint B Closure**
 
 Não iniciar automaticamente e não fazer merge em main.
+
+## HANDOFF — Sprint B completa (B1 + B2 + B3)
+
+### Contexto
+
+O EDY SIEM encerrou a Sprint B como **SOC Decision Center**. B1 reorganizou a Home,
+B2 aprofundou prioridade/SLA/ownership/filtros e B3 finalizou a saúde de ingestão.
+
+### Artefatos B3
+
+- `src/edysiem/persistence/inbox.py`: snapshot agregado e bounded da inbox Shield.
+- `src/edysiem/api/routes/health.py`: receptor e storage verificados separadamente;
+  ambiente e detalhes seguros expostos no health.
+- `frontend/src/hooks/useHealth.ts`: estado tipado, último snapshot preservado e cache
+  compartilhado/deduplicado entre consumidores.
+- `frontend/src/pages/DashboardOverview.tsx`: faixa compacta de Ingestion Health e CTAs
+  contextuais para revisar eventos, configuração ou atualizar estado.
+- `frontend/src/shell/LiveOperationsBar.tsx`: estado agregado coerente, polling real e
+  anúncio acessível de degradação.
+- `frontend/src/shell/Topbar.tsx`: compactação responsiva sem overflow em 820 px.
+- `tests/test_api.py` e `tests/test_persistence.py`: agregados, separação de falhas e
+  ausência de detalhes sensíveis.
+
+### Decisões
+
+- `receiver_state=ready` significa receptor pronto, não produtor conectado ou online.
+- Tráfego silencioso sem heartbeat não vira `offline`; a UI informa `Nenhum evento` e
+  oferece Configurações.
+- `pending_events` é backlog real da inbox, exibido como aguardando processamento, pois o
+  worker downstream segue fora do escopo.
+- Falha temporária preserva o último snapshot e o marca como desatualizado; Home e barra
+  global usam a mesma verdade.
+- Nenhum payload, token, batch ID, instance ID, path de banco ou exceção é exposto pelo
+  health. Dados de evento continuam renderizados somente como texto React.
+
+### Quality Gate
+
+- 33 testes focados; 937 completos; cobertura 95,09%.
+- Ruff, MyPy (152 módulos), Vite, wheel/sdist e diff-check aprovados.
+- Chrome externo validado em 1920x1080, 1366x768 e 820x900; console final sem erro novo.
+- Fluxo preservado: Home → Decision Queue/filtro Shield → investigação exata → caso
+  vinculado → Home.
+- Screenshots finais em `outputs/sprint-b3-ingestion-health/` no workspace da sessão.
+
+### Limitações
+
+- Sem heartbeat Shield não há cálculo honesto de produtor offline/stale.
+- Nenhuma segunda fonte externa possui contrato operacional nesta versão.
+- Worker downstream da inbox continua fora da Sprint B.
+
+### Próximo passo
+
+# Sprint C — Investigation Workflow
+
+Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
+
+Não iniciar automaticamente e não fazer merge em `main`.

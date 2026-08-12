@@ -184,7 +184,7 @@ export function DashboardOverview() {
   const { incidents, loading: incidentsLoading, error: incidentsError, refetch: refetchIncidents } = useIncidents(100);
   const { alerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(100);
   const { events: shieldEvents, loading: shieldLoading, error: shieldError, refetch: refetchShield } = useShieldEvents(100);
-  const { health, loading: healthLoading, error: healthError, refetch: refetchHealth } = useHealth();
+  const { health, loading: healthLoading, error: healthError, lastUpdated: healthUpdatedAt, refetch: refetchHealth } = useHealth();
   const { metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useMetrics();
   const [assuming, setAssuming] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -262,10 +262,32 @@ export function DashboardOverview() {
   const criticalCount = queue.filter((item) => item.severity === "critical").length;
   const slaAttention = queue.filter((item) => ["overdue", "missed", "warning"].includes(item.sla?.state ?? "")).length;
   const unassigned = queue.filter((item) => !item.owner).length;
-  const onlineComponents = Object.values(health).filter((status) => status === "online").length;
-  const lastShieldEvent = shieldEvents[0];
+  const ingestion = health.ingestionDetails;
+  const acceptedEvents = ingestion.acceptedEvents;
+  const pendingEvents = ingestion.pendingEvents;
+  const healthIsStale = !!healthError && healthUpdatedAt !== null;
+  const ingestionUnavailable = health.ingestion !== "online";
+  const healthTone = healthError || ingestionUnavailable || health.overall !== "healthy" ? "degraded" : "online";
+  const healthTitle = healthError
+    ? healthIsStale ? "Dados de ingestão podem estar desatualizados" : "Saúde de ingestão indisponível"
+    : ingestionUnavailable ? "Receptor EDY Shield indisponível"
+    : health.overall !== "healthy" ? "Ingestão disponível · operação degradada"
+    : acceptedEvents === 0 ? "Receptor pronto · aguardando primeira fonte"
+    : "Recepção saudável · EDY Shield integrado";
+  const healthDescription = healthError
+    ? healthIsStale
+      ? "Mantendo o último estado confirmado. A fila preservada pode estar desatualizada até a API responder."
+      : "A API de saúde não respondeu. Investigação e casos já carregados não foram descartados."
+    : ingestionUnavailable
+      ? "A indisponibilidade do receptor não torna investigação, casos ou outras fontes automaticamente offline."
+      : health.overall !== "healthy"
+        ? "O receptor Shield está pronto, mas outro componente reportou degradação. Revise o estado global antes de agir."
+      : acceptedEvents === 0
+        ? "Nenhum evento foi recebido ainda; receptor pronto não significa que uma fonte esteja conectada."
+        : "Eventos foram recebidos com sucesso. O receptor não confirma sozinho se o agente permanece online agora.";
 
   const retryAll = () => { refetchIncidents(); refetchAlerts(); refetchShield(); refetchHealth(); refetchMetrics(); };
+  const reviewShieldEvents = () => setFilters({ ...defaultFilters, source: "shield" });
   const openItem = (item: QueueItem) => {
     if (item.kind === "shield") navigate(`/investigate/shield/${encodeURIComponent(item.id)}`);
     else if (item.kind === "incident") navigate(`/incidents?incident=${encodeURIComponent(item.id)}`);
@@ -303,11 +325,11 @@ export function DashboardOverview() {
       .decision-subtitle{margin:0;color:var(--color-text-muted);font-size:13px;line-height:1.5}
       .decision-refresh,.decision-action{border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface-alt);color:var(--color-text-primary);font-size:12px;font-weight:600;cursor:pointer;transition:background 140ms ease,border-color 140ms ease,color 140ms ease}
       .decision-refresh{padding:8px 12px}.decision-refresh:hover,.decision-action:hover{border-color:var(--color-accent);color:var(--color-accent-hover)}
-      .decision-health{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:13px 16px;border:1px solid var(--color-border);border-left:3px solid var(--status-online);border-radius:9px;background:linear-gradient(90deg,color-mix(in srgb,var(--status-online) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}
+      .decision-health{display:grid;grid-template-columns:minmax(330px,1.35fr) minmax(430px,1fr) auto;gap:16px;align-items:center;padding:13px 15px;border:1px solid var(--color-border);border-left:3px solid var(--status-online);border-radius:9px;background:linear-gradient(90deg,color-mix(in srgb,var(--status-online) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}
       .decision-health-main{display:flex;align-items:flex-start;gap:10px}.decision-health-dot{width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--status-online);box-shadow:0 0 0 3px color-mix(in srgb,var(--status-online) 12%,transparent);flex:none}
       .decision-health[data-state='degraded']{border-left-color:var(--severity-medium);background:linear-gradient(90deg,color-mix(in srgb,var(--severity-medium) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}.decision-health[data-state='degraded'] .decision-health-dot{background:var(--severity-medium);box-shadow:0 0 0 3px color-mix(in srgb,var(--severity-medium) 12%,transparent)}
       .decision-health strong{display:block;color:var(--color-text-primary);font-size:13px}.decision-health p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px;line-height:1.45}
-      .decision-health-meta{text-align:right;color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;line-height:1.6}
+      .decision-health-env{display:inline-flex;margin-left:7px;padding:2px 6px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-text-muted);font:8px 'JetBrains Mono',monospace;letter-spacing:.05em;vertical-align:1px}.decision-health-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}.decision-health-fact{min-width:0;padding:2px 12px;border-left:1px solid var(--color-border-subtle)}.decision-health-fact span{display:block;color:var(--color-text-subtle);font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.decision-health-fact strong{margin-top:4px;overflow:hidden;text-overflow:ellipsis;font:600 10px 'JetBrains Mono',monospace;white-space:nowrap}.decision-health-action{white-space:nowrap}
       .decision-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);overflow:hidden}
       .decision-signal{padding:13px 16px;border-right:1px solid var(--color-border-subtle)}.decision-signal:last-child{border-right:0}.decision-signal strong{display:block;color:var(--color-text-primary);font:700 22px 'JetBrains Mono',monospace}.decision-signal span{display:block;margin-top:3px;color:var(--color-text-muted);font-size:11px}
       .decision-queue{overflow:hidden;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
@@ -321,9 +343,9 @@ export function DashboardOverview() {
       .decision-next{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap;text-align:right}.decision-action{width:auto;min-width:0;padding:7px 9px;background:transparent;white-space:nowrap}.decision-action.primary{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-text-on-accent)}.decision-action:disabled{cursor:wait;opacity:.55}
       .decision-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:8px;background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--color-text-secondary);font-size:12px}
       .decision-context{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--color-border);border-radius:9px;background:var(--color-border-subtle)}.decision-context-item{padding:13px 15px;background:var(--color-surface)}.decision-context-item strong{display:block;color:var(--color-text-primary);font-size:12px}.decision-context-item span{display:block;margin-top:4px;color:var(--color-text-muted);font-size:10px;line-height:1.45}
-      @media(max-width:1500px){.decision-columns,.decision-row{grid-template-columns:minmax(230px,1.25fr) minmax(105px,.58fr) minmax(170px,.95fr) minmax(130px,.68fr) 145px;gap:10px}.decision-column-owner,.decision-cell-owner,.decision-column-status,.decision-cell-status{display:none}.decision-compact-meta{display:block}}
-      @media(max-width:1050px){.decision-filters{grid-template-columns:repeat(3,minmax(120px,1fr))}.decision-columns{display:none}.decision-row{grid-template-columns:minmax(0,1fr) 145px;align-items:start}.decision-primary{grid-column:1}.decision-next{grid-column:2;grid-row:1}.decision-cell-asset{grid-column:1;grid-row:2}.decision-cell-sla{grid-column:2;grid-row:2}.decision-cell-evidence{grid-column:1/-1;grid-row:3}.decision-label{display:block}.decision-context{grid-template-columns:1fr}.decision-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-signal:nth-child(2){border-right:0}.decision-signal:nth-child(-n+2){border-bottom:1px solid var(--color-border-subtle)}}
-      @media(max-width:760px){.decision-center{gap:12px}.decision-title{font-size:23px}.decision-health{grid-template-columns:1fr}.decision-health-meta{text-align:left}.decision-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:13px;padding-right:13px}.decision-columns{display:none}.decision-row{grid-template-columns:1fr;gap:9px;padding:13px 15px}.decision-primary,.decision-next,.decision-cell-asset,.decision-cell-evidence,.decision-cell-sla{grid-column:auto;grid-row:auto}.decision-row .decision-cell{display:block}.decision-label{display:block}.decision-compact-meta{display:none}.decision-next{justify-content:flex-start;text-align:left}.decision-action{width:auto}.decision-queue-head{align-items:flex-start;padding-left:13px;padding-right:13px}.decision-summary{overflow:visible}.decision-signal{padding:11px 12px}.decision-signal strong{font-size:18px}}
+      @media(max-width:1500px){.decision-health{grid-template-columns:minmax(400px,1fr) 420px auto}.decision-columns,.decision-row{grid-template-columns:minmax(230px,1.25fr) minmax(105px,.58fr) minmax(170px,.95fr) minmax(130px,.68fr) 145px;gap:10px}.decision-column-owner,.decision-cell-owner,.decision-column-status,.decision-cell-status{display:none}.decision-compact-meta{display:block}}
+      @media(max-width:1050px){.decision-health{grid-template-columns:1fr auto}.decision-health-facts{grid-column:1/-1;grid-row:2}.decision-health-fact:first-child{border-left:0;padding-left:18px}.decision-filters{grid-template-columns:repeat(3,minmax(120px,1fr))}.decision-columns{display:none}.decision-row{grid-template-columns:minmax(0,1fr) 145px;align-items:start}.decision-primary{grid-column:1}.decision-next{grid-column:2;grid-row:1}.decision-cell-asset{grid-column:1;grid-row:2}.decision-cell-sla{grid-column:2;grid-row:2}.decision-cell-evidence{grid-column:1/-1;grid-row:3}.decision-label{display:block}.decision-context{grid-template-columns:1fr}.decision-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-signal:nth-child(2){border-right:0}.decision-signal:nth-child(-n+2){border-bottom:1px solid var(--color-border-subtle)}}
+      @media(max-width:760px){.decision-center{gap:12px}.decision-title{font-size:23px}.decision-health{grid-template-columns:1fr}.decision-health-facts{grid-column:auto;grid-row:auto;grid-template-columns:1fr}.decision-health-fact,.decision-health-fact:first-child{padding:8px 0;border-left:0;border-top:1px solid var(--color-border-subtle)}.decision-health-action{justify-self:start}.decision-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:13px;padding-right:13px}.decision-columns{display:none}.decision-row{grid-template-columns:1fr;gap:9px;padding:13px 15px}.decision-primary,.decision-next,.decision-cell-asset,.decision-cell-evidence,.decision-cell-sla{grid-column:auto;grid-row:auto}.decision-row .decision-cell{display:block}.decision-label{display:block}.decision-compact-meta{display:none}.decision-next{justify-content:flex-start;text-align:left}.decision-action{width:auto}.decision-queue-head{align-items:flex-start;padding-left:13px;padding-right:13px}.decision-summary{overflow:visible}.decision-signal{padding:11px 12px}.decision-signal strong{font-size:18px}}
     `}</style>
 
     <header className="decision-header">
@@ -331,9 +353,18 @@ export function DashboardOverview() {
       <button type="button" className="decision-refresh" onClick={retryAll}>Atualizar dados</button>
     </header>
 
-    <section className="decision-health" data-state={healthError || shieldError ? "degraded" : "online"} aria-label="Saúde operacional e ingestão">
-      <div className="decision-health-main"><span className="decision-health-dot" /><div><strong>{healthError ? "Saúde operacional indisponível" : "SOC operacional · receptor Shield disponível"}</strong><p>{shieldError ? "Não foi possível consultar a fonte EDY Shield. Outras fontes permanecem visíveis quando já carregadas." : lastShieldEvent ? `Último evento EDY Shield recebido em ${formatDate(lastShieldEvent.received_at)}. A ausência de tráfego novo não interrompe investigação e casos.` : "Nenhum evento EDY Shield recebido. Conecte uma fonte em Configurações quando quiser iniciar a ingestão."}</p></div></div>
-      <div className="decision-health-meta"><span>{onlineComponents} componentes {healthError ? "no último estado conhecido" : "reportados online"}</span><br /><span>{shieldEvents.length} eventos Shield {shieldError ? "carregados anteriormente" : "na janela da fila"}</span></div>
+    <section className="decision-health" data-state={healthTone} aria-label="Saúde operacional e ingestão" role="status" aria-live="polite" aria-atomic="true">
+      <div className="decision-health-main"><span className="decision-health-dot" aria-hidden="true" /><div><strong>{healthTitle}{health.environment === "development" && <span className="decision-health-env">LAB LOCAL</span>}</strong><p>{healthDescription}</p></div></div>
+      <div className="decision-health-facts">
+        <div className="decision-health-fact"><span>EDY Shield</span><strong>{ingestionUnavailable ? "Fonte indisponível" : acceptedEvents === 0 ? "Nenhum evento" : `${acceptedEvents ?? "—"} evento${acceptedEvents === 1 ? " recebido" : "s recebidos"}`}</strong></div>
+        <div className="decision-health-fact"><span>Última ingestão</span><strong>{ingestion.lastReceivedAt ? formatDate(ingestion.lastReceivedAt) : "Nenhum evento"}</strong></div>
+        <div className="decision-health-fact"><span>Aguardando processamento</span><strong>{pendingEvents === null ? "Não disponível" : `${pendingEvents} evento${pendingEvents === 1 ? "" : "s"}`}</strong></div>
+      </div>
+      {healthError
+        ? <button type="button" className="decision-refresh decision-health-action" onClick={retryAll}>Atualizar estado</button>
+        : ingestionUnavailable || acceptedEvents === 0
+          ? <button type="button" className="decision-refresh decision-health-action" onClick={() => navigate("/settings")}>{ingestionUnavailable ? "Revisar configuração" : "Conectar fonte"}</button>
+          : <button type="button" className="decision-refresh decision-health-action" aria-controls="decision-queue" onClick={reviewShieldEvents}>Revisar eventos Shield</button>}
     </section>
 
     <section className="decision-summary" aria-label="Resumo da fila de decisão">
@@ -346,7 +377,7 @@ export function DashboardOverview() {
     {(dataError || actionError) && <div className="decision-error" role="alert"><span>{actionError || (queue.length ? "Parte dos dados operacionais está indisponível. Dados carregados anteriormente foram preservados e podem estar desatualizados." : "Não foi possível carregar a fila operacional. O estado vazio não foi assumido como ausência real de trabalho.")}</span><button type="button" className="decision-refresh" onClick={retryAll}>Tentar novamente</button></div>}
     {actionNotice && !actionError && <div className="decision-error" role="status" style={{ borderColor: "color-mix(in srgb,var(--status-online) 35%,var(--color-border))", background: "color-mix(in srgb,var(--status-online) 7%,transparent)" }}><span>{actionNotice}</span></div>}
 
-    <section className="decision-queue" aria-label="Decision Queue operacional">
+    <section id="decision-queue" className="decision-queue" aria-label="Decision Queue operacional">
       <header className="decision-queue-head"><div><h2>Decision Queue</h2><p>Crítico → alto → SLA vencido → SLA próximo → sem responsável → demais itens</p></div><span className="decision-queue-count">{visibleQueue.length} de {queue.length} itens · até 100 por fonte</span></header>
       <div className="decision-filters" aria-label="Filtros da Decision Queue">
         <label className="decision-filter"><span>Severidade</span><select value={filters.severity} onChange={(event) => setFilters((current) => ({ ...current, severity: event.target.value as QueueFilters["severity"] }))}><option value="all">Todas</option>{Object.entries(severityLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

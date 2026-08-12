@@ -329,6 +329,42 @@ class ShieldInboxRepository:
         ).fetchone()
         return int(row["total"]) if row is not None else 0
 
+    def health_snapshot(self) -> dict[str, int | str | None]:
+        """Return bounded operational aggregates without exposing event payloads."""
+
+        row = self._manager.connect().execute(
+            """
+            SELECT
+                COUNT(*) AS accepted_events,
+                COALESCE(SUM(CASE WHEN processing_status = 'pending' THEN 1 ELSE 0 END), 0)
+                    AS pending_events,
+                MAX(received_at) AS last_received_at,
+                MIN(CASE WHEN processing_status = 'pending' THEN received_at END)
+                    AS oldest_pending_at
+            FROM ingestion_inbox
+            WHERE source_product = 'edy-shield'
+            """
+        ).fetchone()
+        if row is None:
+            return {
+                "accepted_events": 0,
+                "pending_events": 0,
+                "last_received_at": None,
+                "oldest_pending_at": None,
+            }
+        return {
+            "accepted_events": max(0, int(row["accepted_events"])),
+            "pending_events": max(0, int(row["pending_events"])),
+            "last_received_at": (
+                str(row["last_received_at"]) if row["last_received_at"] is not None else None
+            ),
+            "oldest_pending_at": (
+                str(row["oldest_pending_at"])
+                if row["oldest_pending_at"] is not None
+                else None
+            ),
+        }
+
     @staticmethod
     def _insert_event(conn: sqlite3.Connection, event: InboxEvent) -> None:
         conn.execute(

@@ -28,6 +28,7 @@ export interface HealthComponent {
 export interface HealthResponse {
   status: HealthStatus;
   version: string;
+  environment: string;
   components: Record<string, HealthComponent>;
 }
 

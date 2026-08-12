@@ -278,3 +278,69 @@ Validação:
 **Sprint B3 — Ingestion Health & Sprint B Closure**
 
 Não iniciar Sprint B3 sem novo prompt. Não fazer merge em main.
+
+## Sprint B — SOC Decision Center: COMPLETE (2026-08-12)
+
+A Sprint B foi encerrada no EDY SIEM sem merge em `main`. O resultado mantém a Home
+como centro de decisão, e não como dashboard genérico:
+
+- B1 transformou a Home em **SOC Decision Center**, com Decision Queue principal e
+  redução de cards, gráficos, feed e timeline duplicados.
+- B2 consolidou a fila operacional compacta com prioridade determinística, SLA relativo,
+  ownership, filtros, estados de erro/stale e deep link Shield pelo mesmo `event_id`.
+- B3 adicionou Ingestion Health compacto com agregados reais e seguros: receptor,
+  eventos aceitos, pendentes, última ingestão e pendência mais antiga, sem payloads,
+  identificadores de produtor, paths, tokens ou exceções.
+- Receptor pronto, fonte com eventos, fonte sem eventos, receptor indisponível, operação
+  degradada e API indisponível são estados distintos. Uma falha do receptor Shield não
+  declara o storage nem todo o SIEM offline.
+- O ambiente `development` é identificado como laboratório local. Ausência de eventos
+  não é tratada como fonte offline porque o produto não possui um SLA de heartbeat.
+- O último snapshot de health é compartilhado entre Home e barra global; em falha
+  transitória ele é preservado e marcado como desatualizado. O polling de 30 segundos
+  passou a realizar uma consulta real e deduplicada.
+- A barra global deixou de exibir EPS/latência sem medição confiável e não contradiz mais
+  o estado agregado. O topbar compacto foi antecipado para eliminar overflow em 820 px.
+- Decision Queue, filtros, SLA, ownership, investigação Shield, casos, MITRE e deep links
+  permanecem funcionais. Fluxo final verificado: Home → filtro Shield → investigação pelo
+  mesmo `event_id` → caso vinculado → Home.
+
+Validação final:
+
+- 33 testes focados de health/API/persistência aprovados.
+- 937 testes completos aprovados; cobertura global 95,09%.
+- Ruff e MyPy em 152 módulos: PASS.
+- Vite build e build backend wheel/sdist: PASS.
+- `git diff --check`, scan de XSS (`innerHTML`/`dangerouslySetInnerHTML`/`eval`) e scan de
+  encoding nos arquivos alterados: PASS.
+- Google Chrome externo: 1920x1080, 1366x768 e 820x900; estados saudável, sem eventos,
+  receptor indisponível, API offline, fila vazia e dados anteriores preservados.
+- Problemas visuais corrigidos: horário cortado na barra global, fato de fonte truncado e
+  overflow horizontal do topbar em 820 px.
+- Console final em aba limpa: sem erro ou warning novo da sprint. O aviso conhecido do
+  React Router em desenvolvimento permanece fora do código alterado.
+- Screenshots finais: `outputs/sprint-b3-ingestion-health/01-home-1920x1080.jpg`,
+  `02-home-1366x768.jpg` e `03-home-820x900.jpg` no workspace da sessão.
+
+Commits da Sprint B:
+
+- B1: `45c25d6` (`feat(ui): add SOC decision center`).
+- B2: `f253784` (`feat(ui): refine decision queue operations`).
+- B3: commit identificado pela mensagem `feat(ui): complete ingestion health`.
+
+Limitações restantes:
+
+- O backend não possui heartbeat do agente Shield nem expectativa de frequência; por
+  isso a UI mostra a última recepção, mas não inventa estado `offline` por silêncio.
+- Não há outras fontes externas registradas no contrato atual para validar uma segunda
+  fonte offline. O estado de componente degradado continua suportado pelo health agregado.
+- Eventos da inbox permanecem `pending` até o worker downstream, fora do escopo desta
+  sprint; a UI os descreve como aguardando processamento, sem declarar perda.
+
+## Próximo passo EXATO
+
+# Sprint C — Investigation Workflow
+
+Fluxo esperado: Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
+
+Não iniciar Sprint C sem novo prompt. Não fazer merge em main.

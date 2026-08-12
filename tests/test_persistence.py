@@ -119,6 +119,59 @@ def test_shield_inbox_schema_created(manager: ConnectionManager) -> None:
     assert tables == {"ingestion_batches", "ingestion_inbox"}
 
 
+def test_shield_inbox_health_snapshot_uses_bounded_aggregates(
+    manager: ConnectionManager,
+) -> None:
+    from edysiem.persistence.inbox import InboxEvent, ShieldInboxRepository
+
+    repo = ShieldInboxRepository(manager)
+    assert repo.health_snapshot() == {
+        "accepted_events": 0,
+        "pending_events": 0,
+        "last_received_at": None,
+        "oldest_pending_at": None,
+    }
+
+    received_at = "2026-08-12T12:34:56.000Z"
+    repo.accept(
+        batch_id="00000000-0000-4000-8000-000000000001",
+        batch_hash="a" * 64,
+        received_at=received_at,
+        events=[
+            InboxEvent(
+                index=0,
+                source_instance_id="00000000-0000-4000-8000-000000000002",
+                event_id="00000000-0000-4000-8000-000000000003",
+                batch_id="00000000-0000-4000-8000-000000000001",
+                content_hash="b" * 64,
+                schema_version="1.0",
+                source_product="edy-shield",
+                source_product_version="2.2.0",
+                source_component="fim",
+                event_type="shield.fim.file_modified",
+                severity="high",
+                event_timestamp="2026-08-12T12:34:55.000Z",
+                received_at=received_at,
+                sequence=1,
+                asset_id="asset-1",
+                hostname="host-1",
+                ip=None,
+                os=None,
+                payload={"safe": True},
+                normalized_payload={"safe": True},
+            )
+        ],
+        rejected=[],
+    )
+
+    assert repo.health_snapshot() == {
+        "accepted_events": 1,
+        "pending_events": 1,
+        "last_received_at": received_at,
+        "oldest_pending_at": received_at,
+    }
+
+
 # --- AlertRepository -------------------------------------------------------
 
 
