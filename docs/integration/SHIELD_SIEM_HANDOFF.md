@@ -776,3 +776,37 @@ decisao deve trazer severidade, SLA, responsavel, ativo e proxima acao antes dos
 detalhes mantem evidencia e adicionam um trilho de resposta. Manter shell, tabelas,
 proveniencia Shield, MITRE e cadeia de custodia; reduzir sinais repetidos e corrigir a
 leitura contraditoria de health/ingestao. A implementacao depende de aprovacao explicita.
+
+## Handoff — Sprint B1 SOC Decision Center concluída (2026-08-12)
+
+A aprovação explícita da Sprint B1 substituiu o bloqueio de implementação acima. O
+escopo permaneceu somente no EDY SIEM e preservou contrato/receptor Shield, deep link,
+investigação, MITRE, casos e APIs existentes.
+
+### Entregue
+
+- Home orientada a decisão, com fila principal em vez do dashboard genérico repetitivo.
+- Composição de incidentes, eventos Shield e fallback de alertas usando somente APIs reais.
+- SLA e ownership serializados também nas listagens SOC; valores ausentes são declarados,
+  nunca inventados.
+- Endpoint `GET /api/v1/investigation/sources/edy-shield/events?limit=N`, limitado a
+  1..100, read-only e restrito à origem `edy-shield`.
+- Health unificado com receptor, storage e API; estado offline conservador até resposta.
+- CTA Shield preserva `/investigate/shield/{event_id}`; CTA de incidente abre o incidente
+  exato e `Assumir` reutiliza a ação existente.
+- Estados loading, empty, erro, fonte sem eventos, fila crítica, sem owner e Shield foram
+  exercitados na aplicação real.
+
+### Qualidade e evidências
+
+- 934 testes, cobertura 95,09%; Ruff/MyPy/builds backend e frontend PASS.
+- Teste de metadata/markup malicioso confirma transporte como dado; frontend não utiliza
+  `innerHTML` nem `dangerouslySetInnerHTML`.
+- Google Chrome externo em 1920x1080, 1366x768 e 820x900; overflow de CTA encontrado no
+  notebook/responsivo e corrigido por breakpoints da fila.
+- Screenshots finais em `outputs/sprint-b1-soc-decision-center/` no workspace da sessão.
+
+### Próximo passo
+
+**Sprint B2 — Decision Queue, SLA & Ownership**. Não iniciar sem novo prompt; não fazer
+merge em main.

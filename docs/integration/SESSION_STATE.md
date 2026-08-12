@@ -194,3 +194,41 @@ investigacao do evento E2E do Shield e Cases.
 
 Pare antes de integrar WAR_ROOM, criar frontend ou implementar o worker downstream da
 inbox. Não compartilhar banco nem importar runtime entre projetos.
+
+## Sprint B1 — EDY SIEM SOC Decision Center: COMPLETE (2026-08-12)
+
+Estado canônico mais recente: a Home deixou de repetir cards, gráficos, feed, tabela e
+timeline do mesmo alerta e agora começa por uma **Decision Queue** única.
+
+- Priorização real: critical, high, SLA vencido/próximo, sem responsável e demais itens.
+- Cada linha traz origem, ativo, evidência, owner, SLA e uma próxima ação existente.
+- Incidentes usam SLA/owner/assets/IOCs/MITRE reais e suportam `Assumir` e continuação no
+  incidente exato por query string.
+- Eventos Shield são listados de forma read-only pela inbox, identificados como
+  `EDY Shield` e abrem o deep link existente por `event_id`; casos vinculados fornecem
+  owner, quantidade de evidências e SLA.
+- Health passou a expor receptor Shield, storage e API reais. Ausência de eventos é
+  tratada como fonte ainda não conectada, não como produto quebrado.
+- Contagens estáticas da sidebar e métricas fictícias do rodapé foram substituídas por
+  dados reais ou copy neutra.
+- Dados de evento continuam renderizados somente como texto React; não há HTML arbitrário.
+
+Validação:
+
+- 27 testes focados aprovados.
+- 934 testes completos aprovados; cobertura global 95,09%.
+- Ruff, MyPy (152 arquivos), frontend Vite build, wheel/sdist e `git diff --check`: PASS.
+- Google Chrome externo: Home, assumir incidente, incidente exato e investigação Shield.
+- Viewports: 1920x1080, 1366x768 e 820x900; empty queue e API offline também validados.
+- Console: zero erros da aplicação; permanece apenas o warning de future flag do React
+  Router já existente e não habilitável nesta versão tipada do router.
+- Screenshots: `outputs/sprint-b1-soc-decision-center/09-final-home-1920x1080.jpg`,
+  `10-final-home-owned-1920x1080.jpg`, `11-final-shield-investigation-flow.jpg`,
+  `12-final-home-1366x768.jpg`, `13-final-home-responsive-820x900.jpg`, além dos estados
+  empty/error `07-home-empty-queue.jpg` e `08-home-api-error.jpg`.
+
+## Próximo passo EXATO
+
+**Sprint B2 — Decision Queue, SLA & Ownership**
+
+Não iniciar Sprint B2 sem novo prompt. Não fazer merge em main.

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...cases import Case, CaseEvidenceKind
 from ...container import ApplicationContainer
@@ -57,7 +58,7 @@ def _require_event(
     return row
 
 
-def _case_summary(case: Case | None) -> dict[str, object] | None:
+def _case_summary(case: Case | None, service: SocService) -> dict[str, object] | None:
     if case is None:
         return None
     return {
@@ -66,6 +67,7 @@ def _case_summary(case: Case | None) -> dict[str, object] | None:
         "status": case.status.value,
         "owner": case.owner,
         "evidence_count": len(case.evidences),
+        "sla": asdict(service.sla_of(case)),
     }
 
 
@@ -77,7 +79,9 @@ def _linked_case(service: SocService, event_id: str) -> Case | None:
     )
 
 
-def _response(row: dict[str, object], case: Case | None) -> dict[str, object]:
+def _response(
+    row: dict[str, object], case: Case | None, service: SocService
+) -> dict[str, object]:
     payload = row.get("payload")
     normalized = row.get("normalized_payload")
     if not isinstance(payload, dict) or not isinstance(normalized, dict):
@@ -99,7 +103,31 @@ def _response(row: dict[str, object], case: Case | None) -> dict[str, object]:
         "evidence": payload.get("evidence", {}),
         "metadata": payload.get("metadata", {}),
         "normalized": normalized,
-        "case": _case_summary(case),
+        "case": _case_summary(case, service),
+    }
+
+
+@router.get(
+    "/investigation/sources/edy-shield/events",
+    summary="List recent EDY Shield events for the operator decision queue",
+)
+def list_shield_event_investigations(
+    limit: int = Query(default=20, ge=1, le=100),
+    repository: ShieldInboxRepository = Depends(get_shield_inbox),
+    container: ApplicationContainer = Depends(get_container),
+) -> dict[str, object]:
+    service = cast(SocService, container.soc_service)
+    cases: dict[str, Case] = {}
+    for case in service.list_cases(limit=10000):
+        incident_id = case.incident_id
+        if incident_id is not None and incident_id.startswith("shield-event:"):
+            cases[incident_id.removeprefix("shield-event:")] = case
+    rows = repository.list_recent(limit=limit)
+    return {
+        "total": repository.count(),
+        "items": [
+            _response(row, cases.get(str(row["event_id"])), service) for row in rows
+        ],
     }
 
 
@@ -111,7 +139,7 @@ def get_shield_event_investigation(
 ) -> dict[str, object]:
     row = _require_event(event_id, repository)
     service = cast(SocService, container.soc_service)
-    return _response(row, _linked_case(service, event_id))
+    return _response(row, _linked_case(service, event_id), service)
 
 
 @router.post(f"{_ROUTE}/cases", summary="Create an idempotent case from one Shield event")
@@ -177,7 +205,7 @@ async def create_case_from_shield_event(
             label=evidence_label,
             source="edy-shield",
         )
-    result = _response(row, case)
+    result = _response(row, case, service)
     result["case_created"] = existing is None
     return result
 

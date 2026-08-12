@@ -61,6 +61,38 @@ def test_resolves_exact_shield_event_with_evidence_and_provenance(client: TestCl
     assert body["case"] is None
 
 
+def test_lists_recent_shield_events_with_linked_case_context(client: TestClient) -> None:
+    first = _event()
+    second = _event()
+    second["event_id"] = str(uuid4())
+    second["timestamp"] = "2026-08-11T18:44:00.000Z"
+    evidence = dict(second["evidence"])
+    evidence["details"] = {"title": "<img src=x onerror=alert(1)>"}
+    second["evidence"] = evidence
+    _ingest(client, first)
+    _ingest(client, second)
+    client.post(f"{INVESTIGATE}/{second['event_id']}/cases")
+
+    response = client.get(f"{INVESTIGATE}?limit=2")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert [item["event_id"] for item in body["items"]] == [
+        second["event_id"],
+        first["event_id"],
+    ]
+    assert body["items"][0]["source"]["product"] == "edy-shield"
+    assert body["items"][0]["case"]["evidence_count"] == 1
+    assert body["items"][0]["case"]["sla"]["state"] in {"ok", "warning", "overdue"}
+    assert body["items"][0]["evidence"]["details"]["title"] == "<img src=x onerror=alert(1)>"
+
+
+def test_shield_event_queue_rejects_invalid_limits(client: TestClient) -> None:
+    assert client.get(f"{INVESTIGATE}?limit=0").status_code == 422
+    assert client.get(f"{INVESTIGATE}?limit=101").status_code == 422
+
+
 def test_invalid_missing_and_wrong_source_states(client: TestClient) -> None:
     invalid = client.get(f"{INVESTIGATE}/not-a-uuid")
     missing = client.get(f"{INVESTIGATE}/{uuid4()}")

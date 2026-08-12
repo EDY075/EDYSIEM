@@ -26,7 +26,7 @@ export function Topbar() {
   return <header className="edy-topbar" style={{ minHeight: 72, display: "flex", alignItems: "center", gap: spacing["4"], padding: `0 ${spacing["5"]}`, position: "sticky", top: 0, zIndex: 200, borderBottom: `1px solid ${colors.border}`, background: `linear-gradient(90deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 45%, ${colors.surface}) 100%)`, boxShadow: "0 8px 24px color-mix(in srgb, var(--color-text-primary) 6%, transparent)" }}>
     <div className="workspace-context" style={{ minWidth: 184, paddingRight: spacing["4"], borderRight: `1px solid ${colors.borderSubtle}` }}>
       <div style={{ color: colors.textMuted, fontSize: 10, fontWeight: typography.weight.semibold, letterSpacing: "0.12em" }}>WORKSPACE</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}><span style={{ color: colors.textPrimary, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, letterSpacing: "0.02em" }}>EDY / PRIMARY SOC</span><span aria-label="Online" style={{ width: 7, height: 7, borderRadius: "50%", background: colors.status.online, boxShadow: `0 0 0 3px color-mix(in srgb, ${colors.status.online} 13%, transparent)` }} /></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}><span style={{ color: colors.textPrimary, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, letterSpacing: "0.02em" }}>EDY / PRIMARY SOC</span></div>
       <div className="workspace-breadcrumb" style={{ marginTop: 4 }}><Breadcrumb items={currentCrumbs} /></div>
     </div>
     <div className="edy-topbar-search" style={{ flex: 1, maxWidth: 620, minWidth: 220 }}><GlobalSearch /></div>

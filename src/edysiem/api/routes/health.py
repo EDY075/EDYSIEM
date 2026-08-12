@@ -19,6 +19,17 @@ async def health(container: ApplicationContainer = Depends(get_container)) -> He
     components: dict[str, HealthComponent] = {}
 
     try:
+        accepted_events = container.shield_inbox.count()
+        components["ingestion"] = HealthComponent(
+            status="online",
+            details={"receiver": "edy-shield", "accepted_events": accepted_events},
+        )
+        components["storage"] = HealthComponent(status="online")
+    except Exception:
+        components["ingestion"] = HealthComponent(status="error")
+        components["storage"] = HealthComponent(status="error")
+
+    try:
         components["enrichment"] = HealthComponent(
             status=(await container.enrichment.health_check())["engine"]
         )
@@ -42,6 +53,7 @@ async def health(container: ApplicationContainer = Depends(get_container)) -> He
     components["alerts"] = HealthComponent(status="online")
     components["incidents"] = HealthComponent(status="online")
     components["cases"] = HealthComponent(status="online")
+    components["api"] = HealthComponent(status="online")
 
     healthy_statuses = {"healthy", "online"}
     overall = (

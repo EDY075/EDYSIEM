@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
+import type { SlaSnapshotDto } from "./useShieldEvents";
 
 export interface Incident {
   id: string;
@@ -20,7 +21,7 @@ export interface Incident {
   riskScore: number;
   created_at: string;
   closed_at?: string | null;
-  sla?: { state: string };
+  sla?: SlaSnapshotDto;
 }
 
 interface SocIncidentDto {
@@ -37,7 +38,7 @@ interface SocIncidentDto {
   mitre: string[];
   created_at: string;
   closed_at: string | null;
-  sla?: { state: string };
+  sla?: SlaSnapshotDto;
 }
 
 function toIncident(i: SocIncidentDto): Incident {

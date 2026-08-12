@@ -103,7 +103,7 @@ def list_alerts(container: ApplicationContainer = Depends(get_container)) -> dic
     svc = _service(container)
     return {
         "total": len(svc.list_alerts(limit=10000)),
-        "items": [_a(a) for a in svc.list_alerts(limit=100)],
+        "items": [{**_a(a), "sla": asdict(svc.sla_of(a))} for a in svc.list_alerts(limit=100)],
     }
 
 
@@ -126,7 +126,7 @@ def list_incidents(container: ApplicationContainer = Depends(get_container)) -> 
     svc = _service(container)
     return {
         "total": len(svc.list_incidents(limit=10000)),
-        "items": [_i(i) for i in svc.list_incidents(limit=100)],
+        "items": [{**_i(i), "sla": asdict(svc.sla_of(i))} for i in svc.list_incidents(limit=100)],
     }
 
 
@@ -173,7 +173,7 @@ def list_cases(container: ApplicationContainer = Depends(get_container)) -> dict
     svc = _service(container)
     return {
         "total": len(svc.list_cases(limit=10000)),
-        "items": [_c(c) for c in svc.list_cases(limit=100)],
+        "items": [{**_c(c), "sla": asdict(svc.sla_of(c))} for c in svc.list_cases(limit=100)],
     }
 
 

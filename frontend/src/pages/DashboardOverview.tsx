@@ -1,213 +1,238 @@
-/**
- * EDY SIEM Overview — Echelon operational console.
- * UI composition only: every panel is derived from the existing metrics, alerts and health hooks.
- */
+/** SOC Decision Center — a single, evidence-led queue built only from real APIs. */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { colors, radii, spacing, typography } from "../design-system/tokens";
-import { KpiCard } from "../design-system/components/cards";
-import { DataTable } from "../design-system/components/DataTable";
+import { apiClient } from "../api/client";
 import { SeverityBadge } from "../design-system/components/badges";
 import { EmptyState, skeletonCss } from "../design-system/components/feedback";
-import { Timeline } from "../design-system/components/Timeline";
-import { SecurityAreaChart, SecurityHeatmap } from "../charts";
-import { useAlerts, useHealth, useMetrics } from "../hooks";
-import type { SystemHealth } from "../hooks";
+import { useAlerts, useHealth, useIncidents, useMetrics, useShieldEvents } from "../hooks";
+import type { RecentAlert, ShieldDecisionEvent, SlaSnapshotDto } from "../hooks";
+import type { Incident } from "../hooks/useIncidents";
 
-type KpiGlyphKind = "telemetry" | "alert" | "case" | "response" | "risk" | "health";
+type Severity = "critical" | "high" | "medium" | "low" | "info";
+type QueueItem = {
+  id: string;
+  kind: "incident" | "shield" | "alert";
+  severity: Severity;
+  title: string;
+  source: string;
+  asset: string;
+  evidence: string;
+  owner: string;
+  sla?: SlaSnapshotDto;
+  createdAt: string;
+  action: "assume" | "investigate" | "review";
+};
 
-function KpiGlyph({ kind }: { kind: KpiGlyphKind }) {
-  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  const shapes: Record<KpiGlyphKind, JSX.Element> = {
-    telemetry: <path d="M3 15h3l2-7 4 11 3-7h6" />,
-    alert: <><path d="M18 9a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8" /><path d="M10 21h4" /></>,
-    case: <><rect x="3" y="5" width="18" height="15" rx="2" /><path d="M8 5V3h8v2M8 11h8M8 15h5" /></>,
-    response: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>,
-    risk: <><path d="M12 3 4 7v5c0 5 3.4 7.7 8 9 4.6-1.3 8-4 8-9V7l-8-4Z" /><path d="M12 8v5" /><circle cx="12" cy="16" r=".7" fill="currentColor" /></>,
-    health: <><path d="M3 12h4l2-5 4 10 2-5h4" /><circle cx="12" cy="12" r="9" /></>,
-  };
-  return <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" {...stroke}>{shapes[kind]}</svg>;
+const severityOrder: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const severityLabel: Record<Severity, string> = { critical: "Crítico", high: "Alto", medium: "Médio", low: "Baixo", info: "Informativo" };
+const eventTitles: Record<string, string> = {
+  "shield.alert.created": "Alerta de integridade criado",
+  "shield.alert.updated": "Alerta de integridade atualizado",
+  "shield.fim.file.added": "Arquivo adicionado",
+  "shield.fim.file.modified": "Arquivo modificado",
+  "shield.fim.file.removed": "Arquivo removido",
+  "shield.fim.baseline.created": "Baseline de integridade criada",
+  "shield.fim.scan.completed": "Scan de integridade concluído",
+  "shield.hash.mismatch": "Hash divergente",
+  "shield.hash.verified": "Hash verificado",
+};
+
+function formatDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Data não informada";
+  return parsed.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function formatNumber(value: number) {
-  if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1).replace(".0", "")}M`;
-  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1).replace(".0", "")}K`;
-  return String(Math.round(value));
+function formatDeadline(value?: string) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
-function formatTime(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+function slaRank(sla?: SlaSnapshotDto) {
+  if (sla?.state === "overdue" || sla?.state === "missed") return 0;
+  if (sla?.state === "warning") return 1;
+  return 2;
 }
 
-function healthColor(status: string) {
-  if (status === "online") return colors.status.online;
-  if (status === "degraded") return colors.status.degraded;
-  if (status === "offline" || status === "error") return colors.status.offline;
-  return colors.textMuted;
+function slaPresentation(item: QueueItem) {
+  if (!item.sla) return { label: item.kind === "shield" ? "SLA inicia no caso" : "SLA não informado", tone: "neutral" };
+  const deadline = formatDeadline(item.sla.deadline);
+  if (item.sla.state === "overdue" || item.sla.state === "missed") return { label: `SLA vencido${deadline ? ` · ${deadline}` : ""}`, tone: "danger" };
+  if (item.sla.state === "warning") return { label: `Próximo do SLA${deadline ? ` · ${deadline}` : ""}`, tone: "warning" };
+  if (item.sla.state === "met") return { label: "SLA atendido", tone: "ok" };
+  return { label: `Dentro do prazo${deadline ? ` · ${deadline}` : ""}`, tone: "ok" };
 }
 
-function healthCopy(status: string) {
-  if (status === "online") return "Online";
-  if (status === "degraded") return "Degradado";
-  if (status === "offline") return "Offline";
-  if (status === "error") return "Erro";
-  return status;
+function incidentEvidence(incident: Incident) {
+  const parts = [`${incident.alertsCount} alerta${incident.alertsCount === 1 ? "" : "s"}`];
+  if (incident.iocs.length) parts.push(`${incident.iocs.length} IOC${incident.iocs.length === 1 ? "" : "s"}`);
+  if (incident.mitre.length) parts.push(`${incident.mitre.length} técnica${incident.mitre.length === 1 ? "" : "s"} MITRE`);
+  return parts.join(" · ");
 }
 
-function riskTone(score: number) {
-  if (score >= 80) return colors.severity.critical;
-  if (score >= 60) return colors.severity.high;
-  if (score >= 40) return colors.severity.medium;
-  return colors.severity.low;
+function shieldEvidence(event: ShieldDecisionEvent) {
+  const parts: string[] = [];
+  if (event.evidence.file_path) parts.push(event.evidence.file_path);
+  if (event.evidence.previous_hash && event.evidence.current_hash) parts.push("hash anterior × atual");
+  else if (event.evidence.current_hash || event.evidence.previous_hash) parts.push("1 hash registrado");
+  if (event.evidence.baseline_id) parts.push("baseline vinculada");
+  if (event.evidence.scan_id) parts.push("scan vinculado");
+  return parts.join(" · ") || "Evento recebido; evidência técnica no detalhe";
 }
 
-function OpsPanel({ title, meta, children, footer }: { title: string; meta?: string; children: React.ReactNode; footer?: React.ReactNode }) {
-  return (
-    <section className="overview-panel">
-      <header className="overview-panel-head">
-        <h2>{title}</h2>
-        {meta && <span data-mono>{meta}</span>}
-      </header>
-      <div className="overview-panel-body">{children}</div>
-      {footer && <footer className="overview-panel-footer">{footer}</footer>}
-    </section>
-  );
+function alertEvidence(alert: RecentAlert) {
+  const parts = [`Regra ${alert.rule}`];
+  if (alert.mitre.length) parts.push(`${alert.mitre.length} técnica${alert.mitre.length === 1 ? "" : "s"} MITRE`);
+  return parts.join(" · ");
 }
 
 export function DashboardOverview() {
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState<"1h" | "6h" | "24h" | "7d">("1h");
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const { metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useMetrics(timeRange);
+  const { incidents, loading: incidentsLoading, error: incidentsError, refetch: refetchIncidents } = useIncidents(50);
+  const { alerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(50);
+  const { events: shieldEvents, loading: shieldLoading, error: shieldError, refetch: refetchShield } = useShieldEvents(20);
   const { health, loading: healthLoading, error: healthError, refetch: refetchHealth } = useHealth();
-  const { alerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(10);
+  const { metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useMetrics();
+  const [assuming, setAssuming] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const isLoading = metricsLoading || healthLoading || alertsLoading;
-  const hasError = metricsError || healthError || alertsError;
-  const systemHealth: SystemHealth = health;
-  const componentsOnline = Object.values(systemHealth).filter((status) => status === "online").length;
-  const componentsTotal = Object.keys(systemHealth).length;
-  const healthLabel = systemHealth.api === "online" ? "Saudável" : systemHealth.api === "degraded" ? "Degradado" : "Crítico";
+  const fallbackAlerts = incidents.length === 0 && shieldEvents.length === 0;
+  const queue = useMemo<QueueItem[]>(() => {
+    const items: QueueItem[] = incidents
+      .filter((incident) => !["resolved", "closed"].includes(incident.status))
+      .map((incident) => ({
+        id: incident.id,
+        kind: "incident",
+        severity: incident.severity,
+        title: incident.title,
+        source: "Correlação EDY SIEM",
+        asset: incident.assets.length ? incident.assets.join(", ") : "Ativo não informado",
+        evidence: incidentEvidence(incident),
+        owner: incident.owner || "",
+        sla: incident.sla,
+        createdAt: incident.created_at,
+        action: incident.owner ? "investigate" : "assume",
+      }));
+    shieldEvents.forEach((event) => items.push({
+      id: event.event_id,
+      kind: "shield",
+      severity: event.severity,
+      title: eventTitles[event.event_type] || event.event_type,
+      source: "EDY Shield",
+      asset: event.asset.hostname || event.asset.asset_id || "Ativo não informado",
+      evidence: shieldEvidence(event),
+      owner: event.case?.owner || "",
+      sla: event.case?.sla,
+      createdAt: event.timestamp,
+      action: "review",
+    }));
+    if (fallbackAlerts) alerts.filter((alert) => !["resolved", "closed", "false_positive"].includes(alert.status)).forEach((alert) => items.push({
+      id: alert.id,
+      kind: "alert",
+      severity: alert.severity,
+      title: alert.title,
+      source: "Detecção EDY SIEM",
+      asset: alert.host && alert.host !== "detection" ? alert.host : "Ativo não informado",
+      evidence: alertEvidence(alert),
+      owner: "",
+      sla: alert.sla,
+      createdAt: alert.firstSeen,
+      action: "investigate",
+    }));
+    return items.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || slaRank(a.sla) - slaRank(b.sla) || Number(Boolean(a.owner)) - Number(Boolean(b.owner)) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
+  }, [alerts, fallbackAlerts, incidents, shieldEvents]);
 
-  const criticalAlerts = useMemo(() => [...alerts].filter((alert) => alert.severity === "critical" || alert.severity === "high").sort((a, b) => b.riskScore - a.riskScore).slice(0, 5), [alerts]);
-  const feedAlerts = useMemo(() => alerts.slice(0, 5), [alerts]);
-  const timelineItems = useMemo(() => alerts.slice(0, 5).map((alert) => ({ id: alert.id, title: alert.title, detail: `${alert.host} · ${alert.rule}`, time: formatTime(alert.firstSeen), tone: alert.severity })), [alerts]);
-  const topHosts = useMemo(() => {
-    const hosts = new Map<string, { risk: number; count: number }>();
-    alerts.forEach((alert) => {
-      const existing = hosts.get(alert.host) ?? { risk: 0, count: 0 };
-      hosts.set(alert.host, { risk: Math.max(existing.risk, alert.riskScore), count: existing.count + 1 });
-    });
-    return [...hosts.entries()].map(([host, detail]) => ({ host, ...detail })).sort((a, b) => b.risk - a.risk || b.count - a.count).slice(0, 5);
-  }, [alerts]);
-  const heatmap = useMemo(() => {
-    const rows = ["Crítico", "Alto", "Médio", "Baixo"];
-    const cols = ["00h", "04h", "08h", "12h", "16h", "20h"];
-    const rowFor: Record<string, string> = { critical: "Crítico", high: "Alto", medium: "Médio", low: "Baixo", info: "Baixo" };
-    const values = new Map<string, number>();
-    alerts.forEach((alert) => {
-      const time = new Date(alert.firstSeen);
-      if (Number.isNaN(time.getTime())) return;
-      const col = cols[Math.floor(time.getHours() / 4)] ?? cols[0];
-      const row = rowFor[alert.severity] ?? "Baixo";
-      const key = `${row}::${col}`;
-      values.set(key, (values.get(key) ?? 0) + 1);
-    });
-    return { rows, cols, cells: [...values.entries()].map(([key, value]) => { const [row, col] = key.split("::"); return { row, col, value }; }) };
-  }, [alerts]);
+  const loading = incidentsLoading || alertsLoading || shieldLoading || healthLoading || metricsLoading;
+  const dataError = incidentsError || alertsError || shieldError || healthError || metricsError;
+  const criticalCount = queue.filter((item) => item.severity === "critical").length;
+  const slaAttention = queue.filter((item) => ["overdue", "missed", "warning"].includes(item.sla?.state ?? "")).length;
+  const unassigned = queue.filter((item) => !item.owner).length;
+  const onlineComponents = Object.values(health).filter((status) => status === "online").length;
+  const lastShieldEvent = shieldEvents[0];
 
-  const retryAll = () => { refetchMetrics(); refetchHealth(); refetchAlerts(); };
+  const retryAll = () => { refetchIncidents(); refetchAlerts(); refetchShield(); refetchHealth(); refetchMetrics(); };
+  const openItem = (item: QueueItem) => {
+    if (item.kind === "shield") navigate(`/investigate/shield/${encodeURIComponent(item.id)}`);
+    else if (item.kind === "incident") navigate(`/incidents?incident=${encodeURIComponent(item.id)}`);
+    else navigate("/alerts");
+  };
+  const assume = async (item: QueueItem) => {
+    setAssuming(item.id); setActionError(null);
+    const response = await apiClient.post(`/soc/incidents/${encodeURIComponent(item.id)}/assign?analyst=analista.soc`);
+    if (response.success) refetchIncidents();
+    else setActionError("Não foi possível assumir o incidente. Tente novamente.");
+    setAssuming(null);
+  };
 
-  return (
-    <div className="overview-console" aria-busy={isLoading}>
-      <style>{`${skeletonCss}
-        .overview-console { display:flex; flex-direction:column; gap:18px; }
-        .overview-intro { display:flex; justify-content:space-between; align-items:end; gap:16px; flex-wrap:wrap; padding: 2px 0; }
-        .overview-eyebrow { color:var(--color-accent); font-size:10px; font-weight:600; letter-spacing:.12em; margin-bottom:5px; }
-        .overview-title { margin:0; color:var(--color-text-primary); font-size:26px; line-height:1.15; letter-spacing:-.03em; }
-        .overview-subtitle { margin:6px 0 0; color:var(--color-text-muted); font-size:13px; }
-        .overview-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .overview-select { padding:7px 10px; border:1px solid var(--color-border); border-radius:6px; background:var(--color-surface); color:var(--color-text-primary); font-size:13px; cursor:pointer; }
-        .overview-auto { display:inline-flex; align-items:center; gap:7px; color:var(--color-text-secondary); font-size:12px; cursor:pointer; padding:7px 9px; border:1px solid var(--color-border-subtle); border-radius:6px; background:color-mix(in srgb, var(--color-surface-alt) 44%, transparent); }
-        .overview-status { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--color-border); border-radius:8px; background:linear-gradient(90deg, color-mix(in srgb, var(--status-online) 7%, var(--color-surface)) 0%, var(--color-surface) 58%); }
-        .overview-status-copy { display:flex; flex-direction:column; gap:1px; }
-        .overview-status-copy strong { font-size:13px; color:var(--color-text-primary); }
-        .overview-status-copy span { font-size:11px; color:var(--color-text-muted); }
-        .overview-kpis { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; }
-        .overview-kpis button { min-width:0 !important; }
-        .overview-grid-primary, .overview-grid-secondary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:start; }
-        .overview-panel { min-width:0; overflow:hidden; border:1px solid var(--color-border); border-radius:10px; background:linear-gradient(180deg, var(--color-surface) 0%, color-mix(in srgb, var(--color-surface-alt) 34%, var(--color-surface)) 100%); box-shadow:var(--elevation-floating); }
-        .overview-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--color-border-subtle); }
-        .overview-panel-head h2 { margin:0; color:var(--color-text-primary); font-size:14px; font-weight:600; letter-spacing:-.01em; }
-        .overview-panel-head span { color:var(--color-text-muted); font-size:11px; white-space:nowrap; }
-        .overview-panel-body { padding:14px 16px; }
-        .overview-panel-footer { padding:9px 16px; border-top:1px solid var(--color-border-subtle); background:color-mix(in srgb, var(--color-surface-alt) 56%, transparent); color:var(--color-text-muted); font-size:11px; }
-        .overview-feed { display:flex; flex-direction:column; }
-        .overview-feed-row { display:grid; grid-template-columns:7px minmax(0,1fr) auto; align-items:center; gap:9px; min-height:38px; border-bottom:1px solid var(--color-border-subtle); }
-        .overview-feed-row:last-child { border-bottom:0; }
-        .overview-feed-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-text-primary); font-size:12px; font-weight:500; }
-        .overview-feed-meta { color:var(--color-text-muted); font-family:'JetBrains Mono', monospace; font-size:10px; white-space:nowrap; }
-        .overview-hosts { display:flex; flex-direction:column; gap:11px; }
-        .overview-host-row { display:grid; grid-template-columns:minmax(0,1fr) 48px; gap:10px; align-items:center; }
-        .overview-host-name { color:var(--color-text-primary); font:600 11px 'JetBrains Mono', monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .overview-host-rail { height:4px; overflow:hidden; border-radius:999px; background:var(--color-border-subtle); margin-top:6px; }
-        .overview-host-fill { height:100%; border-radius:inherit; }
-        .overview-host-risk { color:var(--color-text-muted); font:11px 'JetBrains Mono', monospace; text-align:right; }
-        .overview-health { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
-        .overview-health-item { min-width:0; padding:9px 8px; border:1px solid var(--color-border); border-radius:6px; background:color-mix(in srgb, var(--color-surface-alt) 54%, transparent); }
-        .overview-health-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--color-text-secondary); font-size:10px; text-transform:capitalize; }
-        .overview-health-state { display:flex; align-items:center; gap:5px; margin-top:5px; font:10px 'JetBrains Mono', monospace; }
-        .overview-critical-action { border:1px solid var(--color-border); border-radius:5px; background:transparent; color:var(--color-text-secondary); cursor:pointer; font-size:11px; padding:4px 7px; transition:background 120ms cubic-bezier(.2,0,0,1), border-color 120ms cubic-bezier(.2,0,0,1), color 120ms cubic-bezier(.2,0,0,1); }
-        .overview-critical-action:hover { background:var(--color-accent-subtle); border-color:var(--color-accent); color:var(--color-accent-hover); }
-        @media (max-width:1500px) { .overview-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); } }
-        @media (max-width:1120px) { .overview-grid-primary, .overview-grid-secondary { grid-template-columns:repeat(2,minmax(0,1fr)); } .overview-grid-secondary > :last-child { grid-column:span 2; } }
-        @media (max-width:760px) { .overview-console { gap:14px; } .overview-kpis, .overview-grid-primary, .overview-grid-secondary { grid-template-columns:1fr; } .overview-grid-secondary > :last-child { grid-column:auto; } .overview-health { grid-template-columns:repeat(2,minmax(0,1fr)); } .overview-panel-body { padding:12px; } .overview-panel-head { padding:12px; } .overview-intro { align-items:start; } }
-      `}</style>
+  return <div className="decision-center" aria-busy={loading}>
+    <style>{`${skeletonCss}
+      .decision-center{display:flex;flex-direction:column;gap:16px;max-width:1680px;margin:0 auto}
+      .decision-header{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+      .decision-eyebrow{color:var(--color-accent-hover);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+      .decision-title{margin:6px 0 4px;color:var(--color-text-primary);font-size:28px;line-height:1.12;letter-spacing:-.04em}
+      .decision-subtitle{margin:0;color:var(--color-text-muted);font-size:13px;line-height:1.5}
+      .decision-refresh,.decision-action{border:1px solid var(--color-border);border-radius:7px;background:var(--color-surface-alt);color:var(--color-text-primary);font-size:12px;font-weight:600;cursor:pointer;transition:background 140ms ease,border-color 140ms ease,color 140ms ease}
+      .decision-refresh{padding:8px 12px}.decision-refresh:hover,.decision-action:hover{border-color:var(--color-accent);color:var(--color-accent-hover)}
+      .decision-health{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:13px 16px;border:1px solid var(--color-border);border-left:3px solid var(--status-online);border-radius:9px;background:linear-gradient(90deg,color-mix(in srgb,var(--status-online) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}
+      .decision-health-main{display:flex;align-items:flex-start;gap:10px}.decision-health-dot{width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--status-online);box-shadow:0 0 0 3px color-mix(in srgb,var(--status-online) 12%,transparent);flex:none}
+      .decision-health strong{display:block;color:var(--color-text-primary);font-size:13px}.decision-health p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px;line-height:1.45}
+      .decision-health-meta{text-align:right;color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;line-height:1.6}
+      .decision-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);overflow:hidden}
+      .decision-signal{padding:13px 16px;border-right:1px solid var(--color-border-subtle)}.decision-signal:last-child{border-right:0}.decision-signal strong{display:block;color:var(--color-text-primary);font:700 22px 'JetBrains Mono',monospace}.decision-signal span{display:block;margin-top:3px;color:var(--color-text-muted);font-size:11px}
+      .decision-queue{overflow:hidden;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
+      .decision-queue-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:15px 17px;border-bottom:1px solid var(--color-border)}.decision-queue-head h2{margin:0;color:var(--color-text-primary);font-size:16px}.decision-queue-head p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px}.decision-queue-count{color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;white-space:nowrap}
+      .decision-row{display:grid;grid-template-columns:minmax(250px,1.35fr) minmax(145px,.65fr) minmax(210px,1fr) minmax(135px,.65fr) minmax(150px,.72fr) 150px;gap:14px;align-items:center;min-height:96px;padding:14px 17px;border-bottom:1px solid var(--color-border-subtle);position:relative}.decision-row:last-child{border-bottom:0}.decision-row::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:2px;background:var(--row-tone)}
+      .decision-primary{min-width:0}.decision-primary-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.decision-source{display:inline-flex;padding:3px 7px;border:1px solid color-mix(in srgb,var(--color-accent) 32%,var(--color-border));border-radius:999px;background:var(--color-accent-subtle);color:var(--color-accent-hover);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.decision-primary h3{margin:8px 0 3px;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-primary);font-size:13px;line-height:1.35}.decision-id{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-muted);font:9px 'JetBrains Mono',monospace;white-space:nowrap}
+      .decision-cell{min-width:0}.decision-label{display:block;margin-bottom:5px;color:var(--color-text-subtle);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}.decision-value{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-secondary);font-size:11px;line-height:1.45}.decision-value.mono{font-family:'JetBrains Mono',monospace;font-size:10px}.decision-evidence{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}.decision-owner.unassigned{color:var(--severity-medium)}
+      .decision-sla{display:inline-flex;padding:4px 7px;border:1px solid var(--color-border);border-radius:5px;color:var(--color-text-secondary);font-size:10px;line-height:1.35}.decision-sla[data-tone='danger']{border-color:color-mix(in srgb,var(--severity-critical) 36%,var(--color-border));background:color-mix(in srgb,var(--severity-critical) 9%,transparent);color:var(--severity-critical)}.decision-sla[data-tone='warning']{border-color:color-mix(in srgb,var(--severity-medium) 38%,var(--color-border));background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--severity-medium)}.decision-sla[data-tone='ok']{color:var(--status-online)}
+      .decision-next{text-align:right}.decision-next-label{display:block;margin-bottom:6px;color:var(--color-text-muted);font-size:9px}.decision-action{width:100%;padding:8px 9px;background:transparent}.decision-action.primary{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-text-on-accent)}.decision-action:disabled{cursor:wait;opacity:.55}
+      .decision-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:8px;background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--color-text-secondary);font-size:12px}
+      .decision-context{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--color-border);border-radius:9px;background:var(--color-border-subtle)}.decision-context-item{padding:13px 15px;background:var(--color-surface)}.decision-context-item strong{display:block;color:var(--color-text-primary);font-size:12px}.decision-context-item span{display:block;margin-top:4px;color:var(--color-text-muted);font-size:10px;line-height:1.45}
+      @media(max-width:1500px){.decision-row{grid-template-columns:minmax(230px,1.2fr) minmax(130px,.7fr) minmax(190px,1fr) minmax(135px,.7fr) 150px}.decision-row>.decision-cell:nth-of-type(4){display:none}}
+      @media(max-width:1000px){.decision-row{grid-template-columns:minmax(0,1fr) 150px}.decision-row>.decision-cell:nth-of-type(2),.decision-row>.decision-cell:nth-of-type(4){display:none}.decision-context{grid-template-columns:1fr}.decision-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-signal:nth-child(2){border-right:0}.decision-signal:nth-child(-n+2){border-bottom:1px solid var(--color-border-subtle)}}
+      @media(max-width:680px){.decision-center{gap:12px}.decision-title{font-size:23px}.decision-health{grid-template-columns:1fr}.decision-health-meta{text-align:left}.decision-row{grid-template-columns:1fr;gap:10px;padding:14px 15px}.decision-row>.decision-cell{display:block!important}.decision-row>.decision-cell:nth-of-type(4){display:none!important}.decision-next{text-align:left}.decision-action{width:auto}.decision-queue-head{align-items:flex-start}.decision-summary{overflow:visible}.decision-signal{padding:11px 12px}.decision-signal strong{font-size:18px}}
+    `}</style>
 
-      <div className="overview-intro">
-        <div>
-          <div className="overview-eyebrow">SOC OVERVIEW</div>
-          <h1 className="overview-title">Visão operacional</h1>
-          <p className="overview-subtitle">Telemetria, risco e resposta no período selecionado.</p>
-        </div>
-        <div className="overview-controls">
-          <div className="overview-status">
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: healthColor(systemHealth.api), boxShadow: `0 0 0 3px color-mix(in srgb, ${healthColor(systemHealth.api)} 12%, transparent)` }} />
-            <div className="overview-status-copy"><strong>{healthLabel}</strong><span>{componentsOnline}/{componentsTotal} serviços online</span></div>
-          </div>
-          <label className="overview-auto"><input type="checkbox" checked={autoRefresh} onChange={(event) => setAutoRefresh(event.target.checked)} style={{ accentColor: colors.accent }} />Auto-refresh</label>
-          <select className="overview-select" value={timeRange} onChange={(event) => setTimeRange(event.target.value as typeof timeRange)} aria-label="Período da Overview"><option value="1h">Última hora</option><option value="6h">Últimas 6h</option><option value="24h">Últimas 24h</option><option value="7d">Últimos 7 dias</option></select>
-        </div>
-      </div>
+    <header className="decision-header">
+      <div><div className="decision-eyebrow">SOC Decision Center</div><h1 className="decision-title">Decisões que exigem ação</h1><p className="decision-subtitle">Prioridade, prazo, ownership, ativo e evidência em uma única fila operacional.</p></div>
+      <button type="button" className="decision-refresh" onClick={retryAll}>Atualizar dados</button>
+    </header>
 
-      {hasError && <div style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: spacing["2"], padding: `${spacing["2"]} ${spacing["3"]}`, border: "1px solid color-mix(in srgb, var(--severity-medium) 30%, transparent)", borderRadius: radii.md, background: "color-mix(in srgb, var(--severity-medium) 10%, transparent)", color: colors.textSecondary, fontSize: typography.size.sm }}><span style={{ color: colors.severity.medium }}>!</span>Dados operacionais indisponíveis <button type="button" onClick={retryAll} className="overview-critical-action">Tentar novamente</button></div>}
+    <section className="decision-health" aria-label="Saúde operacional e ingestão">
+      <div className="decision-health-main"><span className="decision-health-dot" /><div><strong>{healthError ? "Saúde operacional indisponível" : "SOC operacional · receptor Shield disponível"}</strong><p>{shieldError ? "Não foi possível consultar a fonte EDY Shield. A fila SOC permanece disponível com os demais dados." : lastShieldEvent ? `Último evento EDY Shield recebido em ${formatDate(lastShieldEvent.received_at)}. A ausência de tráfego novo não interrompe investigação e casos.` : "Nenhum evento EDY Shield recebido. Conecte uma fonte em Configurações quando quiser iniciar a ingestão."}</p></div></div>
+      <div className="decision-health-meta"><span>{onlineComponents} componentes reportados online</span><br /><span>{shieldEvents.length} eventos Shield na janela da fila</span></div>
+    </section>
 
-      <div className="overview-kpis" aria-busy={isLoading}>
-        {isLoading ? Array.from({ length: 6 }).map((_, index) => <div key={index} style={{ minHeight: 126, padding: spacing["4"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface }}><div className="skeleton-line" style={{ height: 11, width: "54%" }} /><div className="skeleton-line" style={{ height: 28, width: "44%", marginTop: 18 }} /><div className="skeleton-line" style={{ height: 10, width: "62%", marginTop: 18 }} /></div>) : <>
-          <KpiCard label="Events/sec" value={formatNumber(metrics.eps)} icon={<KpiGlyph kind="telemetry" />} delta={`${formatNumber(metrics.eventsLastHour)} na janela`} trend="up" mono />
-          <KpiCard label="Alertas ativos" value={String(metrics.activeAlerts)} icon={<KpiGlyph kind="alert" />} delta={`${criticalAlerts.length} prioritários`} trend={criticalAlerts.length ? "up" : "flat"} severity="critical" mono />
-          <KpiCard label="Casos abertos" value={String(metrics.openCases)} icon={<KpiGlyph kind="case" />} delta="em acompanhamento" trend="flat" />
-          <KpiCard label="MTTR" value={`${metrics.mttr}min`} icon={<KpiGlyph kind="response" />} delta="tempo de resposta" trend="down" severity="medium" mono />
-          <KpiCard label="Score médio" value={String(metrics.avgRiskScore)} icon={<KpiGlyph kind="risk" />} delta="risco consolidado" trend="flat" severity="high" mono />
-          <KpiCard label="Saúde da pipeline" value={healthLabel} icon={<KpiGlyph kind="health" />} delta={`${componentsOnline}/${componentsTotal} componentes`} trend="flat" />
-        </>}
-      </div>
+    <section className="decision-summary" aria-label="Resumo da fila de decisão">
+      <div className="decision-signal"><strong>{queue.length}</strong><span>decisões visíveis</span></div>
+      <div className="decision-signal"><strong style={{ color: criticalCount ? "var(--severity-critical)" : undefined }}>{criticalCount}</strong><span>críticas agora</span></div>
+      <div className="decision-signal"><strong style={{ color: slaAttention ? "var(--severity-medium)" : undefined }}>{slaAttention}</strong><span>SLA vencido ou próximo</span></div>
+      <div className="decision-signal"><strong>{unassigned}</strong><span>sem responsável</span></div>
+    </section>
 
-      <div className="overview-grid-primary">
-        <OpsPanel title="Eventos por minuto" meta="últimos 60 min" footer={<span>Ingestão processada no período selecionado</span>}><SecurityAreaChart data={metrics.eventsSeries} xKey="time" yKeys={["events"]} height={210} xInterval={11} /></OpsPanel>
-        <OpsPanel title="Matriz de atividade" meta="severidade × horário" footer={<span>Distribuição baseada no horário dos alertas recebidos</span>}>{alerts.length ? <SecurityHeatmap rows={heatmap.rows} cols={heatmap.cols} cells={heatmap.cells} /> : <EmptyState title="Sem atividade classificada" description="A matriz será preenchida à medida que alertas forem recebidos." compact />}</OpsPanel>
-        <OpsPanel title="Live feed" meta={`${feedAlerts.length} eventos`} footer={<span>Alertas mais recentes recebidos pelo SOC</span>}>{feedAlerts.length ? <div className="overview-feed">{feedAlerts.map((alert) => <div className="overview-feed-row" key={alert.id}><span style={{ width: 7, height: 7, borderRadius: "50%", background: riskTone(alert.riskScore) }} /><span className="overview-feed-title" title={alert.title}>{alert.title}</span><span className="overview-feed-meta">{formatTime(alert.firstSeen)}</span></div>)}</div> : <EmptyState title="Feed aguardando eventos" description="Novos alertas aparecerão aqui automaticamente." compact />}</OpsPanel>
-      </div>
+    {(dataError || actionError) && <div className="decision-error" role="alert"><span>{actionError || "Parte dos dados operacionais está indisponível. A fila mostra apenas as fontes carregadas com sucesso."}</span><button type="button" className="decision-refresh" onClick={retryAll}>Tentar novamente</button></div>}
 
-      <div className="overview-grid-secondary">
-        <OpsPanel title="Alertas prioritários" meta={`${criticalAlerts.length} itens`} footer={<span>Ordenados pelo maior score de risco</span>}>{criticalAlerts.length ? <DataTable columns={[{ key: "severity", header: "Sev.", width: "76px", render: (row: any) => <SeverityBadge severity={row.severity}>{row.severity}</SeverityBadge> }, { key: "title", header: "Alerta / Regra" }, { key: "host", header: "Host", width: "84px", mono: true }, { key: "riskScore", header: "Risco", width: "48px", mono: true, render: (row: any) => <span style={{ color: riskTone(row.riskScore), fontWeight: 700 }}>{row.riskScore}</span> }, { key: "action", header: "", width: "50px", render: () => <button className="overview-critical-action" onClick={() => navigate("/investigate")}>Abrir</button> }]} rows={criticalAlerts as unknown as Array<Record<string, React.ReactNode>>} compact /> : <EmptyState title="Sem alertas prioritários" description="Alertas de alta criticidade aparecerão aqui." compact />}</OpsPanel>
-        <OpsPanel title="Linha do tempo" meta="alertas recentes" footer={<span>Sequência cronológica de evidências registradas</span>}>{timelineItems.length ? <Timeline items={timelineItems} /> : <EmptyState title="Sem eventos na linha do tempo" compact />}</OpsPanel>
-        <OpsPanel title="Hosts por risco" meta={`${topHosts.length} ativos`} footer={<span>Maior score por host observado no período</span>}>{topHosts.length ? <div className="overview-hosts">{topHosts.map((host) => { const color = riskTone(host.risk); return <div className="overview-host-row" key={host.host}><div><div className="overview-host-name">{host.host}</div><div className="overview-host-rail"><div className="overview-host-fill" style={{ width: `${Math.max(4, host.risk)}%`, background: color }} /></div></div><div className="overview-host-risk">{host.risk}</div></div>; })}</div> : <EmptyState title="Sem hosts em risco" compact />}</OpsPanel>
-      </div>
+    <section className="decision-queue">
+      <header className="decision-queue-head"><div><h2>Decision Queue</h2><p>Crítico → alto → SLA em risco → sem responsável → demais eventos</p></div><span className="decision-queue-count">{queue.length} de {incidents.length + shieldEvents.length + (fallbackAlerts ? alerts.length : 0)} itens</span></header>
+      {loading && !queue.length ? <div style={{ padding: 18 }}>{Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton-line" style={{ height: 72, marginBottom: 10 }} />)}</div> : !queue.length ? <EmptyState title="Fila de decisão vazia" description="Não há incidentes ativos, eventos Shield ou alertas aguardando decisão." /> : queue.map((item) => {
+        const sla = slaPresentation(item);
+        const rowTone = item.severity === "critical" ? "var(--severity-critical)" : item.severity === "high" ? "var(--severity-high)" : item.severity === "medium" ? "var(--severity-medium)" : "var(--severity-low)";
+        return <article className="decision-row" key={`${item.kind}:${item.id}`} style={{ "--row-tone": rowTone } as React.CSSProperties}>
+          <div className="decision-primary"><div className="decision-primary-top"><SeverityBadge severity={item.severity}>{severityLabel[item.severity]}</SeverityBadge><span className="decision-source">{item.source}</span></div><h3 title={item.title}>{item.title}</h3><span className="decision-id">{item.id} · {formatDate(item.createdAt)}</span></div>
+          <div className="decision-cell"><span className="decision-label">Ativo afetado</span><span className="decision-value mono" title={item.asset}>{item.asset}</span></div>
+          <div className="decision-cell"><span className="decision-label">Evidência</span><span className="decision-value decision-evidence" title={item.evidence}>{item.evidence}</span></div>
+          <div className="decision-cell"><span className="decision-label">Responsável</span><span className={`decision-value decision-owner ${item.owner ? "" : "unassigned"}`}>{item.owner || "Sem responsável"}</span></div>
+          <div className="decision-cell"><span className="decision-label">SLA</span><span className="decision-sla" data-tone={sla.tone}>{sla.label}</span></div>
+          <div className="decision-next"><span className="decision-next-label">Próxima ação</span><button type="button" className={`decision-action ${item.kind === "shield" ? "primary" : ""}`} disabled={assuming === item.id} onClick={() => item.action === "assume" ? assume(item) : openItem(item)}>{assuming === item.id ? "Assumindo…" : item.action === "assume" ? "Assumir" : item.action === "review" ? "Revisar evidência" : "Continuar investigação"}</button></div>
+        </article>;
+      })}
+    </section>
 
-      <OpsPanel title="Saúde da pipeline" meta={`${componentsOnline}/${componentsTotal} online`} footer={<span>Estado atual dos serviços de coleta, correlação e resposta</span>}><div className="overview-health">{Object.entries(systemHealth).map(([name, status]) => { const color = healthColor(status); return <div className="overview-health-item" key={name}><div className="overview-health-name">{name}</div><div className="overview-health-state" style={{ color }}><span style={{ width: 5, height: 5, borderRadius: "50%", background: color }} />{healthCopy(status)}</div></div>; })}</div></OpsPanel>
-    </div>
-  );
+    <section className="decision-context" aria-label="Contexto operacional preservado">
+      <div className="decision-context-item"><strong>{metrics.activeAlerts} alertas ativos</strong><span>Detecções permanecem disponíveis na Central de Alertas, sem duplicar o mesmo sinal nesta Home.</span></div>
+      <div className="decision-context-item"><strong>{metrics.openCases} casos abertos</strong><span>Ownership, tarefas, evidências e encerramento continuam no sistema de casos existente.</span></div>
+      <div className="decision-context-item"><strong>{metrics.eventsLast24h} eventos nas últimas 24h</strong><span>Volume preservado como contexto; a fila acima prioriza decisão em vez de gráficos decorativos.</span></div>
+    </section>
+  </div>;
 }

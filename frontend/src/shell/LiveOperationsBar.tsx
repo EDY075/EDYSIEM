@@ -241,10 +241,10 @@ export function LiveOperationsBar() {
           }}
         >
           {data.ingestionStatus === "online"
-            ? "Ingestão Normal"
+            ? "Receptor disponível"
             : data.ingestionStatus === "degraded"
-              ? "Ingestão Lenta"
-              : "Ingestão Offline"}
+              ? "Receptor degradado"
+              : "Receptor indisponível"}
         </span>
       </div>
 

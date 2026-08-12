@@ -300,6 +300,27 @@ class ShieldInboxRepository:
             raise PersistenceError("stored ingestion event cannot be decoded") from exc
         return value
 
+    def list_recent(self, *, limit: int = 20) -> list[dict[str, object]]:
+        """Return recent Shield events decoded for the operator decision queue."""
+
+        if limit < 1 or limit > 100:
+            raise ValueError("limit must be between 1 and 100")
+        rows = self._manager.connect().execute(
+            "SELECT * FROM ingestion_inbox WHERE source_product = 'edy-shield' "
+            "ORDER BY event_timestamp DESC, received_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        events: list[dict[str, object]] = []
+        try:
+            for row in rows:
+                value = dict(row)
+                value["payload"] = json.loads(str(value["payload"]))
+                value["normalized_payload"] = json.loads(str(value["normalized_payload"]))
+                events.append(value)
+        except (TypeError, ValueError) as exc:
+            raise PersistenceError("stored ingestion event cannot be decoded") from exc
+        return events
+
     def count(self) -> int:
         """Return the number of unique accepted inbox events."""
 

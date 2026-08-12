@@ -17,16 +17,20 @@ export interface SystemHealth {
   api: ComponentStatus;
 }
 
+function componentStatus(value: ComponentStatus | "healthy" | undefined, fallback: ComponentStatus): ComponentStatus {
+  return value === "healthy" ? "online" : value || fallback;
+}
+
 export function useHealth() {
   const [health, setHealth] = useState<SystemHealth>({
-    ingestion: "online",
-    correlation: "online",
-    enrichment: "online",
-    detection: "online",
-    alerts: "online",
-    cases: "online",
-    storage: "online",
-    api: "online",
+    ingestion: "offline",
+    correlation: "offline",
+    enrichment: "offline",
+    detection: "offline",
+    alerts: "offline",
+    cases: "offline",
+    storage: "offline",
+    api: "offline",
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +46,14 @@ export function useHealth() {
       if (response.success && response.data) {
         const components = response.data.components;
         setHealth({
-          ingestion: components.enrichment?.status || "online",
-          correlation: components.correlation?.status || "online",
-          enrichment: components.enrichment?.status || "online",
-          detection: components.detection?.status || "online",
-          alerts: components.alerts?.status || "online",
-          cases: components.cases?.status || "online",
-          storage: components.storage?.status || "online",
-          api: components.api?.status || "online",
+          ingestion: componentStatus(components.ingestion?.status, "offline"),
+          correlation: componentStatus(components.correlation?.status, "offline"),
+          enrichment: componentStatus(components.enrichment?.status, "offline"),
+          detection: componentStatus(components.detection?.status, "offline"),
+          alerts: componentStatus(components.alerts?.status, "offline"),
+          cases: componentStatus(components.cases?.status, "offline"),
+          storage: componentStatus(components.storage?.status, "offline"),
+          api: componentStatus(components.api?.status, "online"),
         });
         setLastUpdated(new Date());
       } else {

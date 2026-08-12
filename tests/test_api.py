@@ -33,6 +33,10 @@ def test_health_endpoint(client: TestClient) -> None:
     assert "components" in body
     assert "alerts" in body["components"]
     assert "cases" in body["components"]
+    assert body["components"]["ingestion"]["status"] == "online"
+    assert body["components"]["ingestion"]["details"]["receiver"] == "edy-shield"
+    assert body["components"]["storage"]["status"] == "online"
+    assert body["components"]["api"]["status"] == "online"
     assert body["status"] == "healthy"
 
 
