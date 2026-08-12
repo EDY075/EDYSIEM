@@ -435,3 +435,68 @@ Validação:
 # Sprint C2 — Entity, MITRE & Decision
 
 Não iniciar Sprint C2 automaticamente. Não fazer merge em main.
+
+## Sprint C2 — Entity, MITRE & Decision: COMPLETE (2026-08-12)
+
+A investigação agora fecha o trecho **Entidade → MITRE → Decisão** sem reduzir a
+evidência construída na C1:
+
+- o evento Shield expõe o endpoint de origem, asset ID, IP, sistema operacional,
+  integração, inventário SIEM existente e contagens relacionadas por consulta somente
+  leitura; telemetria não sobrescreve o inventário;
+- o backend normaliza apenas o campo canônico `x_mitre`, valida IDs `Txxxx` e
+  `Txxxx.xxx`, remove duplicatas e descarta valores inseguros; nome, tática e origem são
+  exibidos somente quando recebidos, sem inferência por severidade ou arquivo;
+- sem associação confiável, a UI informa discretamente
+  **Técnica MITRE ainda não associada a este evento**;
+- a área **Próxima decisão** reúne owner, SLA, status, prazo e evidências do caso, com
+  ações reais para assumir, continuar a investigação e abrir o caso exato;
+- a investigação genérica recebeu SLA e decisão contextual, mantendo alertas, IOCs,
+  ativos, MITRE, timeline e evidências;
+- `?case=` ausente/obsoleto não seleciona silenciosamente o primeiro caso, evitando ação
+  sobre o contexto errado;
+- o deep link e o retorno preservam o mesmo `event_id` Shield validado e codificado.
+
+Validação:
+
+- 18 testes focados aprovados.
+- 941 testes completos aprovados; cobertura global 95,09%.
+- Ruff, MyPy (152 arquivos), TypeScript, Vite production build, wheel/sdist e
+  `git diff --check`: PASS.
+- O Vite foi compilado a partir de uma cópia mecânica do mesmo frontend dentro da área
+  autorizada, com `configFile: false` e a configuração equivalente fornecida à API de
+  build, porque o carregador de config do checkout encontrou uma restrição de leitura do
+  sandbox. 676 módulos foram transformados com sucesso.
+- Google Chrome externo: 1920x1080, 1366x768 e 820x900; evento Shield com MITRE, sem
+  MITRE, sem responsável, ownership, caso vinculado, investigação genérica, deep link
+  reverso e case query inexistente.
+- Sem overflow horizontal. Console sem erro da aplicação; permanece o warning conhecido
+  de future flag do React Router. O Chrome também registrou mensagens de canal assíncrono
+  sem stack da aplicação durante navegação; o mesmo ruído de extensão ocorreu em abas
+  antigas e numa aba limpa, sem request falho ou impacto na UI.
+- Screenshots finais em `outputs/sprint-c2-entity-mitre-decision/`:
+  `01-shield-mitre-decision-1920x1080.png`, `02-shield-no-mitre-1366x768.png` e
+  `03-shield-responsive-820x900.png`.
+
+Segurança:
+
+- hostname, asset, path, nome/tática MITRE e metadata continuam texto React inerte;
+- nenhuma URL é aceita de metadata e não existe renderização HTML arbitrária;
+- IDs MITRE são validados no backend, payload bruto permanece colapsado e o case
+  preserva exatamente a mesma lista normalizada;
+- ownership possui guarda de request em andamento e não executa duas vezes por clique.
+
+Limitações preservadas:
+
+- não existe catálogo local de nomes/táticas ATT&CK; esses campos só aparecem quando a
+  fonte os fornece junto a um ID válido;
+- `analista.soc` continua sendo a identidade de desenvolvimento existente, pois auth/RBAC
+  não faz parte desta sprint;
+- o frontend ainda não possui runner de testes de componentes; contratos, segurança,
+  tipos e fluxos foram cobertos por pytest, TypeScript e Chrome externo.
+
+## Próximo passo EXATO
+
+# Sprint C3 — Case Handoff & Investigation Workflow Closure
+
+Não iniciar Sprint C3 automaticamente. Não fazer merge em main.

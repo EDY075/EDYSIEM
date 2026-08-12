@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { SeverityBadge } from "../design-system/components/badges";
@@ -34,6 +34,29 @@ interface LinkedCase {
   };
 }
 
+interface MitreMapping {
+  technique_id: string;
+  name?: string;
+  tactic?: string;
+  source: string;
+}
+
+interface EntityContext {
+  inventory_status: "registered" | "not_registered";
+  inventory: {
+    hostname: string;
+    ip: string;
+    os: string;
+    criticality: string;
+    owner: string;
+    status: string;
+    last_seen: string;
+  } | null;
+  related_incidents: number;
+  related_cases: number;
+  related_file?: string | null;
+}
+
 interface ShieldInvestigation {
   event_id: string;
   schema_version: string;
@@ -47,6 +70,8 @@ interface ShieldInvestigation {
   asset: ShieldAsset;
   evidence: Record<string, unknown>;
   metadata: Record<string, unknown>;
+  mitre?: MitreMapping[];
+  entity?: EntityContext;
   normalized: Record<string, unknown>;
   case: LinkedCase | null;
   case_created?: boolean;
@@ -55,6 +80,7 @@ interface ShieldInvestigation {
 type ViewState = "loading" | "ready" | "invalid" | "not-ingested" | "wrong-source" | "error";
 
 const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const CURRENT_ANALYST = "analista.soc";
 const EVENT_LABELS: Record<string, string> = {
   "shield.fim.baseline.created": "Baseline criada",
   "shield.fim.file.added": "Novo arquivo detectado",
@@ -89,6 +115,17 @@ function slaLabel(sla?: LinkedCase["sla"]): string {
   return "Dentro do SLA";
 }
 
+function slaDetail(sla?: LinkedCase["sla"]): string {
+  if (!sla?.deadline) return "Prazo não informado";
+  const deadline = new Date(sla.deadline).getTime();
+  if (Number.isNaN(deadline)) return "Prazo não informado";
+  const totalMinutes = Math.max(0, Math.floor(Math.abs(deadline - Date.now()) / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const duration = hours ? `${hours}h ${minutes}min` : `${minutes}min`;
+  return deadline < Date.now() ? `Vencido há ${duration}` : `Vence em ${duration}`;
+}
+
 function processingLabel(value: string): string {
   return value === "pending" ? "Recebido · pendente" : value === "processed" ? "Processado" : value;
 }
@@ -115,6 +152,7 @@ export function ShieldEventInvestigationPage() {
   const [data, setData] = useState<ShieldInvestigation | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [creatingCase, setCreatingCase] = useState(false);
+  const [assigningCase, setAssigningCase] = useState(false);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
   const load = useCallback(async (signal?: AbortSignal) => {
@@ -174,6 +212,18 @@ export function ShieldEventInvestigationPage() {
     setErrorMessage("Não foi possível criar o caso. Tente novamente sem recarregar o evento.");
   };
 
+  const assumeCase = async () => {
+    if (!data?.case || data.case.owner || assigningCase) return;
+    setAssigningCase(true);
+    setErrorMessage("");
+    const response = await apiClient.post(
+      `/soc/cases/${encodeURIComponent(data.case.case_id)}/assign?${new URLSearchParams({ owner: CURRENT_ANALYST }).toString()}`,
+    );
+    if (response.success) await load();
+    else setErrorMessage("Não foi possível assumir o caso. Tente novamente.");
+    setAssigningCase(false);
+  };
+
   const copyHash = useCallback(async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
@@ -183,13 +233,6 @@ export function ShieldEventInvestigationPage() {
       setErrorMessage("Não foi possível copiar o hash neste navegador.");
     }
   }, []);
-
-  const mitre = useMemo(() => {
-    if (!data) return [];
-    const raw = data.metadata.x_mitre ?? data.metadata.mitre ?? data.metadata.mitre_attack;
-    if (Array.isArray(raw)) return raw.filter((value): value is string => typeof value === "string");
-    return typeof raw === "string" && raw.trim() ? [raw] : [];
-  }, [data]);
 
   if (viewState === "loading") {
     return <div className="shield-investigation-state"><LoadingSkeleton rows={4} variant="card" /></div>;
@@ -222,6 +265,14 @@ export function ShieldEventInvestigationPage() {
   const evidenceDetails = data.evidence.details && typeof data.evidence.details === "object" ? data.evidence.details as Record<string, unknown> : {};
   const changeSummary = asText(evidenceDetails.description) || asText(data.evidence.change);
   const title = EVENT_LABELS[data.event_type] || data.event_type;
+  const mitre = data.mitre ?? [];
+  const entity = data.entity ?? {
+    inventory_status: "not_registered" as const,
+    inventory: null,
+    related_incidents: 0,
+    related_cases: data.case ? 1 : 0,
+    related_file: filePath,
+  };
   const timeline = [
     { title: "Shield registrou o evento", time: data.timestamp, detail: `${title} · sequência ${data.sequence}` },
     { title: "SIEM recebeu o evento", time: data.received_at, detail: "Persistido de forma idempotente no inbox" },
@@ -274,18 +325,20 @@ export function ShieldEventInvestigationPage() {
       </main>
 
       <aside className="shield-investigation-aside">
-        <Panel eyebrow="ATIVO" title={data.asset.hostname}>
+        <Panel eyebrow="ENTIDADE · ENDPOINT" title={data.asset.hostname}>
+          <div className="shield-entity-source"><span className="shield-source-mark">S</span><div><strong>EDY Shield</strong><span>{data.source.component} · versão {data.source.product_version}</span></div></div>
           <DataRow label="Asset ID" value={data.asset.asset_id} mono />
           <DataRow label="IP" value={data.asset.ip} mono />
           <DataRow label="Sistema" value={data.asset.os} />
-          <DataRow label="Instância Shield" value={data.source.instance_id} mono />
-          <DataRow label="Componente" value={data.source.component} />
+          <DataRow label="Inventário SIEM" value={entity.inventory_status === "registered" ? "Ativo registrado" : "Ainda não registrado"} />
+          {entity.inventory && <><DataRow label="Criticidade" value={entity.inventory.criticality} /><DataRow label="Estado inventário" value={entity.inventory.status} /><DataRow label="Última observação" value={formatTime(entity.inventory.last_seen)} /></>}
+          <div className="shield-entity-relations"><span>{entity.related_incidents} incidente(s)</span><span>{entity.related_cases} caso(s)</span></div>
         </Panel>
         <Panel eyebrow="MITRE ATT&CK" title="Associação técnica">
-          {mitre.length ? <div className="shield-mitre-list">{mitre.map((value) => <span key={value}>{value}</span>)}</div> : <p className="shield-muted">Técnica MITRE ainda não associada a este evento.</p>}
+          {mitre.length ? <div className="shield-mitre-list">{mitre.map((mapping) => <article key={mapping.technique_id}><code>{mapping.technique_id}</code>{mapping.name && <strong>{mapping.name}</strong>}{mapping.tactic && <span>Tática · {mapping.tactic}</span>}<small>Origem · {mapping.source}</small></article>)}</div> : <p className="shield-muted">Técnica MITRE ainda não associada a este evento.</p>}
         </Panel>
-        <Panel eyebrow="DECISÃO" title="Próxima ação">
-          {data.case ? <div className="shield-case-linked"><span>CASO VINCULADO</span><strong>{data.case.title}</strong><code>{data.case.case_id}</code><div className="shield-case-facts"><DataRow label="Status" value={caseStatusLabel(data.case.status)} /><DataRow label="Responsável" value={data.case.owner || "Não atribuído"} /><DataRow label="SLA" value={slaLabel(data.case.sla)} /><DataRow label="Prazo" value={data.case.sla?.deadline ? formatTime(data.case.sla.deadline) : null} /><DataRow label="Evidências" value={data.case.evidence_count} /></div><Button onClick={() => navigate(`/cases?case=${encodeURIComponent(data.case!.case_id)}`)}>Abrir caso exato</Button></div> : <div className="shield-decision-copy"><p>Transforme este evento e seu payload original em um caso rastreável no SIEM.</p><Button disabled={creatingCase} onClick={() => void createCase()}>{creatingCase ? "Criando caso…" : "Criar caso a partir deste evento"}</Button></div>}
+        <Panel eyebrow="DECISÃO" title="Próxima decisão">
+          {data.case ? <div className="shield-case-linked"><span>CASO VINCULADO</span><strong>{data.case.title}</strong><code>{data.case.case_id}</code><div className="shield-decision-status"><div><span>Responsável</span><strong>{data.case.owner || "Sem responsável"}</strong></div><div className={`sla-${data.case.sla?.state || "none"}`}><span>{slaLabel(data.case.sla)}</span><strong>{slaDetail(data.case.sla)}</strong></div></div><div className="shield-case-facts"><DataRow label="Status" value={caseStatusLabel(data.case.status)} /><DataRow label="Prazo" value={data.case.sla?.deadline ? formatTime(data.case.sla.deadline) : null} /><DataRow label="Evidências" value={data.case.evidence_count} /></div><div className="shield-decision-actions">{!data.case.owner && <Button disabled={assigningCase} onClick={() => void assumeCase()}>{assigningCase ? "Assumindo…" : "Assumir"}</Button>}<Button variant={data.case.owner ? "primary" : "secondary"} onClick={() => navigate(`/investigate?case=${encodeURIComponent(data.case!.case_id)}`)}>Continuar investigação</Button><Button variant="ghost" onClick={() => navigate(`/cases?case=${encodeURIComponent(data.case!.case_id)}`)}>Abrir caso existente</Button></div></div> : <div className="shield-decision-copy"><p>Revise a evidência acima e crie um caso rastreável quando a mudança exigir tratamento operacional.</p><div className="shield-decision-actions"><Button disabled={creatingCase} onClick={() => void createCase()}>{creatingCase ? "Criando caso…" : "Criar caso"}</Button><Button variant="ghost" onClick={() => document.querySelector(".shield-investigation-main")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Revisar evidência</Button></div></div>}
           {errorMessage && <p role="alert" className="shield-inline-error">{errorMessage}</p>}
         </Panel>
       </aside>
@@ -305,8 +358,8 @@ export function ShieldEventInvestigationPage() {
       .shield-hash-compare{display:grid;grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);align-items:stretch;gap:10px;margin-top:12px}.shield-hash-compare>div{min-width:0;padding:12px;border:1px solid ${colors.borderSubtle};border-radius:${radii.md};background:${colors.background}}.shield-hash-arrow{display:grid!important;place-items:center;color:${colors.accent}!important;font-size:18px!important}.shield-hash-label{display:flex;align-items:center;justify-content:space-between;gap:10px}.shield-hash-compare code{display:block;margin-top:9px;color:${colors.textSecondary};font-size:10px;line-height:1.55;overflow-wrap:anywhere;word-break:break-all}.shield-copy{padding:3px 7px;border:1px solid ${colors.border};border-radius:5px;background:transparent;color:${colors.accentHover};font-size:9px;cursor:pointer}.shield-copy:hover,.shield-copy:focus-visible{border-color:${colors.accent};outline:none}.shield-change-summary{margin-top:12px;padding:11px 12px;border:1px solid ${colors.borderSubtle};border-radius:${radii.md};background:color-mix(in srgb,${colors.accent} 5%,${colors.surfaceAlt})}.shield-change-summary p,.shield-evidence-empty p{margin:6px 0 0;color:${colors.textSecondary};font-size:11px;line-height:1.55}.shield-evidence-empty{padding:14px;border:1px dashed ${colors.border};border-radius:${radii.md};background:${colors.surfaceAlt}}.shield-evidence-empty strong{font-size:12px}
       .shield-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin-top:14px}.shield-data-row{display:grid;grid-template-columns:minmax(90px,.6fr) minmax(0,1fr);gap:10px;padding:9px 0;border-bottom:1px solid ${colors.borderSubtle};font-size:11px}.shield-data-row>span{color:${colors.textMuted}}.shield-data-row>strong{color:${colors.textSecondary};font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis}.mono,code{font-family:${typography.family.mono}}
       .shield-timeline{padding-left:4px}.shield-timeline-item{position:relative;display:grid;grid-template-columns:16px minmax(0,1fr);gap:10px;min-height:80px}.shield-timeline-item>i{position:absolute;left:4px;top:15px;bottom:-2px;width:1px;background:${colors.border}}.shield-timeline-dot{position:relative;z-index:1;width:9px;height:9px;margin-top:3px;border-radius:50%;background:${colors.accent};box-shadow:0 0 0 4px color-mix(in srgb,${colors.accent} 13%,transparent)}.shield-timeline-item strong{font-size:12px}.shield-timeline-item p{margin:4px 0;color:${colors.textSecondary};font-size:11px}.shield-timeline-item time{color:${colors.textMuted};font:10px ${typography.family.mono}}
-      .shield-json summary{cursor:pointer;color:${colors.textSecondary};font-size:12px}.shield-json pre{max-height:360px;overflow:auto;margin:12px 0 0;padding:14px;border-radius:${radii.md};background:${colors.background};color:${colors.textSecondary};font-size:10px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}.shield-muted{margin:0;color:${colors.textMuted};font-size:12px;line-height:1.55}.shield-mitre-list{display:flex;flex-wrap:wrap;gap:7px}.shield-mitre-list span{padding:6px 8px;border:1px solid color-mix(in srgb,${colors.accent} 30%,transparent);border-radius:6px;background:color-mix(in srgb,${colors.accent} 9%,transparent);color:${colors.accentHover};font:11px ${typography.family.mono}}
-      .shield-decision-copy p,.shield-case-linked p{margin:0 0 14px;color:${colors.textSecondary};font-size:12px;line-height:1.55}.shield-decision-copy button,.shield-case-linked button{width:100%}.shield-case-linked strong,.shield-case-linked code{display:block;margin-top:7px}.shield-case-linked strong{font-size:13px}.shield-case-linked code{color:${colors.textMuted};font-size:10px;overflow-wrap:anywhere}.shield-case-facts{margin:10px 0 14px}.shield-inline-error{margin:10px 0 0;color:${colors.danger};font-size:11px}
+      .shield-json summary{cursor:pointer;color:${colors.textSecondary};font-size:12px}.shield-json pre{max-height:360px;overflow:auto;margin:12px 0 0;padding:14px;border-radius:${radii.md};background:${colors.background};color:${colors.textSecondary};font-size:10px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}.shield-muted{margin:0;color:${colors.textMuted};font-size:12px;line-height:1.55}.shield-entity-source{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px;border:1px solid ${colors.borderSubtle};border-radius:${radii.md};background:${colors.surfaceAlt}}.shield-entity-source strong,.shield-entity-source span{display:block}.shield-entity-source strong{font-size:12px}.shield-entity-source span{margin-top:2px;color:${colors.textMuted};font-size:10px}.shield-entity-relations{display:flex;gap:7px;margin-top:10px}.shield-entity-relations span{padding:5px 7px;border-radius:5px;background:${colors.surfaceAlt};color:${colors.textMuted};font-size:10px}.shield-mitre-list{display:flex;flex-direction:column;gap:8px}.shield-mitre-list article{padding:10px;border:1px solid color-mix(in srgb,${colors.accent} 26%,${colors.border});border-radius:${radii.md};background:color-mix(in srgb,${colors.accent} 6%,${colors.surfaceAlt})}.shield-mitre-list code,.shield-mitre-list strong,.shield-mitre-list span,.shield-mitre-list small{display:block}.shield-mitre-list code{color:${colors.accentHover};font-size:12px}.shield-mitre-list strong{margin-top:5px;font-size:11px}.shield-mitre-list span{margin-top:3px;color:${colors.textSecondary};font-size:10px}.shield-mitre-list small{margin-top:7px;color:${colors.textMuted};font-size:9px}
+      .shield-decision-copy p,.shield-case-linked p{margin:0 0 14px;color:${colors.textSecondary};font-size:12px;line-height:1.55}.shield-case-linked>strong,.shield-case-linked>code{display:block;margin-top:7px}.shield-case-linked>strong{font-size:13px}.shield-case-linked>code{color:${colors.textMuted};font-size:10px;overflow-wrap:anywhere}.shield-decision-status{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.shield-decision-status>div{padding:9px;border:1px solid ${colors.borderSubtle};border-radius:${radii.md};background:${colors.surfaceAlt}}.shield-decision-status span,.shield-decision-status strong{display:block}.shield-decision-status span{color:${colors.textMuted};font-size:9px}.shield-decision-status strong{margin-top:4px;font-size:10px}.shield-decision-status .sla-overdue,.shield-decision-status .sla-missed{border-color:color-mix(in srgb,${colors.danger} 40%,${colors.border})}.shield-decision-status .sla-warning{border-color:color-mix(in srgb,${colors.severity.medium} 40%,${colors.border})}.shield-case-facts{margin:10px 0 14px}.shield-decision-actions{display:flex;flex-direction:column;gap:7px}.shield-decision-actions button{width:100%}.shield-inline-error{margin:10px 0 0;color:${colors.danger};font-size:11px}
       @media(max-width:1180px){.shield-operational-strip{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:10px}.shield-operational-strip>div:nth-child(4){padding-left:0;border-left:0}.shield-investigation-layout{grid-template-columns:minmax(0,1fr) 320px}}
       @media(max-width:960px){.shield-investigation-layout{grid-template-columns:1fr}.shield-investigation-aside{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.shield-investigation-aside .shield-panel:last-child{grid-column:1/-1}}
       @media(max-width:640px){.shield-investigation-page{margin:-4px}.shield-investigation-hero{padding:16px}.shield-title-row{align-items:flex-start}.shield-provenance i,.shield-provenance span:nth-of-type(3){display:none}.shield-operational-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.shield-operational-strip>div:nth-child(odd){padding-left:0;border-left:0}.shield-operational-strip>div:nth-child(4){padding-left:12px;border-left:1px solid ${colors.borderSubtle}}.shield-investigation-aside{display:flex}.shield-data-grid{grid-template-columns:1fr}.shield-hash-compare{grid-template-columns:1fr}.shield-hash-arrow{transform:rotate(90deg);justify-self:center}.shield-data-row{grid-template-columns:1fr}.shield-data-row>strong{text-align:left;white-space:normal;overflow-wrap:anywhere}.shield-title-row h1{font-size:25px}}

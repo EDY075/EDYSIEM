@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict
 from datetime import datetime
 from typing import cast
@@ -20,6 +21,73 @@ from ..deps import get_container, get_shield_inbox
 
 router = APIRouter(tags=["shield-investigation"])
 _ROUTE = "/investigation/sources/edy-shield/events/{event_id}"
+_MITRE_TECHNIQUE_ID = re.compile(r"^T\d{4}(?:\.\d{3})?$")
+
+
+def _bounded_text(value: object, *, maximum: int = 255) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    return text[:maximum] if text else None
+
+
+def _mitre_context(metadata: object) -> list[dict[str, str]]:
+    """Return trusted-shape ATT&CK context without inferring techniques."""
+    if not isinstance(metadata, dict):
+        return []
+    raw = metadata.get("x_mitre")
+    values = raw if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
+    details_raw = metadata.get("x_mitre_details")
+    details: dict[str, dict[object, object]] = {}
+    if isinstance(details_raw, list):
+        for item in details_raw:
+            if not isinstance(item, dict):
+                continue
+            technique_id = _bounded_text(item.get("technique_id"), maximum=16)
+            if technique_id and _MITRE_TECHNIQUE_ID.fullmatch(technique_id):
+                details[technique_id] = item
+
+    result: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for value in values:
+        technique_id = _bounded_text(value, maximum=16)
+        if (
+            technique_id is None
+            or not _MITRE_TECHNIQUE_ID.fullmatch(technique_id)
+            or technique_id in seen
+        ):
+            continue
+        seen.add(technique_id)
+        item = {
+            "technique_id": technique_id,
+            "source": "EDY Shield · metadata x_mitre",
+        }
+        detail = details.get(technique_id, {})
+        name = _bounded_text(detail.get("name"))
+        tactic = _bounded_text(detail.get("tactic"))
+        if name:
+            item["name"] = name
+        if tactic:
+            item["tactic"] = tactic
+        result.append(item)
+    return result
+
+
+def _entity_context(payload: dict[object, object], service: SocService) -> dict[str, object]:
+    asset_raw = payload.get("asset")
+    evidence_raw = payload.get("evidence")
+    asset = asset_raw if isinstance(asset_raw, dict) else {}
+    evidence = evidence_raw if isinstance(evidence_raw, dict) else {}
+    hostname = _bounded_text(asset.get("hostname"))
+    inventory = service.get_asset(hostname) if hostname else None
+    related = service.asset_related(hostname) if hostname else {"incidents": [], "cases": []}
+    return {
+        "inventory_status": "registered" if inventory else "not_registered",
+        "inventory": inventory,
+        "related_incidents": len(related["incidents"]),
+        "related_cases": len(related["cases"]),
+        "related_file": _bounded_text(evidence.get("file_path"), maximum=4096),
+    }
 
 
 def _canonical_uuid4(value: str) -> bool:
@@ -108,6 +176,8 @@ def _response(
         "asset": payload.get("asset", {}),
         "evidence": payload.get("evidence", {}),
         "metadata": payload.get("metadata", {}),
+        "mitre": _mitre_context(payload.get("metadata")),
+        "entity": _entity_context(payload, service),
         "normalized": normalized,
         "case": _case_summary(case, service),
     }
@@ -168,12 +238,7 @@ async def create_case_from_shield_event(
     event_type = str(row["event_type"])
     severity_value = str(row["severity"])
     hostname = str(asset.get("hostname", "unknown-endpoint"))
-    mitre_raw = metadata.get("x_mitre")
-    mitre = (
-        frozenset(str(value) for value in mitre_raw if isinstance(value, str))
-        if isinstance(mitre_raw, list)
-        else frozenset()
-    )
+    mitre = frozenset(item["technique_id"] for item in _mitre_context(metadata))
     severity = IncidentSeverity(severity_value)
     priority = {
         "critical": IncidentPriority.P1,

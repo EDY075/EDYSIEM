@@ -11,6 +11,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface InvestigationData {
   case_id: string;
+  status: string;
+  owner?: string | null;
   related_alerts: { alert_id: string; title: string; rule_id: string; severity: string; risk_score: number }[];
   iocs: string[];
   assets: string[];
@@ -18,12 +20,14 @@ interface InvestigationData {
   mitre: string[];
   timeline: { action: string; detail: string; created_at: string }[];
   evidence: { kind: string; value: string; label: string; source?: string }[];
+  sla?: { state: "ok" | "warning" | "overdue" | "met" | "missed"; deadline: string };
 }
 
 const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const formatTime = (value: string) => value ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Sem horário";
 const severityTone = (value: string): SeverityColor => value === "critical" ? "critical" : value === "high" ? "high" : value === "medium" ? "medium" : value === "low" ? "low" : "info";
+const slaText = (state?: string) => state === "overdue" || state === "missed" ? "SLA vencido" : state === "warning" ? "SLA próximo" : state === "met" ? "SLA atendido" : state ? "Dentro do SLA" : "Sem SLA";
 
 function InvestigationGlyph({ type }: { type: "trace" | "evidence" | "link" | "mitre" }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -45,9 +49,12 @@ export function InvestigationPage() {
 
   useEffect(() => {
     if (!cases.length) return;
-    const requested = requestedCaseId ? cases.find((item) => item.id === requestedCaseId) : null;
-    if (requested && selectedCase?.id !== requested.id) setSelectedCase(requested);
-    else if (!selectedCase) setSelectedCase(cases[0]);
+    if (requestedCaseId) {
+      const requested = cases.find((item) => item.id === requestedCaseId);
+      setSelectedCase(requested ?? null);
+      return;
+    }
+    if (!selectedCase) setSelectedCase(cases[0]);
   }, [cases, requestedCaseId, selectedCase]);
   useEffect(() => {
     if (!selectedCase) return;
@@ -72,6 +79,7 @@ export function InvestigationPage() {
   const relationshipCount = (investigation?.related_alerts.length ?? 0) + (investigation?.iocs.length ?? 0) + (investigation?.assets.length ?? 0) + (investigation?.users.length ?? 0) + (investigation?.mitre.length ?? 0);
   const shieldEventId = selectedCase?.incidentId?.startsWith("shield-event:") ? selectedCase.incidentId.slice("shield-event:".length) : "";
   const hasShieldEvent = UUID4.test(shieldEventId);
+  const requestedCaseMissing = Boolean(requestedCaseId) && !casesLoading && !cases.some((item) => item.id === requestedCaseId);
 
   return <div className="investigation-workspace" style={{ display: "grid", gridTemplateColumns: "300px minmax(0, 1fr) 300px", minHeight: 650, overflow: "hidden", border: `1px solid ${colors.border}`, borderRadius: radii.xl, background: colors.surface, boxShadow: "0 16px 38px color-mix(in srgb, var(--color-text-primary) 7%, transparent)" }}>
     <aside className="investigation-queue" style={{ display: "flex", flexDirection: "column", minWidth: 0, borderRight: `1px solid ${colors.border}` }}>
@@ -94,12 +102,13 @@ export function InvestigationPage() {
     </aside>
 
     <section className="investigation-main" style={{ minWidth: 0, display: "flex", flexDirection: "column", background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.background} 48%, ${colors.surface}) 100%)` }}>
-      {!selectedCase ? <EmptyState title="Selecione uma investigação" description="A fila à esquerda contém os casos disponíveis para análise." /> : <>
+      {requestedCaseMissing ? <EmptyState title="Caso não encontrado" description="O caso solicitado não está na fila atual. Volte à fila para selecionar uma investigação válida." action={<Button variant="secondary" onClick={() => navigate("/investigate")}>Voltar à fila</Button>} /> : !selectedCase ? <EmptyState title="Selecione uma investigação" description="A fila à esquerda contém os casos disponíveis para análise." /> : <>
         <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: spacing["3"], padding: `${spacing["4"]} ${spacing["5"]}`, borderBottom: `1px solid ${colors.borderSubtle}` }}>
           <div><div style={{ color: hasShieldEvent ? colors.accentHover : colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{hasShieldEvent ? "EDY Shield" : "Caso SOC"} · {selectedCase.id} · {selectedCase.statusLabel}</div><h2 style={{ margin: "6px 0 4px", color: colors.textPrimary, fontSize: typography.size.xl, letterSpacing: "-0.025em" }}>{selectedCase.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Owner: {selectedCase.owner || "não atribuído"} · Prioridade {selectedCase.priority}</span><div className="investigation-actions"><Button variant="ghost" onClick={() => navigate(`/cases?case=${encodeURIComponent(selectedCase.id)}`)}>Abrir caso</Button>{hasShieldEvent && <Button variant="secondary" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(shieldEventId)}`)}>Revisar evidência Shield</Button>}</div></div>
           <SeverityBadge severity={severityTone(selectedCase.severity)}>{selectedCase.severity}</SeverityBadge>
         </header>
         {loading ? <div style={{ padding: spacing["5"] }}><LoadingSkeleton rows={10} variant="card" /></div> : !investigation ? <EmptyState title="Dados de investigação indisponíveis" description={investigationError || "Não foi possível carregar a correlação deste caso."} onRetry={() => setReloadKey((value) => value + 1)} /> : <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: spacing["5"] }}>
+          <section className="investigation-decision" aria-label="Próxima decisão"><div><span>PRÓXIMA DECISÃO</span><strong>{investigation.owner ? "Continuar investigação" : "Definir responsável no caso"}</strong><p>{investigation.owner ? `Responsável atual: ${investigation.owner}.` : "O caso ainda não possui responsável."} {slaText(investigation.sla?.state)}.</p></div><div className={`investigation-sla sla-${investigation.sla?.state || "none"}`}><span>SLA</span><strong>{slaText(investigation.sla?.state)}</strong>{investigation.sla?.deadline && <small>{formatTime(investigation.sla.deadline)}</small>}</div><Button onClick={() => navigate(`/cases?case=${encodeURIComponent(selectedCase.id)}`)}>{investigation.owner ? "Abrir caso existente" : "Atribuir no caso"}</Button></section>
           <div className="investigation-summary" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: spacing["3"], marginBottom: spacing["5"] }}>
             {[{ label: "Evidências", value: investigation.evidence.length, type: "evidence" as const, color: colors.accent }, { label: "Alertas", value: investigation.related_alerts.length, type: "trace" as const, color: colors.severity.critical }, { label: "IOCs", value: investigation.iocs.length, type: "link" as const, color: colors.severity.medium }, { label: "MITRE", value: investigation.mitre.length, type: "mitre" as const, color: colors.status.online }].map((metric) => <div key={metric.label} style={{ padding: spacing["3"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface }}><span style={{ display: "inline-flex", color: metric.color }}><InvestigationGlyph type={metric.type} /></span><strong style={{ display: "block", marginTop: 8, color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: typography.size.xl }}>{metric.value}</strong><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{metric.label}</span></div>)}
           </div>
@@ -121,7 +130,7 @@ export function InvestigationPage() {
         <CorrelationGroup title="Usuários" items={investigation?.users ?? []} color={colors.textSecondary} />
       </div>
     </aside>
-    <style>{`.investigation-case:hover { transform: translateX(1px); background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-alt)) !important; }.investigation-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.investigation-evidence-primary{margin-bottom:16px}.investigation-evidence-empty{display:flex;align-items:baseline;gap:10px;padding:8px 2px}.investigation-evidence-empty strong{color:var(--color-text-primary);font-size:12px}.investigation-evidence-empty span{color:var(--color-text-muted);font-size:11px}.investigation-evidence-list{display:flex;flex-direction:column;gap:8px}.investigation-evidence-list details{padding:10px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.investigation-evidence-list summary{display:flex;align-items:center;gap:8px;cursor:pointer}.investigation-evidence-list summary span{color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.investigation-evidence-list summary strong{color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.investigation-evidence-list pre{max-height:280px;margin:10px 0 0;padding:10px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:6px;background:var(--color-background);color:var(--color-text-secondary);font:9px var(--font-mono)}@media (max-width: 1180px) { .investigation-workspace { grid-template-columns: 270px minmax(0,1fr) !important; } .investigation-correlation { display:none; } } @media (max-width: 820px) { .investigation-workspace { grid-template-columns: 1fr !important; overflow: visible !important; } .investigation-queue { max-height: 300px; border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } .investigation-summary { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } .investigation-detail-grid { grid-template-columns:1fr !important; }.investigation-evidence-empty{align-items:flex-start;flex-direction:column;gap:3px} }`}</style>
+    <style>{`.investigation-case:hover { transform: translateX(1px); background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-alt)) !important; }.investigation-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.investigation-decision{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:14px;align-items:center;margin-bottom:16px;padding:14px;border:1px solid color-mix(in srgb,var(--color-accent) 28%,var(--color-border));border-radius:9px;background:color-mix(in srgb,var(--color-accent) 5%,var(--color-surface))}.investigation-decision>div:first-child>span,.investigation-sla>span{color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.1em}.investigation-decision>div:first-child>strong{display:block;margin-top:5px;color:var(--color-text-primary);font-size:13px}.investigation-decision p{margin:4px 0 0;color:var(--color-text-muted);font-size:11px}.investigation-sla{padding-left:12px;border-left:1px solid var(--color-border)}.investigation-sla strong,.investigation-sla small{display:block}.investigation-sla strong{margin-top:4px;color:var(--color-text-primary);font-size:11px}.investigation-sla small{margin-top:3px;color:var(--color-text-muted);font:9px var(--font-mono)}.investigation-evidence-primary{margin-bottom:16px}.investigation-evidence-empty{display:flex;align-items:baseline;gap:10px;padding:8px 2px}.investigation-evidence-empty strong{color:var(--color-text-primary);font-size:12px}.investigation-evidence-empty span{color:var(--color-text-muted);font-size:11px}.investigation-evidence-list{display:flex;flex-direction:column;gap:8px}.investigation-evidence-list details{padding:10px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.investigation-evidence-list summary{display:flex;align-items:center;gap:8px;cursor:pointer}.investigation-evidence-list summary span{color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.investigation-evidence-list summary strong{color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.investigation-evidence-list pre{max-height:280px;margin:10px 0 0;padding:10px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:6px;background:var(--color-background);color:var(--color-text-secondary);font:9px var(--font-mono)}@media (max-width: 1180px) { .investigation-workspace { grid-template-columns: 270px minmax(0,1fr) !important; } .investigation-correlation { display:none; } } @media (max-width: 820px) { .investigation-workspace { grid-template-columns: 1fr !important; overflow: visible !important; } .investigation-queue { max-height: 300px; border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } .investigation-summary { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } .investigation-detail-grid { grid-template-columns:1fr !important; }.investigation-decision{grid-template-columns:1fr}.investigation-sla{padding:10px 0 0;border-left:0;border-top:1px solid var(--color-border)}.investigation-evidence-empty{align-items:flex-start;flex-direction:column;gap:3px} }`}</style>
   </div>;
 }
 

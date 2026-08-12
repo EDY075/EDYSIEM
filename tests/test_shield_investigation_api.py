@@ -77,6 +77,66 @@ def test_resolves_file_added_without_previous_hash(client: TestClient) -> None:
     assert evidence["mtime"] == "2026-08-11T18:44:07.400Z"
 
 
+def test_returns_read_only_entity_inventory_context(client: TestClient) -> None:
+    event = _event()
+    asset = event["asset"]
+    assert isinstance(asset, dict)
+    hostname = str(asset["hostname"])
+    service = client.app.state.container.soc_service
+    service.register_asset(
+        hostname,
+        ip="10.20.30.40",
+        os_name="Inventário confiável",
+        criticality="high",
+        owner="asset.owner",
+        status="active",
+    )
+    _ingest(client, event)
+
+    response = client.get(f"{INVESTIGATE}/{event['event_id']}")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["asset"]["ip"] == asset["ip"]
+    assert body["entity"]["inventory_status"] == "registered"
+    assert body["entity"]["inventory"]["ip"] == "10.20.30.40"
+    assert body["entity"]["inventory"]["os"] == "Inventário confiável"
+    assert body["entity"]["related_file"] == event["evidence"]["file_path"]
+    assert service.get_asset(hostname)["ip"] == "10.20.30.40"
+
+
+def test_normalizes_mitre_context_and_preserves_it_in_case(client: TestClient) -> None:
+    event = _event()
+    metadata = dict(event["metadata"])
+    metadata["x_mitre"] = [" T1059.001 ", "T1059.001", "javascript:alert(1)", "T1110"]
+    metadata["x_mitre_details"] = [
+        {
+            "technique_id": "T1059.001",
+            "name": "PowerShell <img src=x onerror=alert(1)>",
+            "tactic": "Execution",
+        }
+    ]
+    event["metadata"] = metadata
+    _ingest(client, event)
+
+    response = client.get(f"{INVESTIGATE}/{event['event_id']}")
+    created = client.post(f"{INVESTIGATE}/{event['event_id']}/cases")
+
+    assert response.status_code == 200
+    assert response.json()["mitre"] == [
+        {
+            "technique_id": "T1059.001",
+            "source": "EDY Shield · metadata x_mitre",
+            "name": "PowerShell <img src=x onerror=alert(1)>",
+            "tactic": "Execution",
+        },
+        {"technique_id": "T1110", "source": "EDY Shield · metadata x_mitre"},
+    ]
+    assert created.status_code == 200
+    cases = client.app.state.container.soc_service.list_cases(limit=10)
+    assert cases[0].mitre == frozenset({"T1059.001", "T1110"})
+
+
 def test_lists_recent_shield_events_with_linked_case_context(client: TestClient) -> None:
     first = _event()
     second = _event()
@@ -151,6 +211,7 @@ def test_case_creation_is_idempotent_and_preserves_original_event(client: TestCl
     assert json.loads(cases[0].evidences[0].value) == event
     investigated = client.get(f"/api/v1/soc/cases/{cases[0].id}/investigate")
     assert investigated.status_code == 200
+    assert investigated.json()["sla"]["state"] in {"ok", "warning", "overdue"}
     assert investigated.json()["evidence"][0]["source"] == "edy-shield"
     assert investigated.json()["evidence"][0]["label"] == f"EDY Shield event {event['event_id']}"
 
@@ -165,10 +226,14 @@ def test_frontend_contains_all_required_resolution_states() -> None:
         "Evento ainda não ingerido",
         "Origem incompatível",
         "API de investigação indisponível",
-        "Criar caso a partir deste evento",
+        "Criar caso",
         "Técnica MITRE ainda não associada",
         "HASH ANTERIOR",
-        "Abrir caso exato",
+        "Abrir caso existente",
+        "Próxima decisão",
+        "Assumir",
+        "Continuar investigação",
+        "ENTIDADE · ENDPOINT",
         "/cases?case=",
     ):
         assert marker in source

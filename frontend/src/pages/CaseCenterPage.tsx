@@ -45,9 +45,12 @@ export function CaseCenterPage() {
 
   useEffect(() => {
     if (!cases.length) return;
-    const requested = requestedCaseId ? cases.find((item) => item.id === requestedCaseId) : null;
-    if (requested && selected?.id !== requested.id) setSelected(requested);
-    else if (!selected) setSelected(cases[0]);
+    if (requestedCaseId) {
+      const requested = cases.find((item) => item.id === requestedCaseId);
+      setSelected(requested ?? null);
+      return;
+    }
+    if (!selected) setSelected(cases[0]);
   }, [cases, requestedCaseId, selected]);
   useEffect(() => { setOwner(selected?.owner ?? ""); }, [selected]);
   useEffect(() => {

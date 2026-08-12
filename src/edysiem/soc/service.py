@@ -18,7 +18,7 @@ import sqlite3
 
 # ruff: noqa: E501
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -622,6 +622,7 @@ class SocService:
             "status": case.status.value,
             "owner": case.owner,
             "severity": case.severity.value,
+            "sla": asdict(self.sla_of(case)),
             "related_alerts": related_alerts,
             "iocs": list(case.iocs),
             "assets": list(case.assets),

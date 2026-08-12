@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
+import type { SlaSnapshotDto } from "./useShieldEvents";
 
 export interface Case {
   id: string;
@@ -21,6 +22,7 @@ export interface Case {
   resolution?: string | null;
   createdAt: string;
   closedAt?: string | null;
+  sla?: SlaSnapshotDto;
 }
 
 interface SocCaseDto {
@@ -39,6 +41,7 @@ interface SocCaseDto {
   resolution: string | null;
   created_at: string;
   closed_at: string | null;
+  sla?: SlaSnapshotDto;
 }
 
 function toCase(c: SocCaseDto): Case {
@@ -58,6 +61,7 @@ function toCase(c: SocCaseDto): Case {
     resolution: c.resolution,
     createdAt: c.created_at,
     closedAt: c.closed_at,
+    sla: c.sla,
   };
 }
 

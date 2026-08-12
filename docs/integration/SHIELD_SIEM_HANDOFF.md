@@ -963,6 +963,59 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
 
+## HANDOFF — Sprint C2 concluída (2026-08-12)
+
+### Contexto
+
+A C2 completou **Entidade → MITRE → Decisão** sobre o layout/evidência da C1, sem
+alterar a Decision Queue, a timeline, o sistema de casos ou o deep link Shield.
+
+### Artefatos
+
+- `src/edysiem/api/routes/shield_investigation.py`: contexto read-only de entidade e
+  normalização bounded de MITRE canônico.
+- `src/edysiem/soc/service.py`: SLA incluído no DTO da investigação genérica.
+- `frontend/src/pages/ShieldEventInvestigationPage.tsx`: endpoint, MITRE com origem,
+  estado sem MITRE e rail de próxima decisão com ownership/SLA.
+- `frontend/src/pages/InvestigationPage.tsx`: decisão contextual, SLA e case query segura.
+- `frontend/src/pages/CaseCenterPage.tsx`: case query inexistente não cai no primeiro caso.
+- `frontend/src/hooks/useCases.ts`: SLA tipado no modelo de caso.
+- `tests/test_shield_investigation_api.py`: inventário read-only, MITRE deduplicado,
+  descarte de metadata maliciosa, preservação no caso e SLA.
+- Screenshots em `outputs/sprint-c2-entity-mitre-decision/` no workspace da sessão.
+
+### Decisões
+
+- O inventário SIEM é consultado por hostname exato e nunca atualizado pela telemetria.
+- Somente `metadata.x_mitre`, aceito pelo contrato de ingestão, pode produzir técnica;
+  severidade, path e extensão não geram mapeamento.
+- Nome e tática são texto opcional da fonte. IDs fora de `Txxxx[.xxx]` são descartados e
+  nunca viram link.
+- Ações de decisão reutilizam assignment e Case Center existentes; não foi criado SOAR.
+- Links de case/evento usam somente IDs locais validados e `encodeURIComponent`.
+
+### Quality Gate
+
+- 18 testes focados; 941 completos; cobertura 95,09%.
+- Ruff, MyPy (152 arquivos), TypeScript, Vite production build, wheel/sdist e diff-check
+  aprovados.
+- Chrome externo em 1920x1080, 1366x768 e 820x900; MITRE presente/ausente, owner
+  ausente/definido, SLA, case vinculado, investigação normal e links exatos.
+- Sem overflow horizontal ou erro novo da aplicação no Console.
+
+### Limitações
+
+- Sem catálogo ATT&CK local; nomes/táticas não são enriquecidos por inferência.
+- Identidade `analista.soc` e autorização de assignment permanecem no modelo de
+  desenvolvimento existente.
+- Sem runner frontend de componentes nesta versão.
+
+### Próximo passo
+
+# Sprint C3 — Case Handoff & Investigation Workflow Closure
+
+Não iniciar automaticamente e não fazer merge em `main`.
+
 ## HANDOFF — Hotfix War Room concluído (2026-08-12)
 
 ### Contexto
