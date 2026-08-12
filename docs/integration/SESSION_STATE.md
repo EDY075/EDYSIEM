@@ -1,5 +1,28 @@
 # Session State — EDY Shield → EDY SIEM
 
+> **ESTADO CANÔNICO MAIS RECENTE — 2026-08-11 23:27 BRT.** O primeiro E2E real foi
+> concluído com PASS. Leia primeiro `E2E_SHIELD_SIEM_V1_REPORT.md`; as seções antigas
+> abaixo permanecem como histórico.
+
+## Checkpoint E2E v1
+
+- SIEM: branch `codex/shield-siem-integration-architecture`, início em `a56ee81`.
+- Shield: branch `codex/siem-producer-outbox-v1`, início em `0b0964a`.
+- Processos reais em loopback, bancos separados e token efêmero não persistido.
+- Primeiro `file_created` e os 7 cenários: PASS.
+- Offline: 5 pendentes, 5 recuperados, 0 perdidos, 0 duplicatas lógicas.
+- Idempotência, crash recovery, auth correta/ausente/inválida e batch 100+1: PASS.
+- Integridade: 122 eventos comparados, sem divergência.
+- SIEM: 126 focados; 928 completos; cobertura 95,15%; Ruff/MyPy PASS.
+- Build do SIEM pendente apenas porque `hatchling` não estava disponível e a rede
+  expirou. Reexecutar `python -m build` em CI/ambiente com dependências.
+- Documentação está em commit local (`git log -1`); push pendente porque a credencial
+  salva para `EDY075` está inválida. Após `gh auth login -h github.com`, executar
+  `git push origin codex/shield-siem-integration-architecture`.
+- Nenhum código de produção ou frontend foi alterado.
+- Próximo passo após confirmar o build: UX “Investigar no EDY SIEM”. Não iniciar
+  WAR_ROOM nem worker downstream sem nova etapa.
+
 ## Estado
 
 - Etapa do receptor/inbox API v1 no EDY SIEM concluída em 2026-08-11.

@@ -1,6 +1,6 @@
 # EDY Shield → EDY SIEM — Handoff de Arquitetura
 
-**Status:** contrato/receptor v1 e producer/outbox do Shield concluídos; E2E real pendente.
+**Status:** contrato/receptor, producer/outbox e primeiro E2E real concluídos.
 **Data da análise:** 2026-08-11
 **EDY SIEM analisado:** `master` em `e929982` (v0.2.0)
 **EDY Shield analisado:** `main` em `5fd63bb` (v2.2.0)
@@ -716,3 +716,26 @@ O contrato, receptor e normalizador deste repositório não foram alterados. O p
 passo passa a ser o primeiro E2E real e isolado entre os dois projetos, incluindo
 offline/replay e confirmação da inbox; frontend, WAR_ROOM e worker downstream continuam
 fora desse gate.
+
+## 15. Primeiro E2E real concluído
+
+Em 2026-08-11 23:25 BRT, processos reais do Shield e SIEM foram executados em
+loopback, com bancos isolados e token M2M efêmero. O relatório canônico é
+`docs/integration/E2E_SHIELD_SIEM_V1_REPORT.md`.
+
+- 7 cenários: PASS.
+- Offline/recovery: 5/5 recuperados, 0 perdas e 0 duplicatas lógicas.
+- Idempotência, crash recovery e auth correta/inválida/ausente: PASS.
+- Batch real: 101 eventos em 100+1; ack individual e limites: PASS.
+- Integridade: 122 payloads entregues comparados, 0 divergências.
+- Logs: sem token, Bearer ou traceback.
+- SIEM: 928 testes, 95,15%, Ruff/MyPy PASS.
+- Shield: 680 testes, 2 skipped, 86,78%, Ruff/MyPy/build PASS.
+
+Nenhum código de produção ou frontend foi alterado. O build do pacote SIEM deve ser
+repetido em CI/ambiente com `hatchling`; a dependência não estava instalada e a rede do
+laboratório expirou.
+
+Próximo passo após esse gate ambiental: UX “Investigar no EDY SIEM” e exibição dos
+eventos Shield na investigação do SIEM. Inbox downstream, WAR_ROOM e merge em `main`
+continuam fora do escopo.
