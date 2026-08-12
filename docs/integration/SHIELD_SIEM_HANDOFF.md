@@ -760,3 +760,10 @@ hashes, ativo, timeline e MITRE real. Detalhes e resultados estao em
 Proximo passo: **PRODUCT REDESIGN V1** (Shield como Endpoint Integrity Center; SIEM
 como SOC Decision Center; design system compartilhado com identidades distintas; fluxo
 Alerta -> Evidencia -> Entidade -> MITRE -> Caso). Nao iniciar ainda.
+
+## Revalidacao de retomada - 2026-08-12
+
+Nenhuma alteracao parcial foi encontrada no worktree. A UX Integration V1 foi
+revalidada com 4 testes focados e 932 testes completos (95,11%), Ruff, MyPy,
+builds backend/frontend e verificacao de diff. A rota continua recusando IDs
+invalidos ou eventos de outra origem e mantem a criacao/reabertura de caso idempotente.

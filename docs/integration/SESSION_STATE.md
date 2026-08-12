@@ -161,5 +161,15 @@ Executar o primeiro **E2E real isolado Shield → SIEM** sem alterar frontend:
 - Relatorio completo: `docs/integration/UX_INTEGRATION_V1_REPORT.md`.
 - Proximo passo salvo: **PRODUCT REDESIGN V1**. Nao iniciar sem novo prompt.
 
+## Revalidacao de retomada - 2026-08-12
+
+- Estado recuperado sem alteracoes locais pendentes; o checkpoint UX permanece em `6d30737`.
+- Testes focados: 4 aprovados; suite completa: 932 aprovados, 95,11%.
+- Ruff, MyPy, builds backend/frontend e `git diff --check`: aprovados.
+- Revisao visual local confirmou o estado de evento ainda nao ingerido e suas acoes de
+  recuperacao; o unico aviso foi o future flag preexistente do React Router.
+- A rota continua validando UUIDv4, origem EDY Shield e reutilizando casos de forma
+  idempotente.
+
 Pare antes de integrar WAR_ROOM, criar frontend ou implementar o worker downstream da
 inbox. Não compartilhar banco nem importar runtime entre projetos.
