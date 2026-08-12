@@ -28,6 +28,7 @@
 
 - Etapa do receptor/inbox API v1 no EDY SIEM concluída em 2026-08-11.
 - Branch: `codex/shield-siem-integration-architecture`.
+- Commit de implementacao: `6d30737`.
 - Base da etapa: `0137dc4`.
 - EDY SIEM v0.2.0; EDY Shield v2.2.0/`5fd63bb`.
 - Nenhum código, banco ou frontend do EDY Shield foi alterado nesta etapa.

@@ -743,6 +743,9 @@ em `main` continuam fora do escopo.
 
 ## Handoff - UX Integration V1 concluida (2026-08-12)
 
+Commit de implementacao SIEM: `6d30737` na branch
+`codex/shield-siem-integration-architecture`.
+
 O SIEM resolve `/investigate/shield/{event_id}` pela inbox duravel, valida UUIDv4 e
 origem `edy-shield`, mostra contexto operacional completo e reutiliza o sistema de
 casos por uma operacao idempotente. Os arquivos centrais sao

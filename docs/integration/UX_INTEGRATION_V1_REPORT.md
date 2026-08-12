@@ -2,6 +2,9 @@
 
 Data: 2026-08-12
 
+Commit de implementacao SIEM: `6d30737`.
+Commit de implementacao Shield: `4fa8e78`.
+
 ## Resultado
 
 A UX Integration V1 foi concluida nas branches de integracao, sem merge em `main` e
