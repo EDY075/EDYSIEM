@@ -171,5 +171,26 @@ Executar o primeiro **E2E real isolado Shield → SIEM** sem alterar frontend:
 - A rota continua validando UUIDv4, origem EDY Shield e reutilizando casos de forma
   idempotente.
 
+## Product Redesign V1 - auditoria concluida (2026-08-12)
+
+Escopo somente de auditoria visual e produto; nenhum codigo, configuracao ou dependencia
+foi alterado. Telas reais revisadas em desktop 1920x1080: Overview, Alertas,
+investigacao do evento E2E do Shield e Cases.
+
+- A investigacao Shield ja e a tela mais forte: origem, endpoint, path, hashes, baseline,
+  MITRE, cadeia de custodia e caso vinculado estao visiveis.
+- Problemas: Overview excessivamente denso/repetitivo; ausencia de fila unica de agir
+  agora com SLA, responsavel, ativo e proxima acao; health/ingestao contraditorios; e
+  evento->caso sem foco garantido no caso vinculado.
+- Preservar: shell SOC, navegacao, tabelas, evidencia/origem e timeline.
+- Proposta: **SOC Decision Center** com fila de decisao primeiro. A investigacao torna-se
+  workspace de duas colunas, com evidencia ao centro e trilho de acoes/responsavel/SLA.
+- Sprints: A Shield Endpoint Integrity Center; B SIEM SOC Decision Center; C Investigation
+  Workflow; D Shared Design System/refinamento.
+- Evidencias: `outputs/product-redesign-v1/siem/01-siem-overview-current.png`,
+  `02-siem-alert-queue-current.png`, `03-siem-shield-investigation-current.png` e
+  `04-siem-cases-current.png` no workspace da sessao Codex.
+- Proximo passo: revisar e aprovar a proposta antes da Sprint A. Nao implementar ainda.
+
 Pare antes de integrar WAR_ROOM, criar frontend ou implementar o worker downstream da
 inbox. Não compartilhar banco nem importar runtime entre projetos.

@@ -767,3 +767,12 @@ Nenhuma alteracao parcial foi encontrada no worktree. A UX Integration V1 foi
 revalidada com 4 testes focados e 932 testes completos (95,11%), Ruff, MyPy,
 builds backend/frontend e verificacao de diff. A rota continua recusando IDs
 invalidos ou eventos de outra origem e mantem a criacao/reabertura de caso idempotente.
+
+## Handoff - Product Redesign V1 (auditoria, sem implementacao)
+
+O SIEM foi revisado em Overview, Alertas, investigacao real de evento Shield e Cases. A
+proposta e reposiciona-lo como **SOC Detection, Investigation & Response**: uma fila de
+decisao deve trazer severidade, SLA, responsavel, ativo e proxima acao antes dos resumos;
+detalhes mantem evidencia e adicionam um trilho de resposta. Manter shell, tabelas,
+proveniencia Shield, MITRE e cadeia de custodia; reduzir sinais repetidos e corrigir a
+leitura contraditoria de health/ingestao. A implementacao depende de aprovacao explicita.
