@@ -6,7 +6,7 @@
 | 14/08 | APPROVED | EDY Shield por dentro — Endpoint Integrity & Defense | `2026-08-14-edy-shield-endpoint-integrity.md` |
 | 17/08 | APPROVED | EDY SIEM por dentro — SOC Decision Center | `2026-08-17-edy-siem-soc-decision-center.md` |
 | 19/08 | APPROVED | Como construí a integração Shield → SIEM | `2026-08-19-shield-siem-event-contract.md` |
-| 21/08 | DRAFT | Investigation Workflow | `2026-08-21-edy-investigation-workflow.md` |
+| 21/08 | APPROVED | Investigation Workflow | `2026-08-21-edy-investigation-workflow.md` |
 
 ## Regra de sequência
 
