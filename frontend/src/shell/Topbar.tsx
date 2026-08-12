@@ -21,7 +21,9 @@ const crumbs: Record<string, Crumb[]> = {
 
 export function Topbar() {
   const location = useLocation();
-  const currentCrumbs = crumbs[location.pathname] ?? [{ label: "Overview" }];
+  const currentCrumbs = location.pathname.startsWith("/investigate/shield/")
+    ? [{ label: "Investigar", to: "/investigate" }, { label: "Evento EDY Shield" }]
+    : crumbs[location.pathname] ?? [{ label: "Overview" }];
 
   return <header className="edy-topbar" style={{ minHeight: 72, display: "flex", alignItems: "center", gap: spacing["4"], padding: `0 ${spacing["5"]}`, position: "sticky", top: 0, zIndex: 200, borderBottom: `1px solid ${colors.border}`, background: `linear-gradient(90deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.surfaceAlt} 45%, ${colors.surface}) 100%)`, boxShadow: "0 8px 24px color-mix(in srgb, var(--color-text-primary) 6%, transparent)" }}>
     <div className="workspace-context" style={{ minWidth: 184, paddingRight: spacing["4"], borderRight: `1px solid ${colors.borderSubtle}` }}>

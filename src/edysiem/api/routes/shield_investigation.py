@@ -85,10 +85,16 @@ def _response(
     payload = row.get("payload")
     normalized = row.get("normalized_payload")
     if not isinstance(payload, dict) or not isinstance(normalized, dict):
-        raise HTTPException(status_code=500, detail="stored Shield event is invalid")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "invalid_stored_event", "message": "stored Shield event is invalid"},
+        )
     source = payload.get("source")
     if not isinstance(source, dict) or source.get("product") != "edy-shield":
-        raise HTTPException(status_code=404, detail="event is not from EDY Shield")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "wrong_source", "message": "event is not from EDY Shield"},
+        )
     return {
         "event_id": row["event_id"],
         "schema_version": row["schema_version"],
@@ -151,7 +157,10 @@ async def create_case_from_shield_event(
     row = _require_event(event_id, repository)
     payload = row.get("payload")
     if not isinstance(payload, dict):
-        raise HTTPException(status_code=500, detail="stored Shield event is invalid")
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "invalid_stored_event", "message": "stored Shield event is invalid"},
+        )
     asset_raw = payload.get("asset")
     metadata_raw = payload.get("metadata")
     asset: dict[object, object] = asset_raw if isinstance(asset_raw, dict) else {}

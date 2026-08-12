@@ -13,6 +13,7 @@ from edysiem.api.app import create_app
 
 ROOT = Path(__file__).resolve().parents[1]
 EVENT_FILE = ROOT / "tests" / "fixtures" / "shield_events" / "v1" / "valid" / "hash_changed.json"
+FILE_ADDED = ROOT / "tests" / "fixtures" / "shield_events" / "v1" / "valid" / "file_created.json"
 TOKEN = "test-shield-token-with-at-least-32-bytes"
 INGEST = "/api/v1/ingestion/sources/edy-shield/events"
 INVESTIGATE = "/api/v1/investigation/sources/edy-shield/events"
@@ -59,6 +60,21 @@ def test_resolves_exact_shield_event_with_evidence_and_provenance(client: TestCl
     assert body["processing_status"] == "pending"
     assert body["sequence"] == event["sequence"]
     assert body["case"] is None
+
+
+def test_resolves_file_added_without_previous_hash(client: TestClient) -> None:
+    event = json.loads(FILE_ADDED.read_text(encoding="utf-8"))
+    assert isinstance(event, dict)
+    _ingest(client, event)
+
+    response = client.get(f"{INVESTIGATE}/{event['event_id']}")
+
+    assert response.status_code == 200
+    evidence = response.json()["evidence"]
+    assert "previous_hash" not in evidence
+    assert evidence["current_hash"] == event["evidence"]["current_hash"]
+    assert evidence["file_size_bytes"] == 49152
+    assert evidence["mtime"] == "2026-08-11T18:44:07.400Z"
 
 
 def test_lists_recent_shield_events_with_linked_case_context(client: TestClient) -> None:
@@ -111,6 +127,7 @@ def test_invalid_missing_and_wrong_source_states(client: TestClient) -> None:
     assert missing.status_code == 404
     assert missing.json()["detail"]["code"] == "shield_event_not_found"
     assert wrong_source.status_code == 404
+    assert wrong_source.json()["detail"]["code"] == "wrong_source"
 
 
 def test_case_creation_is_idempotent_and_preserves_original_event(client: TestClient) -> None:
@@ -132,6 +149,10 @@ def test_case_creation_is_idempotent_and_preserves_original_event(client: TestCl
     cases = client.app.state.container.soc_service.list_cases(limit=100)
     assert len(cases) == 1
     assert json.loads(cases[0].evidences[0].value) == event
+    investigated = client.get(f"/api/v1/soc/cases/{cases[0].id}/investigate")
+    assert investigated.status_code == 200
+    assert investigated.json()["evidence"][0]["source"] == "edy-shield"
+    assert investigated.json()["evidence"][0]["label"] == f"EDY Shield event {event['event_id']}"
 
 
 def test_frontend_contains_all_required_resolution_states() -> None:
@@ -146,5 +167,8 @@ def test_frontend_contains_all_required_resolution_states() -> None:
         "API de investigação indisponível",
         "Criar caso a partir deste evento",
         "Técnica MITRE ainda não associada",
+        "HASH ANTERIOR",
+        "Abrir caso exato",
+        "/cases?case=",
     ):
         assert marker in source

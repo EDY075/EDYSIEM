@@ -637,7 +637,13 @@ class SocService:
                 for e in case.timeline
             ],
             "evidence": [
-                {"kind": e.kind.value, "value": e.value, "label": e.label} for e in case.evidences
+                {
+                    "kind": e.kind.value,
+                    "value": e.value,
+                    "label": e.label,
+                    "source": e.source,
+                }
+                for e in case.evidences
             ],
             "pipeline_trail": [
                 {

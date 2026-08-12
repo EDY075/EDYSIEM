@@ -344,3 +344,57 @@ Limitações restantes:
 Fluxo esperado: Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar Sprint C sem novo prompt. Não fazer merge em main.
+
+## Sprint C1 — Investigation Layout & Evidence: COMPLETE (2026-08-12)
+
+A primeira etapa da Sprint C reorganizou a investigação para o fluxo operacional
+**Alerta → Evidência → Entidade → MITRE → Decisão → Caso**, mantendo MITRE e casos em
+seu escopo existente:
+
+- O deep link Shield ganhou cabeçalho operacional com severidade, origem, ativo, arquivo,
+  ocorrência, recebimento, processamento, responsável e SLA provenientes de dados reais.
+- Evidência passou a ser protagonista: caminho, hashes completos em monospace e copiáveis,
+  algoritmo, baseline, scan, tamanho, mtime e descrição factual da mudança.
+- Ausência de hash anterior, baseline, path ou artefato é declarada sem criar valor. O
+  evento `file.added` real foi validado sem hash anterior.
+- Timeline usa somente `timestamp`, `received_at` e estado de processamento persistidos;
+  não duplica timestamps para sugerir etapas não observadas.
+- O painel de decisão mostra owner/status/SLA do caso e abre o caso exato por
+  `/cases?case={case_id}`. O Case Center seleciona esse ID e oferece retorno seguro ao
+  mesmo evento Shield.
+- A investigação genérica preserva alertas, IOCs, ativos, usuários e MITRE, adiciona
+  evidência/proveniência de primeira classe, erro retryable e navegação estável ao caso.
+- Erros estruturados da API distinguem `wrong_source`, `shield_event_not_found` e UUID
+  inválido; a UI não propaga detalhes internos. Evidências permanecem texto React e JSON
+  colapsado, sem HTML arbitrário.
+
+Validação:
+
+- 7 testes focados aprovados.
+- 938 testes completos aprovados; cobertura global 95,09%.
+- Ruff, MyPy (152 arquivos), Vite build, wheel/sdist e `git diff --check`: PASS.
+- Google Chrome externo: deep link Shield crítico/com hashes, evento sem hash anterior,
+  investigação normal, caso exato, loading, não ingerido, API indisponível e recuperação.
+- Viewports: 1920x1080, 1366x768 e 820x900; sem overflow horizontal novo.
+- Console final em aba limpa: zero erros da aplicação. Permanece apenas o warning de
+  future flag do React Router já existente em desenvolvimento.
+- Screenshots finais: `outputs/sprint-c1-investigation-evidence/01-shield-critical-hashes-1920x1080.jpg`,
+  `02-normal-investigation-1920x1080.jpg`, `03-exact-linked-case-1920x1080.jpg`,
+  `04-file-added-no-previous-hash-1366x768.jpg`, `05-shield-evidence-responsive-820x900.jpg`
+  e `06-event-not-ingested-820x900.jpg` no workspace da sessão.
+- Branch: `codex/shield-siem-integration-architecture`; commit identificado pela mensagem
+  `feat(ui): redesign investigation evidence flow`.
+
+Limitações preservadas:
+
+- A inbox permanece `pending` até o worker downstream já declarado fora do escopo.
+- A Sprint C1 não aprofundou o modelo de entidades, MITRE nem automações de decisão; isso
+  pertence à próxima etapa.
+- O frontend ainda não possui runner de testes de componentes; os estados visuais foram
+  exercitados no Chrome externo e os contratos/segurança no pytest.
+
+## Próximo passo EXATO
+
+# Sprint C2 — Entity, MITRE & Decision
+
+Não iniciar Sprint C2 sem novo prompt. Não fazer merge em main.

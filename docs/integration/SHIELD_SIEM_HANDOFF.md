@@ -907,3 +907,58 @@ B2 aprofundou prioridade/SLA/ownership/filtros e B3 finalizou a saúde de ingest
 Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
+
+## HANDOFF — Sprint C1 concluída (2026-08-12)
+
+### Contexto
+
+O EDY SIEM concluiu o layout e a evidência da investigação sem alterar a arquitetura da
+Decision Queue, MITRE ou do sistema de casos. O fluxo atual segue
+Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
+
+### Artefatos
+
+- `frontend/src/pages/ShieldEventInvestigationPage.tsx`: cabeçalho operacional, evidência
+  focal, hash completo/copiável, baseline/scan, timeline real e rail de decisão.
+- `frontend/src/pages/InvestigationPage.tsx`: evidência/proveniência para casos gerais,
+  erro retryable e navegação contextual.
+- `frontend/src/pages/CaseCenterPage.tsx`: seleção do caso exato por query e retorno ao
+  `event_id` Shield validado.
+- `frontend/src/api/client.ts`: códigos de erro estruturados preservados com mensagem
+  bounded.
+- `src/edysiem/api/routes/shield_investigation.py`: respostas seguras para evento inválido,
+  ausente, origem incompatível e payload persistido inválido.
+- `src/edysiem/soc/service.py`: source e label de evidência retornados ao workspace.
+- `tests/test_shield_investigation_api.py`: no-hash, provenance, case handoff e estados.
+- Screenshots finais em `outputs/sprint-c1-investigation-evidence/` no workspace da sessão.
+
+### Decisões
+
+- Hashes não são truncados; quebram linha em monospace e são copiados como valor exato.
+- O relógio da timeline não inventa uma etapa distinta para observação e registro quando
+  o contrato fornece um único `timestamp`.
+- Owner e SLA só aparecem quando existe caso vinculado; antes disso a UI informa que o
+  SLA começa com a criação do caso.
+- URLs de retorno são construídas apenas a partir de UUIDs validados, nunca de metadata.
+- Payload JSON permanece colapsado e inerte; nenhuma string não confiável vira markup.
+
+### Quality Gate
+
+- 7 testes focados; 938 completos; cobertura 95,09%.
+- Ruff, MyPy (152 módulos), Vite, wheel/sdist e diff-check aprovados.
+- Chrome externo validado em 1920x1080, 1366x768 e 820x900; crítico, hashes, sem hash
+  anterior, não ingerido, erro/recuperação, investigação normal e caso exato.
+- Console final sem erro da aplicação; somente warning preexistente do React Router.
+
+### Limitações
+
+- O worker downstream da inbox continua fora do escopo e eventos podem permanecer
+  `pending`.
+- Entidade, MITRE e controles de decisão serão aprofundados somente na Sprint C2.
+- Não há runner frontend de componentes no pacote atual.
+
+### Próximo passo
+
+# Sprint C2 — Entity, MITRE & Decision
+
+Não iniciar automaticamente e não fazer merge em `main`.

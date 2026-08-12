@@ -6,6 +6,8 @@ import type { SeverityColor } from "../design-system/tokens/colors";
 import { useCases } from "../hooks";
 import type { Case } from "../hooks/useCases";
 import { apiClient } from "../api/client";
+import { Button } from "../design-system";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface InvestigationData {
   case_id: string;
@@ -15,7 +17,10 @@ interface InvestigationData {
   users: string[];
   mitre: string[];
   timeline: { action: string; detail: string; created_at: string }[];
+  evidence: { kind: string; value: string; label: string; source?: string }[];
 }
+
+const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const formatTime = (value: string) => value ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Sem horário";
 const severityTone = (value: string): SeverityColor => value === "critical" ? "critical" : value === "high" ? "high" : value === "medium" ? "medium" : value === "low" ? "low" : "info";
@@ -28,23 +33,35 @@ function InvestigationGlyph({ type }: { type: "trace" | "evidence" | "link" | "m
 
 export function InvestigationPage() {
   const { cases, loading: casesLoading, error: casesError } = useCases(60);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedCaseId = searchParams.get("case") || "";
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [investigation, setInvestigation] = useState<InvestigationData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [investigationError, setInvestigationError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [filter, setFilter] = useState("");
 
-  useEffect(() => { if (!selectedCase && cases[0]) setSelectedCase(cases[0]); }, [cases, selectedCase]);
+  useEffect(() => {
+    if (!cases.length) return;
+    const requested = requestedCaseId ? cases.find((item) => item.id === requestedCaseId) : null;
+    if (requested && selectedCase?.id !== requested.id) setSelectedCase(requested);
+    else if (!selectedCase) setSelectedCase(cases[0]);
+  }, [cases, requestedCaseId, selectedCase]);
   useEffect(() => {
     if (!selectedCase) return;
     let active = true;
     setLoading(true);
     setInvestigation(null);
+    setInvestigationError("");
     apiClient.get<InvestigationData>(`/soc/cases/${selectedCase.id}/investigate`).then((response) => {
       if (active && response.success && response.data) setInvestigation(response.data);
+      if (active && !response.success) setInvestigationError("A API não retornou as evidências deste caso. Tente novamente.");
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [selectedCase]);
+  }, [selectedCase, reloadKey]);
 
   const visibleCases = useMemo(() => {
     const normalized = filter.trim().toLowerCase();
@@ -53,6 +70,8 @@ export function InvestigationPage() {
   }, [cases, filter]);
 
   const relationshipCount = (investigation?.related_alerts.length ?? 0) + (investigation?.iocs.length ?? 0) + (investigation?.assets.length ?? 0) + (investigation?.users.length ?? 0) + (investigation?.mitre.length ?? 0);
+  const shieldEventId = selectedCase?.incidentId?.startsWith("shield-event:") ? selectedCase.incidentId.slice("shield-event:".length) : "";
+  const hasShieldEvent = UUID4.test(shieldEventId);
 
   return <div className="investigation-workspace" style={{ display: "grid", gridTemplateColumns: "300px minmax(0, 1fr) 300px", minHeight: 650, overflow: "hidden", border: `1px solid ${colors.border}`, borderRadius: radii.xl, background: colors.surface, boxShadow: "0 16px 38px color-mix(in srgb, var(--color-text-primary) 7%, transparent)" }}>
     <aside className="investigation-queue" style={{ display: "flex", flexDirection: "column", minWidth: 0, borderRight: `1px solid ${colors.border}` }}>
@@ -77,13 +96,14 @@ export function InvestigationPage() {
     <section className="investigation-main" style={{ minWidth: 0, display: "flex", flexDirection: "column", background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.background} 48%, ${colors.surface}) 100%)` }}>
       {!selectedCase ? <EmptyState title="Selecione uma investigação" description="A fila à esquerda contém os casos disponíveis para análise." /> : <>
         <header style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: spacing["3"], padding: `${spacing["4"]} ${spacing["5"]}`, borderBottom: `1px solid ${colors.borderSubtle}` }}>
-          <div><div style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selectedCase.id} · {selectedCase.statusLabel}</div><h2 style={{ margin: "6px 0 4px", color: colors.textPrimary, fontSize: typography.size.xl, letterSpacing: "-0.025em" }}>{selectedCase.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Owner: {selectedCase.owner || "não atribuído"} · Prioridade {selectedCase.priority}</span></div>
+          <div><div style={{ color: hasShieldEvent ? colors.accentHover : colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{hasShieldEvent ? "EDY Shield" : "Caso SOC"} · {selectedCase.id} · {selectedCase.statusLabel}</div><h2 style={{ margin: "6px 0 4px", color: colors.textPrimary, fontSize: typography.size.xl, letterSpacing: "-0.025em" }}>{selectedCase.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Owner: {selectedCase.owner || "não atribuído"} · Prioridade {selectedCase.priority}</span><div className="investigation-actions"><Button variant="ghost" onClick={() => navigate(`/cases?case=${encodeURIComponent(selectedCase.id)}`)}>Abrir caso</Button>{hasShieldEvent && <Button variant="secondary" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(shieldEventId)}`)}>Revisar evidência Shield</Button>}</div></div>
           <SeverityBadge severity={severityTone(selectedCase.severity)}>{selectedCase.severity}</SeverityBadge>
         </header>
-        {loading ? <div style={{ padding: spacing["5"] }}><LoadingSkeleton rows={10} variant="card" /></div> : !investigation ? <EmptyState title="Dados de investigação indisponíveis" description="Não foi possível carregar a correlação deste caso." /> : <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: spacing["5"] }}>
+        {loading ? <div style={{ padding: spacing["5"] }}><LoadingSkeleton rows={10} variant="card" /></div> : !investigation ? <EmptyState title="Dados de investigação indisponíveis" description={investigationError || "Não foi possível carregar a correlação deste caso."} onRetry={() => setReloadKey((value) => value + 1)} /> : <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: spacing["5"] }}>
           <div className="investigation-summary" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: spacing["3"], marginBottom: spacing["5"] }}>
-            {[{ label: "Evidências", value: investigation.timeline.length, type: "evidence" as const, color: colors.accent }, { label: "Alertas", value: investigation.related_alerts.length, type: "trace" as const, color: colors.severity.critical }, { label: "IOCs", value: investigation.iocs.length, type: "link" as const, color: colors.severity.medium }, { label: "MITRE", value: investigation.mitre.length, type: "mitre" as const, color: colors.status.online }].map((metric) => <div key={metric.label} style={{ padding: spacing["3"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface }}><span style={{ display: "inline-flex", color: metric.color }}><InvestigationGlyph type={metric.type} /></span><strong style={{ display: "block", marginTop: 8, color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: typography.size.xl }}>{metric.value}</strong><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{metric.label}</span></div>)}
+            {[{ label: "Evidências", value: investigation.evidence.length, type: "evidence" as const, color: colors.accent }, { label: "Alertas", value: investigation.related_alerts.length, type: "trace" as const, color: colors.severity.critical }, { label: "IOCs", value: investigation.iocs.length, type: "link" as const, color: colors.severity.medium }, { label: "MITRE", value: investigation.mitre.length, type: "mitre" as const, color: colors.status.online }].map((metric) => <div key={metric.label} style={{ padding: spacing["3"], border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface }}><span style={{ display: "inline-flex", color: metric.color }}><InvestigationGlyph type={metric.type} /></span><strong style={{ display: "block", marginTop: 8, color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: typography.size.xl }}>{metric.value}</strong><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{metric.label}</span></div>)}
           </div>
+          <div className="investigation-evidence-primary"><Panel title="Evidências do caso" subtitle="Artefatos preservados e sua proveniência" icon="evidence">{investigation.evidence.length === 0 ? <div className="investigation-evidence-empty"><strong>Sem artefatos anexados</strong><span>A timeline, os alertas e as entidades ainda sustentam esta investigação.</span></div> : <div className="investigation-evidence-list">{investigation.evidence.map((item, index) => <details key={`${item.label}-${index}`}><summary><span>{item.source === "edy-shield" ? "EDY Shield" : item.kind}</span><strong>{item.label || "Evidência sem rótulo"}</strong></summary><pre>{item.value}</pre></details>)}</div>}</Panel></div>
           <div className="investigation-detail-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(260px, .8fr)", gap: spacing["4"] }}>
             <Panel title="Timeline de evidências" subtitle="Sequência registrada na cadeia do caso" icon="trace"><div>{investigation.timeline.length === 0 ? <EmptyState compact title="Sem eventos registrados" description="A timeline será preenchida pela operação do caso." /> : investigation.timeline.map((event, index) => <div key={`${event.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "72px 18px minmax(0, 1fr)", gap: spacing["2"], minHeight: 66 }}><span style={{ paddingTop: 2, color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{formatTime(event.created_at)}</span><span style={{ position: "relative", display: "flex", justifyContent: "center" }}><span style={{ position: "relative", zIndex: 1, width: 8, height: 8, marginTop: 4, borderRadius: "50%", background: colors.accent, boxShadow: `0 0 0 3px color-mix(in srgb, ${colors.accent} 15%, transparent)` }} />{index < investigation.timeline.length - 1 && <span style={{ position: "absolute", top: 15, bottom: -4, width: 1, background: colors.border }} />}</span><span style={{ paddingBottom: spacing["3"], borderBottom: index < investigation.timeline.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.sm }}>{event.action}</strong><span style={{ display: "block", marginTop: 3, color: colors.textSecondary, fontSize: typography.size.xs, lineHeight: 1.45 }}>{event.detail}</span></span></div>)}</div></Panel>
             <Panel title="Alertas correlacionados" subtitle="Detecções que sustentam esta análise" icon="evidence"><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{investigation.related_alerts.length === 0 ? <EmptyState compact title="Sem alertas associados" description="Não há alertas correlacionados a este caso." /> : investigation.related_alerts.map((alert) => <div key={alert.alert_id} style={{ padding: spacing["3"], border: `1px solid ${colors.borderSubtle}`, borderRadius: radii.md, background: colors.surfaceAlt }}><div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><strong style={{ color: colors.textPrimary, fontSize: typography.size.sm }}>{alert.title}</strong><SeverityBadge severity={severityTone(alert.severity)}>{alert.severity}</SeverityBadge></div><div style={{ marginTop: 7, color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{alert.rule_id} · risco {alert.risk_score}</div></div>)}</div></Panel>
@@ -101,7 +121,7 @@ export function InvestigationPage() {
         <CorrelationGroup title="Usuários" items={investigation?.users ?? []} color={colors.textSecondary} />
       </div>
     </aside>
-    <style>{`.investigation-case:hover { transform: translateX(1px); background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-alt)) !important; } @media (max-width: 1180px) { .investigation-workspace { grid-template-columns: 270px minmax(0,1fr) !important; } .investigation-correlation { display:none; } } @media (max-width: 820px) { .investigation-workspace { grid-template-columns: 1fr !important; overflow: visible !important; } .investigation-queue { max-height: 300px; border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } .investigation-summary { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } .investigation-detail-grid { grid-template-columns:1fr !important; } }`}</style>
+    <style>{`.investigation-case:hover { transform: translateX(1px); background: color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-alt)) !important; }.investigation-actions{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}.investigation-evidence-primary{margin-bottom:16px}.investigation-evidence-empty{display:flex;align-items:baseline;gap:10px;padding:8px 2px}.investigation-evidence-empty strong{color:var(--color-text-primary);font-size:12px}.investigation-evidence-empty span{color:var(--color-text-muted);font-size:11px}.investigation-evidence-list{display:flex;flex-direction:column;gap:8px}.investigation-evidence-list details{padding:10px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.investigation-evidence-list summary{display:flex;align-items:center;gap:8px;cursor:pointer}.investigation-evidence-list summary span{color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.investigation-evidence-list summary strong{color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.investigation-evidence-list pre{max-height:280px;margin:10px 0 0;padding:10px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:6px;background:var(--color-background);color:var(--color-text-secondary);font:9px var(--font-mono)}@media (max-width: 1180px) { .investigation-workspace { grid-template-columns: 270px minmax(0,1fr) !important; } .investigation-correlation { display:none; } } @media (max-width: 820px) { .investigation-workspace { grid-template-columns: 1fr !important; overflow: visible !important; } .investigation-queue { max-height: 300px; border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } .investigation-summary { grid-template-columns: repeat(2,minmax(0,1fr)) !important; } .investigation-detail-grid { grid-template-columns:1fr !important; }.investigation-evidence-empty{align-items:flex-start;flex-direction:column;gap:3px} }`}</style>
   </div>;
 }
 

@@ -9,6 +9,7 @@ import type { Case } from "../hooks/useCases";
 import { apiClient } from "../api/client";
 import { useToast } from "../state/toast";
 import type { SeverityColor } from "../design-system/tokens/colors";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 interface CaseInvestigation {
   related_alerts: { alert_id: string; title: string; severity: string; risk_score: number }[];
@@ -17,8 +18,10 @@ interface CaseInvestigation {
   users: string[];
   mitre: string[];
   timeline: { action: string; detail: string; actor: string; created_at: string }[];
-  evidence: { kind: string; value: string; label: string }[];
+  evidence: { kind: string; value: string; label: string; source?: string }[];
 }
+
+const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const toSeverity = (value: string): SeverityColor => value === "critical" ? "critical" : value === "high" ? "high" : value === "medium" ? "medium" : value === "low" ? "low" : "info";
 const statusTone = (value: string) => value === "closed" || value === "resolved" ? "online" as const : value === "on_hold" ? "degraded" as const : "neutral" as const;
@@ -27,6 +30,9 @@ const formatDate = (value: string) => value ? new Date(value).toLocaleString("pt
 export function CaseCenterPage() {
   const { cases, loading, error, refetch } = useCases(100);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedCaseId = searchParams.get("case") || "";
   const [selected, setSelected] = useState<Case | null>(null);
   const [details, setDetails] = useState<CaseInvestigation | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
@@ -37,7 +43,12 @@ export function CaseCenterPage() {
   const [owner, setOwner] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { if (!selected && cases[0]) setSelected(cases[0]); }, [cases, selected]);
+  useEffect(() => {
+    if (!cases.length) return;
+    const requested = requestedCaseId ? cases.find((item) => item.id === requestedCaseId) : null;
+    if (requested && selected?.id !== requested.id) setSelected(requested);
+    else if (!selected) setSelected(cases[0]);
+  }, [cases, requestedCaseId, selected]);
   useEffect(() => { setOwner(selected?.owner ?? ""); }, [selected]);
   useEffect(() => {
     if (!selected) return;
@@ -54,6 +65,10 @@ export function CaseCenterPage() {
   }), [cases, query, status]);
   const openCount = cases.filter((item) => !["resolved", "closed"].includes(item.status)).length;
   const highPriority = cases.filter((item) => ["critical", "high"].includes(item.severity)).length;
+  const linkedShieldEventId = selected?.incidentId?.startsWith("shield-event:")
+    ? selected.incidentId.slice("shield-event:".length)
+    : "";
+  const hasSafeShieldLink = UUID4.test(linkedShieldEventId);
 
   const post = async (path: string, params: Record<string, string>) => {
     if (!selected) return;
@@ -66,6 +81,7 @@ export function CaseCenterPage() {
 
   return <div style={{ display: "flex", flexDirection: "column", gap: spacing["4"] }}>
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: spacing["4"], flexWrap: "wrap" }}><div><div style={eyebrow}>RESPONSE OPERATIONS</div><h1 style={pageTitle}>Central de cases</h1><p style={pageSubtitle}>Fila, ownership e evidências em uma única superfície operacional.</p></div><Button variant="ghost" onClick={refetch}>Atualizar fila</Button></header>
+    {!loading && requestedCaseId && !cases.some((item) => item.id === requestedCaseId) && <div role="alert" className="case-context-warning">O caso solicitado não está nesta fila. Nenhuma seleção foi feita por inferência.</div>}
     <section className="case-summary" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: spacing["3"] }}>
       <Metric label="Casos na fila" value={cases.length} color={colors.accent} />
       <Metric label="Em tratamento" value={openCount} color={colors.severity.medium} />
@@ -79,16 +95,16 @@ export function CaseCenterPage() {
       </section>
       <section className="case-detail" style={{ minWidth: 0, display: "flex", flexDirection: "column", background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.background} 42%, ${colors.surface}) 100%)` }}>
         {!selected ? <EmptyState title="Selecione um case" description="Escolha um item na fila para abrir o contexto operacional." /> : <>
-          <header style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.borderSubtle}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: spacing["3"] }}><div><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selected.id}</span><h2 style={{ margin: "5px 0", color: colors.textPrimary, fontSize: typography.size.lg }}>{selected.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>{selected.statusLabel} · criado {formatDate(selected.createdAt)}</span></div><SeverityBadge severity={toSeverity(selected.severity)}>{selected.severity}</SeverityBadge></div><div className="case-actions" style={{ display: "flex", gap: 8, marginTop: spacing["3"], flexWrap: "wrap" }}><Button variant="secondary" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button><Button variant="danger" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/close`, { resolution: "encerrado pelo SOC" })}>Encerrar</Button></div></header>
+          <header style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.borderSubtle}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: spacing["3"] }}><div><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selected.id}</span><h2 style={{ margin: "5px 0", color: colors.textPrimary, fontSize: typography.size.lg }}>{selected.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>{selected.statusLabel} · criado {formatDate(selected.createdAt)}</span></div><SeverityBadge severity={toSeverity(selected.severity)}>{selected.severity}</SeverityBadge></div><div className="case-actions" style={{ display: "flex", gap: 8, marginTop: spacing["3"], flexWrap: "wrap" }}>{hasSafeShieldLink && <Button variant="ghost" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(linkedShieldEventId)}`)}>Abrir evento Shield</Button>}<Button variant="secondary" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button><Button variant="danger" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/close`, { resolution: "encerrado pelo SOC" })}>Encerrar</Button></div></header>
           {detailsLoading ? <div style={{ padding: spacing["4"] }}><LoadingSkeleton rows={8} /></div> : <div style={{ padding: spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: spacing["4"] }}>
             <section style={detailPanel}><PanelHeader title="Ownership" subtitle="Responsável e prioridade operacional" /><div style={{ display: "flex", gap: 8 }}><input aria-label="Responsável do case" value={owner} onChange={(event) => setOwner(event.target.value)} placeholder="analyst@edy" style={inputStyle} /><Button variant="secondary" disabled={busy || !owner.trim()} onClick={() => post(`/soc/cases/${selected.id}/assign`, { owner: owner.trim() })}>Atribuir</Button></div></section>
             <section style={detailPanel}><PanelHeader title="Registrar atividade" subtitle="Comentários e evidências entram na timeline do case" /><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 8 }}><input aria-label="Comentário do case" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Adicionar comentário operacional…" style={inputStyle} /><Button variant="primary" disabled={busy || !comment.trim()} onClick={() => { post(`/soc/cases/${selected.id}/comment`, { body: comment.trim(), author: "analyst@edy" }); setComment(""); }}>Comentar</Button></div><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><input aria-label="Evidência do case" value={evidence} onChange={(event) => setEvidence(event.target.value)} placeholder="IOC, IP ou artefato…" style={inputStyle} /><Button variant="secondary" disabled={busy || !evidence.trim()} onClick={() => { post(`/soc/cases/${selected.id}/evidence`, { kind: "ioc", value: evidence.trim() }); setEvidence(""); }}>Anexar</Button></div></section>
-            <div className="case-context-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(180px,.7fr)", gap: spacing["3"] }}><section style={detailPanel}><PanelHeader title="Timeline" subtitle={`${details?.timeline.length ?? 0} eventos registrados`} />{details?.timeline?.length ? <div>{details.timeline.map((item, index) => <div key={`${item.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 8, padding: "8px 0", borderBottom: index < details.timeline.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{formatDate(item.created_at)}</span><span><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.xs }}>{item.action}</strong><span style={{ display: "block", marginTop: 2, color: colors.textSecondary, fontSize: typography.size.xs }}>{item.detail || item.actor}</span></span></div>)}</div> : <EmptyState compact title="Sem atividade" description="Comentários e ações aparecerão aqui." />}</section><section style={detailPanel}><PanelHeader title="Artefatos" subtitle={`${details?.evidence.length ?? 0} evidências`} />{details?.evidence?.length ? details.evidence.map((item, index) => <div key={`${item.value}-${index}`} style={{ marginBottom: 8 }}><span style={{ display: "block", color: colors.textMuted, fontSize: 10, textTransform: "uppercase" }}>{item.kind}</span><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", color: colors.textPrimary, fontFamily: typography.family.mono, fontSize: 10 }}>{item.value}</span></div>) : <span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Nenhuma evidência.</span>}</section></div>
+            <div className="case-context-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(180px,.7fr)", gap: spacing["3"] }}><section style={detailPanel}><PanelHeader title="Timeline" subtitle={`${details?.timeline.length ?? 0} eventos registrados`} />{details?.timeline?.length ? <div>{details.timeline.map((item, index) => <div key={`${item.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 8, padding: "8px 0", borderBottom: index < details.timeline.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{formatDate(item.created_at)}</span><span><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.xs }}>{item.action}</strong><span style={{ display: "block", marginTop: 2, color: colors.textSecondary, fontSize: typography.size.xs }}>{item.detail || item.actor}</span></span></div>)}</div> : <EmptyState compact title="Sem atividade" description="Comentários e ações aparecerão aqui." />}</section><section style={detailPanel}><PanelHeader title="Artefatos" subtitle={`${details?.evidence.length ?? 0} evidências`} />{details?.evidence?.length ? details.evidence.map((item, index) => <div key={`${item.label}-${index}`} className="case-evidence-item"><span>{item.source === "edy-shield" ? "EDY Shield" : item.kind}</span><strong>{item.label || "Evidência sem rótulo"}</strong>{item.kind === "json" ? <details><summary>Revisar payload validado</summary><pre>{item.value}</pre></details> : <code>{item.value}</code>}</div>) : <span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Nenhuma evidência.</span>}</section></div>
           </div>}
         </>}
       </section>
     </div>
-    <style>{`.case-row:hover { background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important; } @media (max-width: 1120px) { .cases-workspace { grid-template-columns:1fr !important; } .cases-workspace > section:first-child { border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } } @media (max-width: 680px) { .case-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .case-context-grid { grid-template-columns:1fr !important; } .case-actions > button { flex:1; } }`}</style>
+    <style>{`.case-row:hover { background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important; }.case-context-warning{padding:10px 12px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:7px;background:color-mix(in srgb,var(--severity-medium) 7%,var(--color-surface));color:var(--color-text-secondary);font-size:12px}.case-evidence-item{margin-bottom:10px;padding:9px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.case-evidence-item>span{display:block;color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.case-evidence-item>strong{display:block;margin-top:4px;color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.case-evidence-item summary{margin-top:7px;color:var(--color-text-secondary);font-size:10px;cursor:pointer}.case-evidence-item pre,.case-evidence-item code{display:block;max-height:220px;margin:8px 0 0;padding:8px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:5px;background:var(--color-background);color:var(--color-text-secondary);font-size:9px}@media (max-width: 1120px) { .cases-workspace { grid-template-columns:1fr !important; } .cases-workspace > section:first-child { border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } } @media (max-width: 680px) { .case-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .case-context-grid { grid-template-columns:1fr !important; } .case-actions > button { flex:1; } }`}</style>
   </div>;
 }
 
