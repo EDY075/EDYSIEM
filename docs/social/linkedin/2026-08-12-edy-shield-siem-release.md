@@ -1,9 +1,9 @@
 # LinkedIn — EDY Shield + EDY SIEM release
 
 - Data de preparação: 2026-08-12
-- Status: PREPARADO — não publicado em 2026-08-12 08:20 -03:00. A sessão estava
-  autenticada, mas o controle disponível não conseguiu anexar o arquivo ao seletor nativo
-  do LinkedIn nem inserir a acentuação no editor. O rascunho foi descartado sem envio.
+- Status: BLOCKED — não publicado em 2026-08-12 08:25 -03:00. A sessão do LinkedIn está
+  autenticada, mas o controle disponível não consegue colar UTF-8 no editor nem anexar o
+  arquivo ao seletor nativo. Não houve clique em Publicar e nenhum post foi enviado.
 - Imagem publicada: `2026-08-12-edy-ecosystem-release.png`
 - Origem da imagem: `assets/screenshots/release-decision-center.png`, com recorte vertical
   que remove somente o rodapé de versão anterior da captura. Não há dados sensíveis.
