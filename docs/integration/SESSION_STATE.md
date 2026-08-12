@@ -14,14 +14,15 @@
 - Idempotência, crash recovery, auth correta/ausente/inválida e batch 100+1: PASS.
 - Integridade: 122 eventos comparados, sem divergência.
 - SIEM: 126 focados; 928 completos; cobertura 95,15%; Ruff/MyPy PASS.
-- Build do SIEM pendente apenas porque `hatchling` não estava disponível e a rede
-  expirou. Reexecutar `python -m build` em CI/ambiente com dependências.
-- Documentação está em commit local (`git log -1`); push pendente porque a credencial
-  salva para `EDY075` está inválida. Após `gh auth login -h github.com`, executar
-  `git push origin codex/shield-siem-integration-architecture`.
+- Checkpoint E2E `4b07923` publicado em
+  `origin/codex/shield-siem-integration-architecture`.
+- Build oficial PASS: `python -m build` gerou sdist e wheel 0.2.0 após instalar
+  `hatchling`, exatamente como declarado em `[build-system]`.
 - Nenhum código de produção ou frontend foi alterado.
-- Próximo passo após confirmar o build: UX “Investigar no EDY SIEM”. Não iniciar
-  WAR_ROOM nem worker downstream sem nova etapa.
+- Próximo passo: **UX INTEGRATION V1** — receber deep link do Shield e abrir a
+  investigação correspondente com origem, ativo, evidências, hashes, timeline, MITRE
+  quando aplicável e criação de caso. Não iniciar WAR_ROOM nem worker downstream sem
+  nova etapa.
 
 ## Estado
 

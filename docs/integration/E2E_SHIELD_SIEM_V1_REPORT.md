@@ -1,7 +1,6 @@
 # E2E real EDY Shield → EDY SIEM v1
 
-**Resultado:** PASS para a integração ponta a ponta; build de pacote do SIEM não
-executado por indisponibilidade do backend externo `hatchling` no ambiente.
+**Resultado:** PASS para a integração ponta a ponta e para o build oficial do SIEM.
 
 **Execução canônica:** 2026-08-11 23:25–23:27 (America/Sao_Paulo), equivalente a
 2026-08-12 02:25–02:27 UTC.
@@ -78,8 +77,9 @@ Foram comparados payloads JSON persistidos nos dois bancos. Permaneceram idênti
 - cobertura: **95,15%** (gate 95%);
 - Ruff: PASS; MyPy: PASS em 151 arquivos; `git diff --check`: PASS;
 - 2 depreciações preexistentes Starlette/FastAPI;
-- build de pacote: **não executado**. `hatchling` não estava instalado e duas
-  tentativas de obtê-lo pela rede atingiram timeout. Não houve erro de código associado.
+- build de pacote: **PASS** em 2026-08-11; após instalar a dependência legítima de
+  desenvolvimento `hatchling`, `python -m build` gerou
+  `edy_siem-0.2.0.tar.gz` e `edy_siem-0.2.0-py3-none-any.whl`.
 
 ### EDY Shield
 
@@ -103,9 +103,10 @@ alterado. Ajustes feitos foram somente no roteiro descartável do laboratório.
 - A inbox ainda fica `processing_status=pending`; worker downstream está fora do escopo.
 - O Shield não possui endpoint público para criação de alerta bruto.
 - Retenção/purge do outbox continua pendente.
-- Repetir o build do pacote SIEM em CI/ambiente com `hatchling`.
+- O build requer `hatchling`, conforme `[build-system]` do `pyproject.toml`.
 
 ## Próximo passo
 
-Após confirmar o build do pacote SIEM, iniciar a UX **“Investigar no EDY SIEM”** no
-Shield e apresentar eventos Shield na investigação do SIEM. Não implementar nesta etapa.
+**UX INTEGRATION V1:** no Shield, evento/alerta oferece **“Investigar no EDY SIEM”**;
+no SIEM, abrir a investigação correspondente com origem EDY Shield, ativo, evidências,
+hashes, timeline, MITRE quando aplicável e criação de caso. Não implementar nesta etapa.

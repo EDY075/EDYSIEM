@@ -732,10 +732,11 @@ loopback, com bancos isolados e token M2M efêmero. O relatório canônico é
 - SIEM: 928 testes, 95,15%, Ruff/MyPy PASS.
 - Shield: 680 testes, 2 skipped, 86,78%, Ruff/MyPy/build PASS.
 
-Nenhum código de produção ou frontend foi alterado. O build do pacote SIEM deve ser
-repetido em CI/ambiente com `hatchling`; a dependência não estava instalada e a rede do
-laboratório expirou.
+Nenhum código de produção ou frontend foi alterado. O checkpoint `4b07923` foi
+publicado e o build oficial do SIEM passou após instalar o `hatchling` declarado em
+`[build-system]`; foram gerados wheel e sdist 0.2.0.
 
-Próximo passo após esse gate ambiental: UX “Investigar no EDY SIEM” e exibição dos
-eventos Shield na investigação do SIEM. Inbox downstream, WAR_ROOM e merge em `main`
-continuam fora do escopo.
+Próximo passo: **UX INTEGRATION V1**. O Shield oferece “Investigar no EDY SIEM”; o SIEM
+abre a investigação correspondente com origem EDY Shield, ativo, evidências, hashes,
+timeline, MITRE quando aplicável e criação de caso. Inbox downstream, WAR_ROOM e merge
+em `main` continuam fora do escopo.
