@@ -2,37 +2,41 @@
 
 ## Estado
 
-- Análise arquitetural concluída em 2026-08-11.
+- Análise arquitetural e contrato oficial v1 concluídos em 2026-08-11.
+- Branch documental do SIEM: `codex/shield-siem-integration-architecture`.
+- EDY SIEM base: `e929982`, v0.2.0; EDY Shield: `5fd63bb`, v2.2.0.
 - Nenhum código funcional foi alterado.
-- EDY SIEM: `master`/`e929982`, v0.2.0.
-- EDY Shield: `main`/`5fd63bb`, v2.2.0.
-- Documento completo: `docs/integration/SHIELD_SIEM_HANDOFF.md`.
+- Documentos obrigatórios:
+  - `docs/integration/SHIELD_SIEM_HANDOFF.md`
+  - `docs/integration/EVENT_CONTRACT_V1.md`
 
-## Constatações essenciais
+## Contrato fechado
 
-- Shield FIM gera `ScanResult`/`FimDiff`, mas o fluxo HTTP não os converte hoje em
-  `AlertEvent` local nem envia telemetria.
-- Shield não possui autenticação real; é uma aplicação local com security headers.
-- SIEM aceita syslog no pipeline atual; não existe parser/normalizer `edy_shield`.
-- `SocPipeline.run_event` persiste alertas, mas não cria incidentes/casos; o E2E completo
-  existe apenas em `run_demo`.
-- Não existe idempotência de produtor nem inbox/outbox persistente.
+- Endpoint: `POST /api/v1/ingestion/sources/edy-shield/events`.
+- Envelope: `batch_id`, `sent_at`, `events`; 1–100 eventos e máximo 1 MiB.
+- Evento v1: `event_id`, `schema_version=1.0`, `timestamp`, `sequence`, `source`,
+  `event_type`, `severity`, `asset`, `evidence`, `metadata`.
+- Idempotência: `(source.instance_id, event_id)`; `Idempotency-Key = batch_id`.
+- Auth: Bearer token scoped via `EDY_SIEM_TOKEN`/`EDYSIEM_SHIELD_INGEST_TOKEN`, sem
+  secrets no código e sem confiar em `X-EDY-Role`.
+- Transporte: timeout 2 s/5 s, at-least-once, full-jitter até 5 min, outbox persistente;
+  SIEM persiste inbox antes do `202`.
+- Opcionais são omitidos; `null` e campos raiz desconhecidos são rejeitados.
+- SIEM decide alertas, incidentes e casos. Bancos continuam separados.
 
-## Arquitetura definida
+## Lacunas atuais
 
-- Shield local-first com `telemetry_outbox` no próprio SQLite.
-- Envio HTTP(S) em batch com token exclusivo e permissionamento de ingestão.
-- SIEM grava `ingestion_inbox` durável e responde 202 antes do processamento.
-- Chave idempotente: `(source_instance_id, producer_event_id)`.
-- Parser + normalizer `source_type=edy_shield` alimentam os engines existentes.
-- SIEM decide alertas, incidentes e casos; Shield continua independente offline.
-- WAR_ROOM entra futuramente como provider separado de threat intelligence/enrichment.
+- Shield ainda não converte `ScanResult`/`FimDiff` em telemetria nem possui outbox.
+- SIEM ainda não possui rota, inbox, parser ou normalizer `edy_shield`.
+- O fluxo real ainda não cria incidente/caso fora de `run_demo`.
 
 ## Próxima ação exata
 
 1. Criar ADR no EDY SIEM formalizando contrato, outbox/inbox e segurança.
-2. Criar schemas e fixtures de contrato v1, ainda sem transporte.
-3. No Shield, começar por testes `FimDiff → TelemetryEventV1`.
+2. Copiar os seis exemplos do contrato para fixtures e criar testes de contrato
+   inicialmente vermelhos, sem transporte.
+3. Só depois criar schemas/rota/inbox no SIEM.
+4. No Shield, começar por testes `FimDiff → TelemetryEventV1`.
 
-Não implementar integração consultando o banco do outro projeto e não reutilizar a rota
-genérica `/soc/pipeline/run` como contrato externo.
+Não usar o banco do outro projeto, não importar módulos entre repositórios e não expor
+`/soc/pipeline/run` como contrato externo.

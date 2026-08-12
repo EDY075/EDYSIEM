@@ -263,13 +263,17 @@ inbox no SIEM**.
 5. Eventos permanecem pendentes e usam backoff exponencial com jitter.
 6. O SIEM valida e grava primeiro em sua `ingestion_inbox`, depois responde `202`.
 7. O worker do SIEM processa a inbox e registra o trail da pipeline.
-8. A combinação `(source_instance_id, producer_event_id)` é única no SIEM.
+8. A combinação `(source.instance_id, event_id)` é única no SIEM.
 9. Reenvio do mesmo conteúdo é resposta idempotente; mesmo ID com conteúdo diferente
    retorna conflito e vai para auditoria.
 
 Semântica: **at-least-once no transporte, exactly-once lógico por idempotência**.
 
-### 3.2 Contrato HTTP proposto
+### 3.2 Contrato HTTP v1 aprovado
+
+O contrato normativo completo, incluindo validação e seis exemplos, está em
+[`EVENT_CONTRACT_V1.md`](EVENT_CONTRACT_V1.md). Em caso de divergência com o desenho
+preliminar deste handoff, o contrato oficial prevalece.
 
 Endpoint:
 
@@ -279,45 +283,46 @@ Headers:
 
 - `Authorization: Bearer <token exclusivo do Shield>`
 - `Content-Type: application/json`
-- `X-EDY-Contract-Version: 1.0`
-- `X-EDY-Batch-Id: <uuid>`
+- `Idempotency-Key: <batch_id UUID>`
 
 O token deve conceder somente `ingestion:shield:write`. O endpoint não deve aceitar o
 papel informado pelo cliente. TLS é obrigatório fora de loopback/laboratório.
 
-Exemplo resumido:
+Envelope resumido:
 
 ```json
 {
-  "schema_version": "1.0",
-  "source": {
-    "product": "edy-shield",
-    "product_version": "2.2.0",
-    "instance_id": "shield-4f91...",
-    "hostname": "ws-01",
-    "platform": "windows"
-  },
+  "batch_id": "a65c942d-6aa7-4b1a-9bb2-f04546bcb540",
+  "sent_at": "2026-08-11T18:42:15.120Z",
   "events": [
     {
-      "producer_event_id": "3ca3...",
+      "event_id": "7a4ec1d2-3b61-4e9c-8f12-2b9a6e1d4501",
+      "schema_version": "1.0",
+      "timestamp": "2026-08-11T18:42:10.123Z",
       "sequence": 184,
+      "source": {
+        "product": "edy-shield",
+        "product_version": "2.2.0",
+        "instance_id": "9df3e3b7-f905-49f8-b6a7-3da64227e3d1",
+        "component": "fim"
+      },
       "event_type": "shield.fim.file.modified",
-      "occurred_at": "2026-08-11T18:42:10Z",
       "severity": "high",
-      "target": "Windows/System32/drivers/etc/hosts",
-      "baseline_id": "fim_sha256_...",
-      "scan_id": "scan-...",
-      "hash": {
-        "algorithm": "SHA256",
-        "previous": "...",
-        "current": "..."
+      "asset": {
+        "asset_id": "shield:9df3e3b7-f905-49f8-b6a7-3da64227e3d1:ws-01",
+        "hostname": "ws-01"
       },
-      "file": {
-        "size_bytes": 824,
-        "mtime": "2026-08-11T18:42:08Z",
-        "permissions": "644"
+      "evidence": {
+        "file_path": "Windows/System32/drivers/etc/hosts",
+        "hash_algorithm": "sha256",
+        "previous_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "current_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "baseline_id": "fim-sha256-20260811-001",
+        "baseline_status": "modified",
+        "scan_id": "scan-20260811-1842",
+        "details": {}
       },
-      "tags": ["fim", "file-change"]
+      "metadata": {"correlation_id": "scan-20260811-1842", "tags": ["fim"]}
     }
   ]
 }
@@ -330,8 +335,8 @@ Resposta por item:
 - `rejected`: inválido e não será repetido sem correção.
 
 O Shield remove/arquiva da outbox apenas itens `accepted` ou `duplicate`. Rejeições
-4xx permanentes vão para estado local `dead_letter`; indisponibilidade e falhas
-transitórias permanecem pendentes.
+permanentes vão para `dead_letter`; falhas transitórias permanecem pendentes. `401` e
+`403` pausam o conector e preservam a fila para correção da credencial.
 
 ### 3.3 Tipos de evento v1
 
@@ -355,15 +360,15 @@ normaliza e aplica suas próprias regras para evitar dupla contagem.
 
 | Shield | CanonicalEvent do SIEM |
 |---|---|
-| `producer_event_id` | `metadata.origin_event_id`; também chave de recibo |
+| `event_id` | `metadata.origin_event_id`; também chave de recibo |
 | `source.instance_id` | `metadata.source_instance_id` |
-| `source.hostname` | `source_host` e `hostname` |
+| `asset.hostname` | `source_host` e `hostname` |
 | `event_type` FIM | `event_category=file`; ação added/modified/deleted/baseline/scan |
 | `severity` | severidade inicial, recalculável por regra SIEM |
-| `target` | `metadata.file.path` e contexto de asset |
-| hashes | `metadata.file.hash.previous/current/algorithm` |
-| `baseline_id` / `scan_id` | metadata e correlation keys |
-| `occurred_at` | `timestamp` |
+| `evidence.file_path` | `metadata.file.path` e contexto de asset |
+| `evidence.previous_hash/current_hash/hash_algorithm` | `metadata.file.hash.*` |
+| `evidence.baseline_id` / `scan_id` | metadata e correlation keys |
+| `timestamp` | `timestamp` |
 | recebimento | `received_at` gerado pelo SIEM |
 | tags | tags canônicas `edy-shield`, `endpoint`, `fim` |
 
@@ -451,7 +456,7 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 | Entrega duplicada | alertas/casos duplicados | chave idempotente + content hash + fingerprints |
 | Queda após salvar local e antes da outbox | lacuna de telemetria | Unit of Work no mesmo SQLite + job de reconciliação |
 | Queda do SIEM após aceitar lote | perda silenciosa | durable inbox antes de responder 202 |
-| Ordem diferente | correlação incorreta | sequence por instância + occurred_at; pipeline tolerante a atraso |
+| Ordem diferente | correlação incorreta | `sequence` por instância + `timestamp`; pipeline tolerante a atraso |
 | Crescimento ilimitado da outbox | disco cheio no endpoint | limites, retenção, métricas e prioridade; nunca apagar silenciosamente |
 | Caminhos/hashes sensíveis | exposição de dados | minimização, allow/deny patterns, TLS e redaction |
 | Token global ou papel forjável | ingestão não autorizada | credencial scoped por fonte; não confiar em `X-EDY-Role` |
@@ -465,10 +470,10 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 
 ### Etapa 0 — Decisão e contrato
 
-- Criar ADR no SIEM.
-- Fechar JSON Schema/Pydantic v1 e tabela de mapeamento.
-- Definir política de dados sensíveis, limites e autenticação.
-- Criar fixtures de contrato compartilháveis, sem criar pacote compartilhado de runtime.
+- [x] Fechar o contrato v1, tabela de mapeamento, dados sensíveis, limites e autenticação.
+- [ ] Criar ADR no SIEM.
+- [ ] Criar schemas executáveis e fixtures de contrato compartilháveis, sem pacote de
+  runtime compartilhado.
 
 **Saída:** contrato versionado e testes de contrato inicialmente vermelhos.
 
@@ -588,18 +593,38 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 8. Casos não são criados para todo evento; seguem política de risco/correlação.
 9. WAR_ROOM será um provider de enrichment independente, não dependência do Shield.
 10. A UI é observabilidade e operação da integração, nunca o mecanismo de entrega.
+11. O contrato oficial é `EVENT_CONTRACT_V1.md`; a versão inicial aceita é `1.0`.
+12. O identificador idempotente é `(source.instance_id, event_id)` e o lote usa
+    `Idempotency-Key = batch_id`.
+13. A borda é strict: extensões somente em `evidence.details` e `metadata`; opcionais
+    ausentes são omitidos e `null` é inválido.
+14. O endpoint aceita até 100 eventos, 1 MiB por lote e 64 KiB por evento.
+15. A autenticação v1 usa token scoped em variáveis de ambiente; a rota não confia em
+    `X-EDY-Role` e HTTP é permitido somente em loopback/laboratório explícito.
+16. Timeout é 2 s para conexão e 5 s total; retry usa full jitter com teto de 5 minutos.
 
 ## 10. Pendências
 
-- Aprovar o contrato v1 e limites exatos de batch/retenção.
-- Definir tratamento de paths sensíveis e raízes permitidas para exportação.
+- Transformar as decisões em ADR antes de alterar contratos/código.
+- Materializar schemas Pydantic/JSON Schema e as seis fixtures a partir do contrato.
 - Escolher política inicial de auto-case e regras MITRE para FIM.
-- Definir rotação/armazenamento do token em ambiente de demonstração e produção.
-- Confirmar se a operação inicial será somente localhost/LAN ou internet com TLS.
-- Transformar estas decisões em ADR antes de alterar contratos/código.
+- Definir o mecanismo de cadastro/rotação de tokens por instalação além do laboratório.
+- Confirmar a URL de implantação; fora de loopback, TLS é obrigatório.
+- Definir telemetria/UI para overflow e saúde da fila antes da etapa de UX.
 
 ## 11. Próximo passo exato
 
-Iniciar a **Etapa 0** no EDY SIEM: criar o ADR de integração e os schemas/fixtures do
-contrato v1, sem implementar transporte. Depois, no Shield, escrever os testes de
+Concluir a **Etapa 0** no EDY SIEM: criar o ADR e transformar
+`EVENT_CONTRACT_V1.md` nas seis fixtures JSON e em testes de contrato inicialmente
+vermelhos, ainda sem implementar transporte. Depois, no Shield, escrever os testes de
 mapeamento `FimDiff → TelemetryEventV1` antes da primeira alteração funcional.
+
+## 12. Estado do contrato v1
+
+- Schema, enums, validação condicional, timestamps e limites: definidos.
+- Endpoint, resposta parcial por item e códigos HTTP: definidos.
+- Autenticação M2M sem secrets no código: definida.
+- Idempotência, timeout, retry, backoff e outbox offline: definidos.
+- Exemplos reais para modificação, hash divergente, inclusão, remoção, scan e alerta
+  crítico: documentados em `EVENT_CONTRACT_V1.md`.
+- Nenhum código funcional foi alterado nesta etapa.
