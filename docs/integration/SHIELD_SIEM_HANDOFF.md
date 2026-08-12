@@ -1,6 +1,6 @@
 # EDY Shield → EDY SIEM — Handoff de Arquitetura
 
-**Status:** contrato v1 e receptor/inbox do EDY SIEM concluídos; produtor do Shield ainda não implementado.
+**Status:** contrato/receptor v1 e producer/outbox do Shield concluídos; E2E real pendente.
 **Data da análise:** 2026-08-11
 **EDY SIEM analisado:** `master` em `e929982` (v0.2.0)
 **EDY Shield analisado:** `main` em `5fd63bb` (v2.2.0)
@@ -696,3 +696,23 @@ do SIEM nessa próxima etapa.
 - Suíte completa: 928 testes aprovados; cobertura global 95,15%.
 - Ruff integral, MyPy em 151 arquivos e `git diff --check`: aprovados.
 - Permanecem apenas dois warnings de depreciação preexistentes de Starlette/FastAPI.
+## 14. Producer/outbox do Shield concluído
+
+Em 2026-08-11, o producer compatível com este receptor foi implementado no repositório
+`EDY075/edy-shield`, branch `codex/siem-producer-outbox-v1`, commit `6e25619`.
+
+- Mapper v1 conectado a baseline, mudanças FIM, scan, hash mismatch e alertas reais.
+- `instance_id` UUID persistente e `sequence` monotônica no SQLite local do Shield.
+- Outbox com estados `pending`, `in_flight`, `sent`, `dead_letter`, lease recuperável,
+  limites 64 KiB/evento, 100 eventos/1 MiB por lote e capacidade 50.000/512 MiB.
+- Worker assíncrono com timeout 2 s/5 s, full jitter, `Retry-After`, pausa em 401/403,
+  dead letter estrutural e duplicate idempotente.
+- Integração opt-in (`EDY_SIEM_ENABLED=false` por padrão), sem dependência de rede no
+  caminho local e sem segredo versionado.
+- Validação Shield: 680 testes aprovados, 2 skipped, cobertura 86,78%; Ruff, MyPy,
+  build wheel/sdist e `git diff --check` aprovados.
+
+O contrato, receptor e normalizador deste repositório não foram alterados. O próximo
+passo passa a ser o primeiro E2E real e isolado entre os dois projetos, incluindo
+offline/replay e confirmação da inbox; frontend, WAR_ROOM e worker downstream continuam
+fora desse gate.

@@ -99,5 +99,30 @@ Implementar o **producer/outbox no EDY Shield**:
 5. Testar SIEM offline, restart, resposta perdida, duplicata, 401/403, 409, 413, 422,
    429/5xx e fila cheia sem interromper scans ou alertas locais.
 
-Pare antes de criar frontend ou o worker downstream da inbox no SIEM. Não compartilhar
-banco nem importar módulos de runtime entre os projetos.
+> O próximo passo acima foi concluído no Shield pelo commit `6e25619`; o estado atual
+> substituto está registrado abaixo.
+
+## Producer Shield implementado
+
+- Repositório: `EDY075/edy-shield`.
+- Branch: `codex/siem-producer-outbox-v1`.
+- Commit publicado: `6e25619` (`feat: add durable EDY SIEM producer outbox`).
+- Resultado: mapper, instance ID, SQLite outbox, HTTPS client e worker conectados a fatos
+  reais, opt-in e local-first.
+- Validação: 680 testes, 2 skipped, 86,78% de cobertura, Ruff/MyPy/build aprovados.
+- Documentação operacional do produtor:
+  `docs/integration/EDY_SIEM_INTEGRATION.md` no repositório Shield.
+
+## Próximo passo EXATO — estado atual
+
+Executar o primeiro **E2E real isolado Shield → SIEM** sem alterar frontend:
+
+1. configurar o mesmo token de laboratório nos dois processos;
+2. iniciar este receptor e o worker do Shield em loopback;
+3. gerar baseline e mudança FIM reais no Shield;
+4. confirmar `202`, inbox durável e payload normalizado neste SIEM;
+5. derrubar o SIEM, gerar eventos, religá-lo e confirmar replay/duplicate sem perda;
+6. salvar evidências e atualizar os dois handoffs.
+
+Pare antes de integrar WAR_ROOM, criar frontend ou implementar o worker downstream da
+inbox. Não compartilhar banco nem importar runtime entre projetos.
