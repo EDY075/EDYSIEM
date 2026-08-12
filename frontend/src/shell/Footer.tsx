@@ -18,7 +18,7 @@ export function Footer() {
         fontFamily: typography.family.mono,
       }}
     >
-      <span>EDY SIEM v0.2.0</span>
+      <span>EDY SIEM v0.3.0</span>
       <span>Dados operacionais via API local · horários no fuso do workspace</span>
     </footer>
   );
