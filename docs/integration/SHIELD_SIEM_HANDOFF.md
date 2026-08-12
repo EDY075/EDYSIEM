@@ -740,3 +740,20 @@ Próximo passo: **UX INTEGRATION V1**. O Shield oferece “Investigar no EDY SIE
 abre a investigação correspondente com origem EDY Shield, ativo, evidências, hashes,
 timeline, MITRE quando aplicável e criação de caso. Inbox downstream, WAR_ROOM e merge
 em `main` continuam fora do escopo.
+
+## Handoff - UX Integration V1 concluida (2026-08-12)
+
+O SIEM resolve `/investigate/shield/{event_id}` pela inbox duravel, valida UUIDv4 e
+origem `edy-shield`, mostra contexto operacional completo e reutiliza o sistema de
+casos por uma operacao idempotente. Os arquivos centrais sao
+`src/edysiem/api/routes/shield_investigation.py`,
+`frontend/src/pages/ShieldEventInvestigationPage.tsx`,
+`src/edysiem/persistence/inbox.py` e `frontend/src/routing/routes.tsx`.
+
+O teste E2E real confirmou o mesmo Event ID do Shield ao caso no SIEM, evidence FIM,
+hashes, ativo, timeline e MITRE real. Detalhes e resultados estao em
+`docs/integration/UX_INTEGRATION_V1_REPORT.md`.
+
+Proximo passo: **PRODUCT REDESIGN V1** (Shield como Endpoint Integrity Center; SIEM
+como SOC Decision Center; design system compartilhado com identidades distintas; fluxo
+Alerta -> Evidencia -> Entidade -> MITRE -> Caso). Nao iniciar ainda.

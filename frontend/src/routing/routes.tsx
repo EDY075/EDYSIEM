@@ -16,6 +16,7 @@ const AlertCenterPage = lazy(() => import("../pages/AlertCenterPage").then((m) =
 const IncidentCenterPage = lazy(() => import("../pages/IncidentCenterPage").then((m) => ({ default: m.IncidentCenterPage })));
 const CaseCenterPage = lazy(() => import("../pages/CaseCenterPage").then((m) => ({ default: m.CaseCenterPage })));
 const InvestigationPage = lazy(() => import("../pages/InvestigationPage").then((m) => ({ default: m.InvestigationPage })));
+const ShieldEventInvestigationPage = lazy(() => import("../pages/ShieldEventInvestigationPage").then((m) => ({ default: m.ShieldEventInvestigationPage })));
 const IntelligencePage = lazy(() => import("../pages/IntelligencePage").then((m) => ({ default: m.IntelligencePage })));
 const RulesPage = lazy(() => import("../pages/RulesPage").then((m) => ({ default: m.RulesPage })));
 const DetectionDashboardPage = lazy(() => import("../pages/DetectionDashboardPage").then((m) => ({ default: m.DetectionDashboardPage })));
@@ -69,6 +70,7 @@ export const router = createBrowserRouter([
       { path: "alerts", element: withSuspense(<AlertCenterPage />) },
       { path: "incidents", element: withSuspense(<IncidentCenterPage />) },
       { path: "investigate", element: withSuspense(<InvestigationPage />) },
+      { path: "investigate/shield/:eventId", element: withSuspense(<ShieldEventInvestigationPage />) },
       { path: "cases", element: withSuspense(<CaseCenterPage />) },
       { path: "playbooks", element: withSuspense(<PlaybooksPage />) },
       { path: "rules", element: withSuspense(<RulesPage />) },

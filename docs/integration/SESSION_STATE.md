@@ -148,5 +148,17 @@ Executar o primeiro **E2E real isolado Shield → SIEM** sem alterar frontend:
 5. derrubar o SIEM, gerar eventos, religá-lo e confirmar replay/duplicate sem perda;
 6. salvar evidências e atualizar os dois handoffs.
 
+## Checkpoint UX Integration V1 - 2026-08-12
+
+- Branch: `codex/shield-siem-integration-architecture`.
+- Deep link: `/investigate/shield/{event_id}`.
+- APIs: GET do evento Shield e POST idempotente para criar/reabrir caso.
+- Pagina: `frontend/src/pages/ShieldEventInvestigationPage.tsx`.
+- E2E real: evento `fa3f171e-bb8e-43f2-9bd3-ae716d7316da`, alerta
+  `ALT-UX-E2E-003`, caso `32964cd9-b797-4ab2-8350-72658d6e7b11`.
+- Qualidade: 932 testes, 95,11%, Ruff/MyPy e builds backend/frontend aprovados.
+- Relatorio completo: `docs/integration/UX_INTEGRATION_V1_REPORT.md`.
+- Proximo passo salvo: **PRODUCT REDESIGN V1**. Nao iniciar sem novo prompt.
+
 Pare antes de integrar WAR_ROOM, criar frontend ou implementar o worker downstream da
 inbox. Não compartilhar banco nem importar runtime entre projetos.

@@ -281,6 +281,25 @@ class ShieldInboxRepository:
         value["normalized_payload"] = json.loads(str(value["normalized_payload"]))
         return value
 
+    def find_by_event_id(self, event_id: str) -> dict[str, object] | None:
+        """Resolve a globally unique Shield event ID for operator investigation."""
+
+        rows = self._manager.connect().execute(
+            "SELECT * FROM ingestion_inbox WHERE event_id = ? LIMIT 2",
+            (event_id,),
+        ).fetchall()
+        if not rows:
+            return None
+        if len(rows) > 1:
+            raise PersistenceError("ambiguous EDY Shield event identifier")
+        value = dict(rows[0])
+        try:
+            value["payload"] = json.loads(str(value["payload"]))
+            value["normalized_payload"] = json.loads(str(value["normalized_payload"]))
+        except (TypeError, ValueError) as exc:
+            raise PersistenceError("stored ingestion event cannot be decoded") from exc
+        return value
+
     def count(self) -> int:
         """Return the number of unique accepted inbox events."""
 
