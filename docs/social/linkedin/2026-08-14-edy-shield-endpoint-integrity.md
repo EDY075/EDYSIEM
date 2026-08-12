@@ -1,7 +1,7 @@
 # LinkedIn — EDY Shield por dentro: Endpoint Integrity & Defense
 
 - Data planejada: 2026-08-14
-- Status: DRAFT
+- Status: APPROVED
 - Tema: EDY Shield por dentro — Endpoint Integrity & Defense
 - Ângulo: por que FIM não deve se comportar como um mini-SIEM.
 - Imagem selecionada: `2026-08-14-edy-shield-endpoint-integrity.png`
