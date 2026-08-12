@@ -1,7 +1,7 @@
 # LinkedIn — EDY SIEM por dentro: SOC Decision Center
 
 - Data planejada: 2026-08-17
-- Status: DRAFT
+- Status: APPROVED
 - Tema: EDY SIEM por dentro — SOC Decision Center
 - Ângulo: reduzir KPIs genéricos para deixar a próxima decisão explícita.
 - Imagem selecionada: `2026-08-17-edy-siem-decision-queue.png`
@@ -12,22 +12,19 @@
 
 ## Texto final
 
-Em uma tela de SOC, eu acho fácil demais esconder o trabalho real atrás de KPI bonito.
+Em uma tela de SOC, é fácil esconder o trabalho real atrás de KPI bonito.
 
-Durante a revisão do EDY SIEM, cortei boa parte dessa vontade de preencher a Home com
-cards. Um número isolado de alertas não diz muito para quem precisa decidir o que atacar
-primeiro.
+Durante a revisão do EDY SIEM, eu percebi que estava colocando informação demais na Home. Mais cards, mais números, mais indicadores — mas isso não respondia a pergunta principal: o que precisa da minha atenção agora?
 
-O centro da tela passou a ser a Decision Queue. Cada item carrega a severidade, o SLA, o
-responsável, o ativo, a evidência e a próxima ação suportada. Se não há responsável ou se o
-prazo está perto, isso precisa aparecer na mesma linha em que a pessoa lê o evento — não
-escondido em outra página.
+Foi daí que a Decision Queue virou o centro da tela.
 
-Essa escolha também trouxe uma regra simples para o produto: quando algum dado operacional
-não está disponível, a interface declara isso em vez de preencher o espaço com simulação.
+Cada item reúne o que eu realmente gostaria de ter na frente durante uma triagem: severidade, SLA, responsável, ativo, evidência e a próxima ação. Se o alerta está sem responsável ou perto de estourar o prazo, isso aparece ali mesmo, junto do evento.
 
-Não é a tela com mais gráficos. É a tela que eu gostaria de encontrar quando existe uma fila
-real esperando alguém tomar uma decisão.
+Outra coisa que eu preferi manter foi transparência nos estados. Se algum dado operacional não está disponível, o SIEM mostra isso. Não preenche o espaço com número inventado só para o dashboard parecer completo.
+
+No fim, a Home ficou com menos gráficos e menos cards, mas muito mais útil para decisão.
+
+Era exatamente essa mudança que eu queria: sair de um dashboard que mostra números e chegar mais perto de uma tela que ajuda alguém a decidir o que investigar primeiro.
 
 Código: https://github.com/EDY075/EDYSIEM
 
