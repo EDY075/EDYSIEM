@@ -82,10 +82,7 @@ def demo() -> None:
         data={"country": "BR", "asn": "AS27699"},
     )
     enriched = EnrichedEvent(
-        **{
-            field: getattr(canonical, field)
-            for field in canonical.__match_args__
-        },
+        **{field: getattr(canonical, field) for field in canonical.__match_args__},
         enrichments=(asset_info, geo_info),
     )
     print("\nEnrichedEvent:")

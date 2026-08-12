@@ -1,2 +1,2 @@
-cd C:\Users\edmil\EDYSIEM\frontend
+cd C:\Users\user\EDYSIEM\frontend
 npm install

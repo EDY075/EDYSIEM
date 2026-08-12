@@ -81,9 +81,7 @@ def test_rate_limit_429() -> None:
         try:
             await dep(req)
         except Exception as exc:
-            return getattr(exc, "status_code", 0), getattr(exc, "headers", {}).get(
-                "Retry-After"
-            )
+            return getattr(exc, "status_code", 0), getattr(exc, "headers", {}).get("Retry-After")
         return 0, None
 
     assert asyncio.run(go()) == (429, "60")

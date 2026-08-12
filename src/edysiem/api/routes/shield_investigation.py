@@ -99,9 +99,7 @@ def _canonical_uuid4(value: str) -> bool:
     return parsed.version == 4 and str(parsed) == value
 
 
-def _require_event(
-    event_id: str, repository: ShieldInboxRepository
-) -> dict[str, object]:
+def _require_event(event_id: str, repository: ShieldInboxRepository) -> dict[str, object]:
     if not _canonical_uuid4(event_id):
         raise HTTPException(
             status_code=422,
@@ -148,9 +146,7 @@ def _linked_case(service: SocService, event_id: str) -> Case | None:
     )
 
 
-def _response(
-    row: dict[str, object], case: Case | None, service: SocService
-) -> dict[str, object]:
+def _response(row: dict[str, object], case: Case | None, service: SocService) -> dict[str, object]:
     payload = row.get("payload")
     normalized = row.get("normalized_payload")
     if not isinstance(payload, dict) or not isinstance(normalized, dict):
@@ -202,9 +198,7 @@ def list_shield_event_investigations(
     rows = repository.list_recent(limit=limit)
     return {
         "total": repository.count(),
-        "items": [
-            _response(row, cases.get(str(row["event_id"])), service) for row in rows
-        ],
+        "items": [_response(row, cases.get(str(row["event_id"])), service) for row in rows],
     }
 
 

@@ -111,7 +111,7 @@ OPEN -> IN_PROGRESS -> ON_HOLD -> RESOLVED -> CLOSED
 ## 6. Como Executar
 
 ```powershell
-cd C:\Users\edmil\EDYSIEM
+cd C:\Users\user\EDYSIEM
 $env:PYTHONPATH = "$PWD\src"
 python -m pytest -q                # testes + cobertura
 python -m mypy                     # type check strict

@@ -123,9 +123,7 @@ class InboxBatchResult:
                 InboxItemResult(
                     index=index,
                     event_id=(
-                        str(raw_item["event_id"])
-                        if raw_item.get("event_id") is not None
-                        else None
+                        str(raw_item["event_id"]) if raw_item.get("event_id") is not None else None
                     ),
                     status=cast(InboxItemStatus, status),
                     error=error,
@@ -162,10 +160,14 @@ class ShieldInboxRepository:
     def replay(self, batch_id: str, content_hash: str) -> InboxBatchResult | None:
         """Return a stable response for an identical prior batch."""
 
-        row = self._manager.connect().execute(
-            "SELECT content_hash, response_payload FROM ingestion_batches WHERE batch_id = ?",
-            (batch_id,),
-        ).fetchone()
+        row = (
+            self._manager.connect()
+            .execute(
+                "SELECT content_hash, response_payload FROM ingestion_batches WHERE batch_id = ?",
+                (batch_id,),
+            )
+            .fetchone()
+        )
         if row is None:
             return None
         if row["content_hash"] != content_hash:
@@ -216,9 +218,7 @@ class ShieldInboxRepository:
                     if seen_hash is not None:
                         if seen_hash != event.content_hash:
                             raise IdempotencyConflictError(f"event:{event.event_id}")
-                        statuses.append(
-                            InboxItemResult(event.index, event.event_id, "duplicate")
-                        )
+                        statuses.append(InboxItemResult(event.index, event.event_id, "duplicate"))
                         continue
 
                     row = conn.execute(
@@ -229,9 +229,7 @@ class ShieldInboxRepository:
                     if row is not None:
                         if row["content_hash"] != event.content_hash:
                             raise IdempotencyConflictError(f"event:{event.event_id}")
-                        statuses.append(
-                            InboxItemResult(event.index, event.event_id, "duplicate")
-                        )
+                        statuses.append(InboxItemResult(event.index, event.event_id, "duplicate"))
                         seen[key] = event.content_hash
                         continue
 
@@ -270,10 +268,14 @@ class ShieldInboxRepository:
     def get_event(self, source_instance_id: str, event_id: str) -> dict[str, object] | None:
         """Return one inbox row as decoded data for processing/investigation."""
 
-        row = self._manager.connect().execute(
-            "SELECT * FROM ingestion_inbox WHERE source_instance_id = ? AND event_id = ?",
-            (source_instance_id, event_id),
-        ).fetchone()
+        row = (
+            self._manager.connect()
+            .execute(
+                "SELECT * FROM ingestion_inbox WHERE source_instance_id = ? AND event_id = ?",
+                (source_instance_id, event_id),
+            )
+            .fetchone()
+        )
         if row is None:
             return None
         value = dict(row)
@@ -284,10 +286,14 @@ class ShieldInboxRepository:
     def find_by_event_id(self, event_id: str) -> dict[str, object] | None:
         """Resolve a globally unique Shield event ID for operator investigation."""
 
-        rows = self._manager.connect().execute(
-            "SELECT * FROM ingestion_inbox WHERE event_id = ? LIMIT 2",
-            (event_id,),
-        ).fetchall()
+        rows = (
+            self._manager.connect()
+            .execute(
+                "SELECT * FROM ingestion_inbox WHERE event_id = ? LIMIT 2",
+                (event_id,),
+            )
+            .fetchall()
+        )
         if not rows:
             return None
         if len(rows) > 1:
@@ -305,11 +311,15 @@ class ShieldInboxRepository:
 
         if limit < 1 or limit > 100:
             raise ValueError("limit must be between 1 and 100")
-        rows = self._manager.connect().execute(
-            "SELECT * FROM ingestion_inbox WHERE source_product = 'edy-shield' "
-            "ORDER BY event_timestamp DESC, received_at DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        rows = (
+            self._manager.connect()
+            .execute(
+                "SELECT * FROM ingestion_inbox WHERE source_product = 'edy-shield' "
+                "ORDER BY event_timestamp DESC, received_at DESC LIMIT ?",
+                (limit,),
+            )
+            .fetchall()
+        )
         events: list[dict[str, object]] = []
         try:
             for row in rows:
@@ -324,16 +334,20 @@ class ShieldInboxRepository:
     def count(self) -> int:
         """Return the number of unique accepted inbox events."""
 
-        row = self._manager.connect().execute(
-            "SELECT COUNT(*) AS total FROM ingestion_inbox"
-        ).fetchone()
+        row = (
+            self._manager.connect()
+            .execute("SELECT COUNT(*) AS total FROM ingestion_inbox")
+            .fetchone()
+        )
         return int(row["total"]) if row is not None else 0
 
     def health_snapshot(self) -> dict[str, int | str | None]:
         """Return bounded operational aggregates without exposing event payloads."""
 
-        row = self._manager.connect().execute(
-            """
+        row = (
+            self._manager.connect()
+            .execute(
+                """
             SELECT
                 COUNT(*) AS accepted_events,
                 COALESCE(SUM(CASE WHEN processing_status = 'pending' THEN 1 ELSE 0 END), 0)
@@ -344,7 +358,9 @@ class ShieldInboxRepository:
             FROM ingestion_inbox
             WHERE source_product = 'edy-shield'
             """
-        ).fetchone()
+            )
+            .fetchone()
+        )
         if row is None:
             return {
                 "accepted_events": 0,
@@ -359,9 +375,7 @@ class ShieldInboxRepository:
                 str(row["last_received_at"]) if row["last_received_at"] is not None else None
             ),
             "oldest_pending_at": (
-                str(row["oldest_pending_at"])
-                if row["oldest_pending_at"] is not None
-                else None
+                str(row["oldest_pending_at"]) if row["oldest_pending_at"] is not None else None
             ),
         }
 

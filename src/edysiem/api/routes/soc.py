@@ -124,9 +124,7 @@ def list_alerts(
     svc = _service(container)
     return {
         "total": len(svc.list_alerts(limit=10000)),
-        "items": [
-            {**_a(a), "sla": asdict(svc.sla_of(a))} for a in svc.list_alerts(limit=limit)
-        ],
+        "items": [{**_a(a), "sla": asdict(svc.sla_of(a))} for a in svc.list_alerts(limit=limit)],
     }
 
 
@@ -152,10 +150,7 @@ def list_incidents(
     svc = _service(container)
     return {
         "total": len(svc.list_incidents(limit=10000)),
-        "items": [
-            {**_i(i), "sla": asdict(svc.sla_of(i))}
-            for i in svc.list_incidents(limit=limit)
-        ],
+        "items": [{**_i(i), "sla": asdict(svc.sla_of(i))} for i in svc.list_incidents(limit=limit)],
     }
 
 

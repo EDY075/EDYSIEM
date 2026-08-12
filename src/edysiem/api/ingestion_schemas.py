@@ -49,9 +49,7 @@ BaselineStatusV1 = Literal[
     "invalid",
 ]
 
-_UTC_TIMESTAMP_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
-)
+_UTC_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
 _SEMVER_RE = re.compile(
     r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"
     r"(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
@@ -120,9 +118,7 @@ def _validate_extension_tree(value: object, *, depth: int = 0) -> None:
         raise ValueError("null is not allowed; omit unknown or inapplicable fields")
     if isinstance(value, str):
         if len(value) > MAX_GENERIC_STRING_LENGTH:
-            raise ValueError(
-                f"extension strings must be <= {MAX_GENERIC_STRING_LENGTH} characters"
-            )
+            raise ValueError(f"extension strings must be <= {MAX_GENERIC_STRING_LENGTH} characters")
         return
     if isinstance(value, dict):
         for key, item in value.items():
@@ -422,9 +418,7 @@ class ShieldEventV1(StrictContractModel):
             if getattr(evidence, field_name) is None
         ]
         if missing:
-            raise ValueError(
-                f"{self.event_type} requires evidence fields: {', '.join(missing)}"
-            )
+            raise ValueError(f"{self.event_type} requires evidence fields: {', '.join(missing)}")
 
         expected_status: dict[str, str] = {
             "shield.fim.baseline.created": "created",
@@ -435,9 +429,7 @@ class ShieldEventV1(StrictContractModel):
         }
         wanted_status = expected_status.get(self.event_type)
         if wanted_status is not None and evidence.baseline_status != wanted_status:
-            raise ValueError(
-                f"{self.event_type} requires baseline_status={wanted_status}"
-            )
+            raise ValueError(f"{self.event_type} requires baseline_status={wanted_status}")
         if self.event_type == "shield.hash.mismatch" and evidence.baseline_status not in {
             "modified",
             "not_applicable",

@@ -46,8 +46,13 @@ archive/frontend_scratch/
 .env
 .env.*
 !.env.example
+.envrc
 *.pem
 *.key
+*.p12
+*.pfx
+*.crt
+*.cer
 
 # IDE / editores
 .idea/
@@ -68,6 +73,21 @@ logs/
 # Desenvolvimento local (banco do dev runner)
 instance/
 *.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# Exports e material temporário local
+*.dump
+*.bak
+*.backup
+tmp/
+temp/
+*.tmp
+*.temp
 
 # Material de revisão local (a galeria publicada fica em assets/screenshots/)
 UX_REVIEW/

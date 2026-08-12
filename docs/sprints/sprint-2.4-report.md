@@ -101,7 +101,7 @@ EnrichedEvent (imutável, enriquecimentos acumulados)
 ## 6. Como Executar
 
 ```powershell
-cd C:\Users\edmil\EDYSIEM
+cd C:\Users\user\EDYSIEM
 $env:PYTHONPATH = "$PWD\src"
 python -m pytest -q                # testes + cobertura
 python -m mypy                     # type check strict

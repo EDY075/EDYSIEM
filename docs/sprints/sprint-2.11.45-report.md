@@ -85,7 +85,7 @@ persistido em SQLite.
 ## 4. Como Executar
 
 ```powershell
-cd C:\Users\edmil\EDYSIEM
+cd C:\Users\user\EDYSIEM
 $env:PYTHONPATH = "$PWD\src"
 python -m pytest -q
 python -m mypy

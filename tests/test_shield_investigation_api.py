@@ -258,9 +258,9 @@ def test_claim_is_conditional_and_preserves_first_owner(client: TestClient) -> N
 
 
 def test_frontend_contains_all_required_resolution_states() -> None:
-    source = (
-        ROOT / "frontend" / "src" / "pages" / "ShieldEventInvestigationPage.tsx"
-    ).read_text(encoding="utf-8")
+    source = (ROOT / "frontend" / "src" / "pages" / "ShieldEventInvestigationPage.tsx").read_text(
+        encoding="utf-8"
+    )
     for marker in (
         "loading",
         "Acesso inválido",
@@ -286,9 +286,9 @@ def test_frontend_case_handoff_preserves_exact_context_and_errors() -> None:
     case_center = (ROOT / "frontend" / "src" / "pages" / "CaseCenterPage.tsx").read_text(
         encoding="utf-8"
     )
-    investigation = (
-        ROOT / "frontend" / "src" / "pages" / "InvestigationPage.tsx"
-    ).read_text(encoding="utf-8")
+    investigation = (ROOT / "frontend" / "src" / "pages" / "InvestigationPage.tsx").read_text(
+        encoding="utf-8"
+    )
 
     assert "requestedCaseId" in hook
     assert "/soc/cases/${encodeURIComponent(requestedCaseId)}" in hook
