@@ -271,7 +271,7 @@ Semântica: **at-least-once no transporte, exactly-once lógico por idempotênci
 
 ### 3.2 Contrato HTTP v1 aprovado
 
-O contrato normativo completo, incluindo validação e seis exemplos, está em
+O contrato normativo completo, incluindo validação e sete exemplos, está em
 [`EVENT_CONTRACT_V1.md`](EVENT_CONTRACT_V1.md). Em caso de divergência com o desenho
 preliminar deste handoff, o contrato oficial prevalece.
 
@@ -471,11 +471,11 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 ### Etapa 0 — Decisão e contrato
 
 - [x] Fechar o contrato v1, tabela de mapeamento, dados sensíveis, limites e autenticação.
-- [ ] Criar ADR no SIEM.
-- [ ] Criar schemas executáveis e fixtures de contrato compartilháveis, sem pacote de
+- [x] Criar o ADR-010 no SIEM.
+- [x] Criar schema Pydantic executável e fixtures de contrato compartilháveis, sem pacote de
   runtime compartilhado.
 
-**Saída:** contrato versionado e testes de contrato inicialmente vermelhos.
+**Saída:** golden contract versionado e validado por 85 testes automatizados.
 
 ### Etapa 1 — Conectar FIM ao domínio local do Shield
 
@@ -565,6 +565,7 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 
 - `src/edysiem/domain/pipeline.py`
 - `src/edysiem/api/schemas.py`
+- `src/edysiem/api/ingestion_schemas.py`
 - `src/edysiem/api/routes/pipeline.py`
 - `src/edysiem/api/routes/soc.py`
 - `src/edysiem/api/security.py`
@@ -580,6 +581,10 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 - `tests/test_soc_api.py`
 - `tests/test_soc_pipeline.py`
 - `tests/test_persistence_engine.py`
+- `tests/test_shield_event_contract_v1.py`
+- `tests/fixtures/shield_events/v1/valid/`
+- `tests/fixtures/shield_events/v1/invalid/`
+- `docs/architecture/adr/ADR-010-shield-siem-event-integration.md`
 
 ## 9. Decisões tomadas nesta etapa
 
@@ -602,11 +607,15 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 15. A autenticação v1 usa token scoped em variáveis de ambiente; a rota não confia em
     `X-EDY-Role` e HTTP é permitido somente em loopback/laboratório explícito.
 16. Timeout é 2 s para conexão e 5 s total; retry usa full jitter com teto de 5 minutos.
+17. A Etapa 0 usa golden contract: documentação, modelo Pydantic, sete fixtures válidas,
+    oito inválidas e testes precisam permanecer equivalentes.
+18. O cenário de baseline v1 é `shield.fim.baseline.created`; não existe
+    `baseline_changed` no enum aprovado.
 
 ## 10. Pendências
 
-- Transformar as decisões em ADR antes de alterar contratos/código.
-- Materializar schemas Pydantic/JSON Schema e as seis fixtures a partir do contrato.
+- Implementar receptor/inbox v1 no SIEM usando o schema já congelado.
+- Criar autenticação scoped e idempotência de batch/evento na borda do receptor.
 - Escolher política inicial de auto-case e regras MITRE para FIM.
 - Definir o mecanismo de cadastro/rotação de tokens por instalação além do laboratório.
 - Confirmar a URL de implantação; fora de loopback, TLS é obrigatório.
@@ -614,10 +623,11 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 
 ## 11. Próximo passo exato
 
-Concluir a **Etapa 0** no EDY SIEM: criar o ADR e transformar
-`EVENT_CONTRACT_V1.md` nas seis fixtures JSON e em testes de contrato inicialmente
-vermelhos, ainda sem implementar transporte. Depois, no Shield, escrever os testes de
-mapeamento `FimDiff → TelemetryEventV1` antes da primeira alteração funcional.
+Iniciar a **Etapa 3 — receptor EDY SIEM**: criar migração/repository da durable inbox,
+autenticação M2M scoped e a rota
+`POST /api/v1/ingestion/sources/edy-shield/events`, reutilizando
+`src/edysiem/api/ingestion_schemas.py`. A rota deve persistir antes do `202` e implementar
+idempotência por batch/evento. Ainda não criar transporte, outbox ou worker no Shield.
 
 ## 12. Estado do contrato v1
 
@@ -625,6 +635,9 @@ mapeamento `FimDiff → TelemetryEventV1` antes da primeira alteração funciona
 - Endpoint, resposta parcial por item e códigos HTTP: definidos.
 - Autenticação M2M sem secrets no código: definida.
 - Idempotência, timeout, retry, backoff e outbox offline: definidos.
-- Exemplos reais para modificação, hash divergente, inclusão, remoção, scan e alerta
-  crítico: documentados em `EVENT_CONTRACT_V1.md`.
-- Nenhum código funcional foi alterado nesta etapa.
+- Sete exemplos reais para inclusão, modificação, remoção, hash divergente, baseline,
+  scan e alerta crítico: documentados e congelados como fixtures.
+- ADR-010, modelo Pydantic e testes de contrato: concluídos.
+- Validação: 85 testes focados (97,00% do modelo); suíte completa 886 testes, 95,17%;
+  MyPy e Ruff aprovados.
+- Nenhum endpoint, transporte, outbox, worker ou frontend foi implementado nesta etapa.

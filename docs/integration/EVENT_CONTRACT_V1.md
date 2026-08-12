@@ -89,7 +89,7 @@ somente `1.0` é aceita.
 
 | Campo | Tipo | Obrigatório | Validação |
 |---|---|---:|---|
-| `event_id` | string UUID v4 | sim | Gerado uma vez no Shield e preservado em todos os retries |
+| `event_id` | string UUID v4 | sim | Forma canônica minúscula; gerado uma vez e preservado em todos os retries |
 | `schema_version` | string | sim | Exatamente `1.0` nesta versão |
 | `timestamp` | string | sim | RFC 3339, UTC, terminado em `Z` |
 | `sequence` | inteiro | sim | `>= 1`, monotônico por `source.instance_id`; gaps são permitidos |
@@ -109,7 +109,7 @@ da validação somente no produtor; o SIEM não deve corrigir silenciosamente pa
 |---|---|---:|---|
 | `product` | string constante | sim | `edy-shield` |
 | `product_version` | string | sim | SemVer, máximo 32 caracteres |
-| `instance_id` | string UUID | sim | Criado na instalação e persistente entre reinícios |
+| `instance_id` | string UUID | sim | Forma canônica minúscula; criado na instalação e persistente entre reinícios |
 | `component` | enum | sim | `fim`, `hash_checker`, `scanner` ou `alert_engine` |
 
 O `instance_id` muda apenas após reinstalação/reset explícito. Hostname não identifica o
@@ -141,7 +141,8 @@ produtor porque pode mudar ou se repetir em redes diferentes.
 
 O SIEM aceita hashes MD5/SHA-1 para representar telemetria legada, mas não os considera
 prova criptográfica forte. O Shield deve preferir SHA-256. Paths devem ser relativos à
-raiz monitorada: não exportar nome de usuário ou raiz local quando isso não for necessário.
+raiz monitorada, usar `/` como separador e não conter drive, raiz, segmento vazio, `.` ou
+`..`: não exportar nome de usuário ou raiz local quando isso não for necessário.
 
 ### 3.5 `metadata`
 
@@ -206,6 +207,7 @@ pode recalcular a severidade analítica após enriquecimento e correlação.
 
 Regras gerais:
 
+- UUIDs usam a representação canônica minúscula com hífens.
 - `previous_hash` e `current_hash` usam hex minúsculo.
 - Hashes têm 32/40/64/128 caracteres para MD5/SHA-1/SHA-256/SHA-512.
 - Para alteração, os hashes anterior e atual não podem ser iguais.
@@ -240,6 +242,8 @@ Regras gerais:
 
 Compressão HTTP não faz parte de v1. Conteúdo de arquivo, stack trace integral e binários
 devem ser armazenados localmente ou em um mecanismo futuro de artefatos, nunca embutidos.
+Números em extensões devem ser valores JSON finitos; `NaN`, `Infinity` e `-Infinity` são
+inválidos.
 
 ## 9. Endpoint de ingestão v1
 
@@ -479,6 +483,27 @@ Os exemplos abaixo são objetos de evento; em transporte, devem ser inseridos no
 }
 ```
 
+### 13.7 Baseline criada
+
+O contrato v1 não define `baseline_changed`: uma nova referência persistida é representada
+por `shield.fim.baseline.created`; mudanças posteriores aparecem nos eventos de arquivo e
+no resumo do scan.
+
+```json
+{
+  "event_id": "d0a4c738-91c7-44f2-a568-81f02473ab07",
+  "schema_version": "1.0",
+  "timestamp": "2026-08-11T18:40:00.000Z",
+  "sequence": 183,
+  "source": {"product": "edy-shield", "product_version": "2.2.0", "instance_id": "9df3e3b7-f905-49f8-b6a7-3da64227e3d1", "component": "fim"},
+  "event_type": "shield.fim.baseline.created",
+  "severity": "info",
+  "asset": {"asset_id": "shield:9df3e3b7-f905-49f8-b6a7-3da64227e3d1:ws-fin-01", "hostname": "ws-fin-01", "ip": "192.168.10.25", "os": "Windows 11 Pro 24H2"},
+  "evidence": {"hash_algorithm": "sha256", "baseline_id": "fim-sha256-20260811-001", "baseline_status": "created", "details": {"file_count": 1243, "monitored_root": "system-critical-files"}},
+  "metadata": {"correlation_id": "baseline-fim-sha256-20260811-001", "tags": ["fim", "baseline"]}
+}
+```
+
 ## 14. Versionamento e compatibilidade
 
 - Formato: `MAJOR.MINOR`; não há patch de schema.
@@ -503,7 +528,8 @@ Os exemplos abaixo são objetos de evento; em transporte, devem ser inseridos no
 - `src/edysiem/persistence/schema.py` — tabelas de inbox/batches.
 - `src/edysiem/parsers/edy_shield.py` — parser do contrato.
 - `src/edysiem/normalization/registry.py` — registro do normalizer Shield.
-- `tests/contract/` e `tests/fixtures/edy_shield_v1/` — contrato e seis fixtures.
+- `tests/test_shield_event_contract_v1.py` e `tests/fixtures/shield_events/v1/` — contrato
+  e sete fixtures válidas, além das rejeições representativas.
 
 ### EDY Shield
 
@@ -518,7 +544,7 @@ contrato externo definido neste documento.
 
 ## 16. Testes planejados
 
-1. Seis fixtures válidas aceitas por produtor e consumidor.
+1. Sete fixtures válidas aceitas pelo modelo do consumidor.
 2. Campos obrigatórios ausentes, extras proibidos e `null` rejeitados.
 3. Todos os enums, UUIDs, IPs, timestamps, SemVer e comprimentos de hash.
 4. Regras condicionais por `event_type` e paths/tags nos limites.
@@ -531,5 +557,5 @@ contrato externo definido neste documento.
 11. Parser/normalizer preserva raw e produz `CanonicalEvent` para todos os tipos.
 12. Regressão completa de Shield e SIEM sem conexão entre seus bancos.
 
-O próximo passo é criar o ADR e os testes/fixtures de contrato no SIEM; somente depois
-iniciar schemas e transporte.
+O próximo passo, depois de congelar ADR/modelo/fixtures/testes, é implementar somente o
+receptor e a inbox da API v1 no SIEM. Transporte e outbox do Shield permanecem posteriores.

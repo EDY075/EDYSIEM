@@ -1,0 +1,12 @@
+{
+  "event_id": "8b5fd2e3-4c72-4fad-9013-3cab7f2e5602",
+  "schema_version": "1.0",
+  "timestamp": "2026-08-11T18:43:00.000Z",
+  "sequence": 185,
+  "source": {"product": "edy-shield", "product_version": "2.2.0", "instance_id": "9df3e3b7-f905-49f8-b6a7-3da64227e3d1", "component": "hash_checker"},
+  "event_type": "shield.hash.mismatch",
+  "severity": "critical",
+  "asset": {"asset_id": "shield:9df3e3b7-f905-49f8-b6a7-3da64227e3d1:ws-fin-01", "hostname": "ws-fin-01", "ip": "192.168.10.25", "os": "Windows 11 Pro 24H2"},
+  "evidence": {"file_path": "Program Files/EDY/app/agent.exe", "hash_algorithm": "sha256", "previous_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "current_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "baseline_status": "not_applicable", "details": {"verification_source": "manual_hash_check"}},
+  "metadata": {"correlation_id": "hash-check-20260811-004", "tags": ["hash", "integrity", "mismatch"]}
+}

@@ -2,41 +2,60 @@
 
 ## Estado
 
-- Análise arquitetural e contrato oficial v1 concluídos em 2026-08-11.
-- Branch documental do SIEM: `codex/shield-siem-integration-architecture`.
-- EDY SIEM base: `e929982`, v0.2.0; EDY Shield: `5fd63bb`, v2.2.0.
-- Nenhum código funcional foi alterado.
-- Documentos obrigatórios:
-  - `docs/integration/SHIELD_SIEM_HANDOFF.md`
-  - `docs/integration/EVENT_CONTRACT_V1.md`
+- Etapa de golden contract concluída em 2026-08-11.
+- Branch: `codex/shield-siem-integration-architecture`.
+- Base anterior desta etapa: `8fc98ed`.
+- EDY SIEM v0.2.0; EDY Shield v2.2.0/`5fd63bb`.
+- Não foram criados endpoint, transporte, outbox, worker ou frontend.
 
-## Contrato fechado
+## Arquitetura vigente
 
-- Endpoint: `POST /api/v1/ingestion/sources/edy-shield/events`.
-- Envelope: `batch_id`, `sent_at`, `events`; 1–100 eventos e máximo 1 MiB.
-- Evento v1: `event_id`, `schema_version=1.0`, `timestamp`, `sequence`, `source`,
-  `event_type`, `severity`, `asset`, `evidence`, `metadata`.
-- Idempotência: `(source.instance_id, event_id)`; `Idempotency-Key = batch_id`.
-- Auth: Bearer token scoped via `EDY_SIEM_TOKEN`/`EDYSIEM_SHIELD_INGEST_TOKEN`, sem
-  secrets no código e sem confiar em `X-EDY-Role`.
-- Transporte: timeout 2 s/5 s, at-least-once, full-jitter até 5 min, outbox persistente;
-  SIEM persiste inbox antes do `202`.
-- Opcionais são omitidos; `null` e campos raiz desconhecidos são rejeitados.
-- SIEM decide alertas, incidentes e casos. Bancos continuam separados.
+- Shield é local-first e continua funcional com SIEM offline.
+- Bancos e módulos de runtime permanecem separados.
+- Futuro envio HTTPS em batch usa outbox no Shield e inbox durável/idempotente no SIEM.
+- Chave do evento: `(source.instance_id, event_id)`; lote usa
+  `Idempotency-Key = batch_id`.
+- Auth M2M: Bearer token scoped em variáveis de ambiente; não confiar em `X-EDY-Role`.
+- SIEM normaliza e decide alertas, incidentes e casos.
+- WAR_ROOM continua fonte futura independente de threat intelligence/enrichment.
 
-## Lacunas atuais
+## Contrato v1 congelado
 
-- Shield ainda não converte `ScanResult`/`FimDiff` em telemetria nem possui outbox.
-- SIEM ainda não possui rota, inbox, parser ou normalizer `edy_shield`.
-- O fluxo real ainda não cria incidente/caso fora de `run_demo`.
+- Documento: `docs/integration/EVENT_CONTRACT_V1.md`.
+- ADR: `docs/architecture/adr/ADR-010-shield-siem-event-integration.md`.
+- Modelo: `src/edysiem/api/ingestion_schemas.py`.
+- Fixtures: `tests/fixtures/shield_events/v1/valid/` e `invalid/`.
+- Testes: `tests/test_shield_event_contract_v1.py`.
+- Sete cenários válidos: `file_created`, `file_modified`, `file_deleted`, `hash_changed`,
+  `baseline_created`, `scan_completed`, `critical_security_alert`.
+- O enum v1 possui `shield.fim.baseline.created`; `baseline_changed` não existe.
+- Oito fixtures inválidas cobrem campos ausentes, versão/timestamp/enums inválidos,
+  asset incompleto, campo raiz extra e `null` explícito.
 
-## Próxima ação exata
+## Validação concluída
 
-1. Criar ADR no EDY SIEM formalizando contrato, outbox/inbox e segurança.
-2. Copiar os seis exemplos do contrato para fixtures e criar testes de contrato
-   inicialmente vermelhos, sem transporte.
-3. Só depois criar schemas/rota/inbox no SIEM.
-4. No Shield, começar por testes `FimDiff → TelemetryEventV1`.
+- Contrato focado: 85 testes aprovados; cobertura do modelo 97,00%.
+- Suíte completa: 886 testes aprovados, 95,17% de cobertura e 2 warnings de depreciação
+  preexistentes de Starlette/FastAPI.
+- MyPy: sucesso em 148 arquivos.
+- Ruff: sem achados.
+- Golden check: documentação ↔ sete fixtures ↔ modelo Pydantic aprovado.
 
-Não usar o banco do outro projeto, não importar módulos entre repositórios e não expor
-`/soc/pipeline/run` como contrato externo.
+## Git
+
+- Branch: `codex/shield-siem-integration-architecture`.
+- Commit principal desta etapa: pendente de criação após a revisão final do diff.
+
+## Próximo passo exato
+
+Implementar o receptor/ingestion API v1 no EDY SIEM:
+
+1. Criar migração e repository para `ingestion_batches`/`ingestion_inbox`.
+2. Criar autenticação M2M scoped específica para o Shield.
+3. Criar `POST /api/v1/ingestion/sources/edy-shield/events` usando o modelo congelado.
+4. Persistir itens válidos antes de responder `202` e aplicar idempotência de
+   batch/evento, com resultados `accepted`, `duplicate` e `rejected`.
+5. Testar auth, persistência, duplicação, conflito, lote misto, limites e `503`.
+
+Pare antes de implementar transporte HTTP/outbox/worker no Shield ou qualquer frontend.
+Não usar banco compartilhado nem expor `/soc/pipeline/run` como contrato externo.
