@@ -232,3 +232,49 @@ Validação:
 **Sprint B2 — Decision Queue, SLA & Ownership**
 
 Não iniciar Sprint B2 sem novo prompt. Não fazer merge em main.
+
+## Sprint B2 — Decision Queue, SLA & Ownership: COMPLETE (2026-08-12)
+
+A Home mantém o SOC Decision Center da B1, mas a Decision Queue agora funciona como
+fila operacional compacta, filtrável e determinística.
+
+- Itens exibem severidade, título, source, ativo, evidência, owner, SLA, estado e CTA
+  contextual sem usar cards grandes.
+- Ordem: critical, high, SLA vencido, SLA próximo, sem responsável e demais; empates usam
+  deadline real, severidade, ownership, data e ID, sem score inventado.
+- SLA usa o deadline persistido para mostrar tempo restante ou atraso. Ausência real é
+  diferenciada como `Sem SLA` ou `caso não aberto`.
+- Filtros compactos: severidade, source, SLA, responsável e estado; estado sem resultado
+  não é confundido com fila vazia.
+- `Assumir` reutiliza a API de incidentes, bloqueia reentrada/duplo POST, mostra loading,
+  sucesso e erro e reconcilia a UI após refetch.
+- Eventos EDY Shield mantêm arquivo, hash, baseline, ativo e o deep link do mesmo
+  `event_id`; investigação, casos e MITRE não foram alterados.
+- Hooks preservam dados anteriores durante falhas transitórias; recarga sem dados e API
+  offline mostra `Fila temporariamente indisponível`, enquanto backend saudável sem itens
+  mostra `Fila de decisão vazia`.
+- Listagens SOC aceitam `limit` validado entre 1 e 100, mantendo o contrato existente.
+
+Validação:
+
+- 28 testes focados aprovados.
+- 935 testes completos aprovados; cobertura global 95,09%.
+- Ruff, MyPy (152 arquivos), Vite build, wheel/sdist e `git diff --check`: PASS.
+- Segurança: strings de título, asset, path e evidência continuam como texto React; zero
+  `innerHTML`/`dangerouslySetInnerHTML`; POST de ownership possui trava em memória.
+- Google Chrome externo: 1920x1080, 1366x768 e 820x900; filtros, combinação vazia,
+  fila vazia real, API offline, dados preservados, SLA vencido/próximo, ownership e deep
+  link Shield exercitados.
+- Console final: zero erros/warnings após o carregamento. O warning preexistente do React
+  Router e uma mensagem da extensão ocorreram antes do marco da revisão final.
+- Network/proxy final: health, metrics, incidents, alerts e Shield list retornaram HTTP 200.
+- Screenshots finais: `outputs/sprint-b2-decision-queue/08-final-home-1920x1080.jpg`,
+  `09-final-home-1366x768.jpg` e `10-final-home-820x900.jpg` no workspace da sessão.
+- Branch: `codex/shield-siem-integration-architecture`; commit funcional identificado pela
+  mensagem `feat(ui): refine decision queue operations`.
+
+## Próximo passo EXATO
+
+**Sprint B3 — Ingestion Health & Sprint B Closure**
+
+Não iniciar Sprint B3 sem novo prompt. Não fazer merge em main.

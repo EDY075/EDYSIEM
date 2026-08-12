@@ -70,11 +70,9 @@ export function useAlerts(limit: number = 50) {
         setAlerts(items);
       } else {
         setError(response.error?.message || "Falha ao carregar alertas");
-        setAlerts([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar alertas");
-      setAlerts([]);
     } finally {
       setLoading(false);
     }

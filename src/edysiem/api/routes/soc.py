@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...alerts import Alert
 from ...cases import Case, CaseEvidenceKind
@@ -99,11 +99,16 @@ def _service(container: ApplicationContainer) -> SocService:
 
 
 @router.get("/soc/alerts", summary="Lista alertas persistidos")
-def list_alerts(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+def list_alerts(
+    limit: int = Query(default=50, ge=1, le=100),
+    container: ApplicationContainer = Depends(get_container),
+) -> dict[str, Any]:
     svc = _service(container)
     return {
         "total": len(svc.list_alerts(limit=10000)),
-        "items": [{**_a(a), "sla": asdict(svc.sla_of(a))} for a in svc.list_alerts(limit=100)],
+        "items": [
+            {**_a(a), "sla": asdict(svc.sla_of(a))} for a in svc.list_alerts(limit=limit)
+        ],
     }
 
 
@@ -122,11 +127,17 @@ def get_alert(
 
 
 @router.get("/soc/incidents", summary="Lista incidentes persistidos")
-def list_incidents(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+def list_incidents(
+    limit: int = Query(default=50, ge=1, le=100),
+    container: ApplicationContainer = Depends(get_container),
+) -> dict[str, Any]:
     svc = _service(container)
     return {
         "total": len(svc.list_incidents(limit=10000)),
-        "items": [{**_i(i), "sla": asdict(svc.sla_of(i))} for i in svc.list_incidents(limit=100)],
+        "items": [
+            {**_i(i), "sla": asdict(svc.sla_of(i))}
+            for i in svc.list_incidents(limit=limit)
+        ],
     }
 
 

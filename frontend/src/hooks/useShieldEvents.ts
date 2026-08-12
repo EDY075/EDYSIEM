@@ -49,11 +49,9 @@ export function useShieldEvents(limit = 20) {
       if (response.success && response.data) {
         setEvents(response.data.items ?? []);
       } else {
-        setEvents([]);
         setError(response.error?.message || "Falha ao carregar eventos do EDY Shield");
       }
     } catch (err) {
-      setEvents([]);
       setError(err instanceof Error ? err.message : "Falha ao carregar eventos do EDY Shield");
     } finally {
       setLoading(false);

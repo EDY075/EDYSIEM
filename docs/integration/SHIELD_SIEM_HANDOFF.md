@@ -810,3 +810,43 @@ investigação, MITRE, casos e APIs existentes.
 
 **Sprint B2 — Decision Queue, SLA & Ownership**. Não iniciar sem novo prompt; não fazer
 merge em main.
+
+## HANDOFF — Sprint B2 concluída (2026-08-12)
+
+### Contexto
+
+A Decision Queue da Home foi aprofundada como fila SOC operacional, preservando a
+investigação Shield, casos, MITRE, deep links e APIs existentes.
+
+### Artefatos
+
+- `frontend/src/pages/DashboardOverview.tsx`: fila densa, prioridade determinística,
+  filtros, SLA relativo, estado, ownership e CTAs contextuais.
+- `frontend/src/hooks/useAlerts.ts`, `useIncidents.ts`, `useMetrics.ts` e
+  `useShieldEvents.ts`: retenção segura do último dado carregado durante erro transitório.
+- `src/edysiem/api/routes/soc.py`: `limit` validado para alertas e incidentes.
+- `tests/test_soc_api.py`: limites da janela operacional e rejeição 422.
+- Screenshots finais em `outputs/sprint-b2-decision-queue/` no workspace da sessão.
+
+### Decisões
+
+- A fila consulta até 100 itens por fonte e declara essa janela na UI; não há corte oculto
+  em 10 itens nem score novo.
+- Critical/high permanecem antes de SLA; deadline, owner, data e ID resolvem empates.
+- `Assumir` continua restrito a incidentes porque essa é a ação real existente; eventos
+  Shield abrem a investigação exata e ownership de caso permanece no sistema de casos.
+- Erro total não é apresentado como fila vazia; erro parcial preserva dados anteriores e
+  os marca como potencialmente desatualizados.
+
+### Quality Gate
+
+- 28 testes focados e 935 completos; cobertura 95,09%.
+- Ruff, MyPy, Vite, build backend e diff-check aprovados.
+- Chrome externo validado em 1920x1080, 1366x768 e 820x900, com console final sem erro
+  novo e endpoints da Home respondendo HTTP 200 pelo proxy.
+
+### Próximo passo
+
+**Sprint B3 — Ingestion Health & Sprint B Closure**
+
+Não iniciar automaticamente e não fazer merge em main.

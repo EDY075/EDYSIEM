@@ -74,11 +74,9 @@ export function useMetrics(_timeRange: string = "1h") {
         setLastUpdated(new Date());
       } else {
         setError(response.error?.message || "Falha ao carregar métricas");
-        setMetrics(EMPTY);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar métricas");
-      setMetrics(EMPTY);
     } finally {
       setLoading(false);
     }

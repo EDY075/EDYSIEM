@@ -1,5 +1,5 @@
 /** SOC Decision Center — a single, evidence-led queue built only from real APIs. */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { SeverityBadge } from "../design-system/components/badges";
@@ -18,10 +18,28 @@ type QueueItem = {
   asset: string;
   evidence: string;
   owner: string;
+  status: string;
   sla?: SlaSnapshotDto;
   createdAt: string;
   action: "assume" | "investigate" | "review";
 };
+
+type QueueFilters = {
+  severity: "all" | Severity;
+  source: "all" | QueueItem["kind"];
+  sla: "all" | "overdue" | "warning" | "ok" | "none";
+  ownership: "all" | "assigned" | "unassigned";
+  status: string;
+};
+
+const defaultFilters: QueueFilters = {
+  severity: "all",
+  source: "all",
+  sla: "all",
+  ownership: "all",
+  status: "all",
+};
+const CURRENT_ANALYST = "analista.soc";
 
 const severityOrder: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 const severityLabel: Record<Severity, string> = { critical: "Crítico", high: "Alto", medium: "Médio", low: "Baixo", info: "Informativo" };
@@ -55,13 +73,87 @@ function slaRank(sla?: SlaSnapshotDto) {
   return 2;
 }
 
+function priorityBand(item: QueueItem) {
+  if (item.severity === "critical") return 0;
+  if (item.severity === "high") return 1;
+  if (item.sla?.state === "overdue" || item.sla?.state === "missed") return 2;
+  if (item.sla?.state === "warning") return 3;
+  if (!item.owner) return 4;
+  return 5;
+}
+
+function deadlineTime(sla?: SlaSnapshotDto) {
+  if (!sla?.deadline) return Number.POSITIVE_INFINITY;
+  const value = new Date(sla.deadline).getTime();
+  return Number.isNaN(value) ? Number.POSITIVE_INFINITY : value;
+}
+
+function compareQueueItems(a: QueueItem, b: QueueItem) {
+  return priorityBand(a) - priorityBand(b)
+    || slaRank(a.sla) - slaRank(b.sla)
+    || deadlineTime(a.sla) - deadlineTime(b.sla)
+    || severityOrder[a.severity] - severityOrder[b.severity]
+    || Number(Boolean(a.owner)) - Number(Boolean(b.owner))
+    || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    || a.id.localeCompare(b.id);
+}
+
+function durationLabel(milliseconds: number) {
+  const totalMinutes = Math.max(0, Math.floor(Math.abs(milliseconds) / 60000));
+  if (totalMinutes < 1) return "menos de 1 min";
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  if (days) return `${days}d ${hours}h`;
+  if (hours) return `${hours}h ${minutes}min`;
+  return `${minutes}min`;
+}
+
 function slaPresentation(item: QueueItem) {
-  if (!item.sla) return { label: item.kind === "shield" ? "SLA inicia no caso" : "SLA não informado", tone: "neutral" };
-  const deadline = formatDeadline(item.sla.deadline);
-  if (item.sla.state === "overdue" || item.sla.state === "missed") return { label: `SLA vencido${deadline ? ` · ${deadline}` : ""}`, tone: "danger" };
-  if (item.sla.state === "warning") return { label: `Próximo do SLA${deadline ? ` · ${deadline}` : ""}`, tone: "warning" };
-  if (item.sla.state === "met") return { label: "SLA atendido", tone: "ok" };
-  return { label: `Dentro do prazo${deadline ? ` · ${deadline}` : ""}`, tone: "ok" };
+  if (!item.sla) return {
+    label: item.kind === "shield" && !item.owner ? "Sem SLA · caso não aberto" : "Sem SLA informado",
+    detail: "",
+    tone: "neutral",
+  };
+  const deadline = deadlineTime(item.sla);
+  const relative = Number.isFinite(deadline) ? durationLabel(deadline - Date.now()) : "";
+  if (item.sla.state === "overdue" || item.sla.state === "missed") return {
+    label: relative ? `Vencido há ${relative}` : "SLA vencido",
+    detail: formatDeadline(item.sla.deadline),
+    tone: "danger",
+  };
+  if (item.sla.state === "warning") return {
+    label: relative ? `Vence em ${relative}` : "Próximo do SLA",
+    detail: formatDeadline(item.sla.deadline),
+    tone: "warning",
+  };
+  if (item.sla.state === "met") return { label: "SLA atendido", detail: "", tone: "ok" };
+  return {
+    label: relative ? `${relative} restantes` : "Dentro do prazo",
+    detail: formatDeadline(item.sla.deadline),
+    tone: "ok",
+  };
+}
+
+function statusLabel(value: string) {
+  return ({
+    open: "Aberto",
+    in_progress: "Em investigação",
+    acknowledged: "Reconhecido",
+    pending: "Pendente",
+    processed: "Processado",
+    delivered: "Entregue",
+    resolved: "Resolvido",
+    closed: "Encerrado",
+    reopened: "Reaberto",
+  } as Record<string, string>)[value] || value.replace(/_/g, " ");
+}
+
+function slaFilterState(item: QueueItem): QueueFilters["sla"] {
+  if (!item.sla) return "none";
+  if (item.sla.state === "overdue" || item.sla.state === "missed") return "overdue";
+  if (item.sla.state === "warning") return "warning";
+  return "ok";
 }
 
 function incidentEvidence(incident: Incident) {
@@ -89,15 +181,19 @@ function alertEvidence(alert: RecentAlert) {
 
 export function DashboardOverview() {
   const navigate = useNavigate();
-  const { incidents, loading: incidentsLoading, error: incidentsError, refetch: refetchIncidents } = useIncidents(50);
-  const { alerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(50);
-  const { events: shieldEvents, loading: shieldLoading, error: shieldError, refetch: refetchShield } = useShieldEvents(20);
+  const { incidents, loading: incidentsLoading, error: incidentsError, refetch: refetchIncidents } = useIncidents(100);
+  const { alerts, loading: alertsLoading, error: alertsError, refetch: refetchAlerts } = useAlerts(100);
+  const { events: shieldEvents, loading: shieldLoading, error: shieldError, refetch: refetchShield } = useShieldEvents(100);
   const { health, loading: healthLoading, error: healthError, refetch: refetchHealth } = useHealth();
   const { metrics, loading: metricsLoading, error: metricsError, refetch: refetchMetrics } = useMetrics();
   const [assuming, setAssuming] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [ownerOverrides, setOwnerOverrides] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<QueueFilters>(defaultFilters);
+  const assignmentsInFlight = useRef(new Set<string>());
 
-  const fallbackAlerts = incidents.length === 0 && shieldEvents.length === 0;
+  const fallbackAlerts = !incidentsError && !shieldError && incidents.length === 0 && shieldEvents.length === 0;
   const queue = useMemo<QueueItem[]>(() => {
     const items: QueueItem[] = incidents
       .filter((incident) => !["resolved", "closed"].includes(incident.status))
@@ -109,7 +205,8 @@ export function DashboardOverview() {
         source: "Correlação EDY SIEM",
         asset: incident.assets.length ? incident.assets.join(", ") : "Ativo não informado",
         evidence: incidentEvidence(incident),
-        owner: incident.owner || "",
+        owner: ownerOverrides[incident.id] || incident.owner || "",
+        status: incident.status,
         sla: incident.sla,
         createdAt: incident.created_at,
         action: incident.owner ? "investigate" : "assume",
@@ -123,6 +220,7 @@ export function DashboardOverview() {
       asset: event.asset.hostname || event.asset.asset_id || "Ativo não informado",
       evidence: shieldEvidence(event),
       owner: event.case?.owner || "",
+      status: event.case?.status || event.processing_status,
       sla: event.case?.sla,
       createdAt: event.timestamp,
       action: "review",
@@ -136,12 +234,28 @@ export function DashboardOverview() {
       asset: alert.host && alert.host !== "detection" ? alert.host : "Ativo não informado",
       evidence: alertEvidence(alert),
       owner: "",
+      status: alert.status,
       sla: alert.sla,
       createdAt: alert.firstSeen,
       action: "investigate",
     }));
-    return items.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity] || slaRank(a.sla) - slaRank(b.sla) || Number(Boolean(a.owner)) - Number(Boolean(b.owner)) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
-  }, [alerts, fallbackAlerts, incidents, shieldEvents]);
+    return items.sort(compareQueueItems);
+  }, [alerts, fallbackAlerts, incidents, ownerOverrides, shieldEvents]);
+
+  const statusOptions = useMemo(
+    () => [...new Set(queue.map((item) => item.status))].sort((a, b) => statusLabel(a).localeCompare(statusLabel(b), "pt-BR")),
+    [queue],
+  );
+  const visibleQueue = useMemo(() => queue.filter((item) => {
+    if (filters.severity !== "all" && item.severity !== filters.severity) return false;
+    if (filters.source !== "all" && item.kind !== filters.source) return false;
+    if (filters.sla !== "all" && slaFilterState(item) !== filters.sla) return false;
+    if (filters.ownership === "assigned" && !item.owner) return false;
+    if (filters.ownership === "unassigned" && item.owner) return false;
+    if (filters.status !== "all" && item.status !== filters.status) return false;
+    return true;
+  }), [filters, queue]);
+  const activeFilterCount = Object.entries(filters).filter(([, value]) => value !== "all").length;
 
   const loading = incidentsLoading || alertsLoading || shieldLoading || healthLoading || metricsLoading;
   const dataError = incidentsError || alertsError || shieldError || healthError || metricsError;
@@ -158,11 +272,26 @@ export function DashboardOverview() {
     else navigate("/alerts");
   };
   const assume = async (item: QueueItem) => {
-    setAssuming(item.id); setActionError(null);
-    const response = await apiClient.post(`/soc/incidents/${encodeURIComponent(item.id)}/assign?analyst=analista.soc`);
-    if (response.success) refetchIncidents();
-    else setActionError("Não foi possível assumir o incidente. Tente novamente.");
-    setAssuming(null);
+    if (item.kind !== "incident" || assignmentsInFlight.current.has(item.id)) return;
+    assignmentsInFlight.current.add(item.id);
+    setAssuming(item.id);
+    setActionError(null);
+    setActionNotice(null);
+    try {
+      const response = await apiClient.post(`/soc/incidents/${encodeURIComponent(item.id)}/assign?analyst=${encodeURIComponent(CURRENT_ANALYST)}`);
+      if (response.success) {
+        setOwnerOverrides((current) => ({ ...current, [item.id]: CURRENT_ANALYST }));
+        setActionNotice(`Incidente atribuído a ${CURRENT_ANALYST}.`);
+        await refetchIncidents();
+      } else {
+        setActionError("Não foi possível assumir o incidente. A atribuição não foi alterada.");
+      }
+    } catch {
+      setActionError("Não foi possível assumir o incidente. A atribuição não foi alterada.");
+    } finally {
+      assignmentsInFlight.current.delete(item.id);
+      setAssuming(null);
+    }
   };
 
   return <div className="decision-center" aria-busy={loading}>
@@ -176,22 +305,25 @@ export function DashboardOverview() {
       .decision-refresh{padding:8px 12px}.decision-refresh:hover,.decision-action:hover{border-color:var(--color-accent);color:var(--color-accent-hover)}
       .decision-health{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;padding:13px 16px;border:1px solid var(--color-border);border-left:3px solid var(--status-online);border-radius:9px;background:linear-gradient(90deg,color-mix(in srgb,var(--status-online) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}
       .decision-health-main{display:flex;align-items:flex-start;gap:10px}.decision-health-dot{width:8px;height:8px;margin-top:5px;border-radius:50%;background:var(--status-online);box-shadow:0 0 0 3px color-mix(in srgb,var(--status-online) 12%,transparent);flex:none}
+      .decision-health[data-state='degraded']{border-left-color:var(--severity-medium);background:linear-gradient(90deg,color-mix(in srgb,var(--severity-medium) 6%,var(--color-surface)) 0%,var(--color-surface) 55%)}.decision-health[data-state='degraded'] .decision-health-dot{background:var(--severity-medium);box-shadow:0 0 0 3px color-mix(in srgb,var(--severity-medium) 12%,transparent)}
       .decision-health strong{display:block;color:var(--color-text-primary);font-size:13px}.decision-health p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px;line-height:1.45}
       .decision-health-meta{text-align:right;color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;line-height:1.6}
       .decision-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--color-border);border-radius:9px;background:var(--color-surface);overflow:hidden}
       .decision-signal{padding:13px 16px;border-right:1px solid var(--color-border-subtle)}.decision-signal:last-child{border-right:0}.decision-signal strong{display:block;color:var(--color-text-primary);font:700 22px 'JetBrains Mono',monospace}.decision-signal span{display:block;margin-top:3px;color:var(--color-text-muted);font-size:11px}
       .decision-queue{overflow:hidden;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface)}
-      .decision-queue-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:15px 17px;border-bottom:1px solid var(--color-border)}.decision-queue-head h2{margin:0;color:var(--color-text-primary);font-size:16px}.decision-queue-head p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px}.decision-queue-count{color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;white-space:nowrap}
-      .decision-row{display:grid;grid-template-columns:minmax(250px,1.35fr) minmax(145px,.65fr) minmax(210px,1fr) minmax(135px,.65fr) minmax(150px,.72fr) 150px;gap:14px;align-items:center;min-height:96px;padding:14px 17px;border-bottom:1px solid var(--color-border-subtle);position:relative}.decision-row:last-child{border-bottom:0}.decision-row::before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:2px;background:var(--row-tone)}
+      .decision-queue-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:14px 17px 11px}.decision-queue-head h2{margin:0;color:var(--color-text-primary);font-size:16px}.decision-queue-head p{margin:3px 0 0;color:var(--color-text-muted);font-size:11px}.decision-queue-count{color:var(--color-text-muted);font:10px 'JetBrains Mono',monospace;white-space:nowrap}
+      .decision-filters{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr)) auto;gap:8px;padding:0 17px 13px;border-bottom:1px solid var(--color-border);align-items:end}.decision-filter{display:flex;flex-direction:column;gap:4px;min-width:0}.decision-filter span{color:var(--color-text-subtle);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.decision-filter select{width:100%;min-width:0;padding:7px 28px 7px 9px;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface-alt);color:var(--color-text-secondary);font-size:11px}.decision-filter select:focus-visible,.decision-action:focus-visible,.decision-refresh:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}.decision-clear{align-self:end;min-height:31px;padding:6px 9px;border:0;background:transparent;color:var(--color-accent-hover);font-size:11px;font-weight:600;cursor:pointer}.decision-clear:disabled{color:var(--color-text-subtle);cursor:default}
+      .decision-columns,.decision-row{display:grid;grid-template-columns:minmax(230px,1.35fr) minmax(120px,.62fr) minmax(170px,.95fr) minmax(112px,.62fr) minmax(132px,.72fr) minmax(92px,.5fr) 150px;gap:12px;align-items:center;padding-left:17px;padding-right:17px}.decision-columns{min-height:30px;border-bottom:1px solid var(--color-border-subtle);background:var(--color-surface-alt);color:var(--color-text-subtle);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.decision-columns span:last-child{text-align:right}
+      .decision-row{min-height:76px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid var(--color-border-subtle);position:relative}.decision-row:last-child{border-bottom:0}.decision-row::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:2px;background:var(--row-tone)}
       .decision-primary{min-width:0}.decision-primary-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.decision-source{display:inline-flex;padding:3px 7px;border:1px solid color-mix(in srgb,var(--color-accent) 32%,var(--color-border));border-radius:999px;background:var(--color-accent-subtle);color:var(--color-accent-hover);font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}.decision-primary h3{margin:8px 0 3px;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-primary);font-size:13px;line-height:1.35}.decision-id{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-muted);font:9px 'JetBrains Mono',monospace;white-space:nowrap}
-      .decision-cell{min-width:0}.decision-label{display:block;margin-bottom:5px;color:var(--color-text-subtle);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}.decision-value{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-secondary);font-size:11px;line-height:1.45}.decision-value.mono{font-family:'JetBrains Mono',monospace;font-size:10px}.decision-evidence{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}.decision-owner.unassigned{color:var(--severity-medium)}
-      .decision-sla{display:inline-flex;padding:4px 7px;border:1px solid var(--color-border);border-radius:5px;color:var(--color-text-secondary);font-size:10px;line-height:1.35}.decision-sla[data-tone='danger']{border-color:color-mix(in srgb,var(--severity-critical) 36%,var(--color-border));background:color-mix(in srgb,var(--severity-critical) 9%,transparent);color:var(--severity-critical)}.decision-sla[data-tone='warning']{border-color:color-mix(in srgb,var(--severity-medium) 38%,var(--color-border));background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--severity-medium)}.decision-sla[data-tone='ok']{color:var(--status-online)}
-      .decision-next{text-align:right}.decision-next-label{display:block;margin-bottom:6px;color:var(--color-text-muted);font-size:9px}.decision-action{width:100%;padding:8px 9px;background:transparent}.decision-action.primary{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-text-on-accent)}.decision-action:disabled{cursor:wait;opacity:.55}
+      .decision-cell{min-width:0}.decision-label{display:none;margin-bottom:5px;color:var(--color-text-subtle);font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}.decision-value{display:block;overflow:hidden;text-overflow:ellipsis;color:var(--color-text-secondary);font-size:11px;line-height:1.4}.decision-value.mono{font-family:'JetBrains Mono',monospace;font-size:10px}.decision-evidence{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}.decision-owner.unassigned{color:var(--severity-medium);font-weight:600}.decision-state{display:inline-flex;max-width:100%;padding:3px 6px;border:1px solid var(--color-border-subtle);border-radius:4px;background:var(--color-surface-alt);font-size:10px;text-transform:capitalize}.decision-compact-meta{display:none;margin-top:5px;color:var(--color-text-muted);font-size:10px}
+      .decision-sla{display:inline-flex;max-width:100%;padding:4px 7px;border:1px solid var(--color-border);border-radius:5px;color:var(--color-text-secondary);font-size:10px;font-weight:600;line-height:1.3}.decision-sla-detail{display:block;margin-top:3px;color:var(--color-text-subtle);font:8px 'JetBrains Mono',monospace}.decision-sla[data-tone='danger']{border-color:color-mix(in srgb,var(--severity-critical) 36%,var(--color-border));background:color-mix(in srgb,var(--severity-critical) 9%,transparent);color:var(--severity-critical)}.decision-sla[data-tone='warning']{border-color:color-mix(in srgb,var(--severity-medium) 38%,var(--color-border));background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--severity-medium)}.decision-sla[data-tone='ok']{color:var(--status-online)}
+      .decision-next{display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap;text-align:right}.decision-action{width:auto;min-width:0;padding:7px 9px;background:transparent;white-space:nowrap}.decision-action.primary{border-color:var(--color-accent);background:var(--color-accent);color:var(--color-text-on-accent)}.decision-action:disabled{cursor:wait;opacity:.55}
       .decision-error{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:10px 13px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:8px;background:color-mix(in srgb,var(--severity-medium) 8%,transparent);color:var(--color-text-secondary);font-size:12px}
       .decision-context{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;overflow:hidden;border:1px solid var(--color-border);border-radius:9px;background:var(--color-border-subtle)}.decision-context-item{padding:13px 15px;background:var(--color-surface)}.decision-context-item strong{display:block;color:var(--color-text-primary);font-size:12px}.decision-context-item span{display:block;margin-top:4px;color:var(--color-text-muted);font-size:10px;line-height:1.45}
-      @media(max-width:1500px){.decision-row{grid-template-columns:minmax(230px,1.2fr) minmax(130px,.7fr) minmax(190px,1fr) minmax(135px,.7fr) 150px}.decision-row>.decision-cell:nth-of-type(4){display:none}}
-      @media(max-width:1000px){.decision-row{grid-template-columns:minmax(0,1fr) 150px}.decision-row>.decision-cell:nth-of-type(2),.decision-row>.decision-cell:nth-of-type(4){display:none}.decision-context{grid-template-columns:1fr}.decision-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-signal:nth-child(2){border-right:0}.decision-signal:nth-child(-n+2){border-bottom:1px solid var(--color-border-subtle)}}
-      @media(max-width:680px){.decision-center{gap:12px}.decision-title{font-size:23px}.decision-health{grid-template-columns:1fr}.decision-health-meta{text-align:left}.decision-row{grid-template-columns:1fr;gap:10px;padding:14px 15px}.decision-row>.decision-cell{display:block!important}.decision-row>.decision-cell:nth-of-type(4){display:none!important}.decision-next{text-align:left}.decision-action{width:auto}.decision-queue-head{align-items:flex-start}.decision-summary{overflow:visible}.decision-signal{padding:11px 12px}.decision-signal strong{font-size:18px}}
+      @media(max-width:1500px){.decision-columns,.decision-row{grid-template-columns:minmax(230px,1.25fr) minmax(105px,.58fr) minmax(170px,.95fr) minmax(130px,.68fr) 145px;gap:10px}.decision-column-owner,.decision-cell-owner,.decision-column-status,.decision-cell-status{display:none}.decision-compact-meta{display:block}}
+      @media(max-width:1050px){.decision-filters{grid-template-columns:repeat(3,minmax(120px,1fr))}.decision-columns{display:none}.decision-row{grid-template-columns:minmax(0,1fr) 145px;align-items:start}.decision-primary{grid-column:1}.decision-next{grid-column:2;grid-row:1}.decision-cell-asset{grid-column:1;grid-row:2}.decision-cell-sla{grid-column:2;grid-row:2}.decision-cell-evidence{grid-column:1/-1;grid-row:3}.decision-label{display:block}.decision-context{grid-template-columns:1fr}.decision-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.decision-signal:nth-child(2){border-right:0}.decision-signal:nth-child(-n+2){border-bottom:1px solid var(--color-border-subtle)}}
+      @media(max-width:760px){.decision-center{gap:12px}.decision-title{font-size:23px}.decision-health{grid-template-columns:1fr}.decision-health-meta{text-align:left}.decision-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding-left:13px;padding-right:13px}.decision-columns{display:none}.decision-row{grid-template-columns:1fr;gap:9px;padding:13px 15px}.decision-primary,.decision-next,.decision-cell-asset,.decision-cell-evidence,.decision-cell-sla{grid-column:auto;grid-row:auto}.decision-row .decision-cell{display:block}.decision-label{display:block}.decision-compact-meta{display:none}.decision-next{justify-content:flex-start;text-align:left}.decision-action{width:auto}.decision-queue-head{align-items:flex-start;padding-left:13px;padding-right:13px}.decision-summary{overflow:visible}.decision-signal{padding:11px 12px}.decision-signal strong{font-size:18px}}
     `}</style>
 
     <header className="decision-header">
@@ -199,9 +331,9 @@ export function DashboardOverview() {
       <button type="button" className="decision-refresh" onClick={retryAll}>Atualizar dados</button>
     </header>
 
-    <section className="decision-health" aria-label="Saúde operacional e ingestão">
-      <div className="decision-health-main"><span className="decision-health-dot" /><div><strong>{healthError ? "Saúde operacional indisponível" : "SOC operacional · receptor Shield disponível"}</strong><p>{shieldError ? "Não foi possível consultar a fonte EDY Shield. A fila SOC permanece disponível com os demais dados." : lastShieldEvent ? `Último evento EDY Shield recebido em ${formatDate(lastShieldEvent.received_at)}. A ausência de tráfego novo não interrompe investigação e casos.` : "Nenhum evento EDY Shield recebido. Conecte uma fonte em Configurações quando quiser iniciar a ingestão."}</p></div></div>
-      <div className="decision-health-meta"><span>{onlineComponents} componentes reportados online</span><br /><span>{shieldEvents.length} eventos Shield na janela da fila</span></div>
+    <section className="decision-health" data-state={healthError || shieldError ? "degraded" : "online"} aria-label="Saúde operacional e ingestão">
+      <div className="decision-health-main"><span className="decision-health-dot" /><div><strong>{healthError ? "Saúde operacional indisponível" : "SOC operacional · receptor Shield disponível"}</strong><p>{shieldError ? "Não foi possível consultar a fonte EDY Shield. Outras fontes permanecem visíveis quando já carregadas." : lastShieldEvent ? `Último evento EDY Shield recebido em ${formatDate(lastShieldEvent.received_at)}. A ausência de tráfego novo não interrompe investigação e casos.` : "Nenhum evento EDY Shield recebido. Conecte uma fonte em Configurações quando quiser iniciar a ingestão."}</p></div></div>
+      <div className="decision-health-meta"><span>{onlineComponents} componentes {healthError ? "no último estado conhecido" : "reportados online"}</span><br /><span>{shieldEvents.length} eventos Shield {shieldError ? "carregados anteriormente" : "na janela da fila"}</span></div>
     </section>
 
     <section className="decision-summary" aria-label="Resumo da fila de decisão">
@@ -211,20 +343,31 @@ export function DashboardOverview() {
       <div className="decision-signal"><strong>{unassigned}</strong><span>sem responsável</span></div>
     </section>
 
-    {(dataError || actionError) && <div className="decision-error" role="alert"><span>{actionError || "Parte dos dados operacionais está indisponível. A fila mostra apenas as fontes carregadas com sucesso."}</span><button type="button" className="decision-refresh" onClick={retryAll}>Tentar novamente</button></div>}
+    {(dataError || actionError) && <div className="decision-error" role="alert"><span>{actionError || (queue.length ? "Parte dos dados operacionais está indisponível. Dados carregados anteriormente foram preservados e podem estar desatualizados." : "Não foi possível carregar a fila operacional. O estado vazio não foi assumido como ausência real de trabalho.")}</span><button type="button" className="decision-refresh" onClick={retryAll}>Tentar novamente</button></div>}
+    {actionNotice && !actionError && <div className="decision-error" role="status" style={{ borderColor: "color-mix(in srgb,var(--status-online) 35%,var(--color-border))", background: "color-mix(in srgb,var(--status-online) 7%,transparent)" }}><span>{actionNotice}</span></div>}
 
-    <section className="decision-queue">
-      <header className="decision-queue-head"><div><h2>Decision Queue</h2><p>Crítico → alto → SLA em risco → sem responsável → demais eventos</p></div><span className="decision-queue-count">{queue.length} de {incidents.length + shieldEvents.length + (fallbackAlerts ? alerts.length : 0)} itens</span></header>
-      {loading && !queue.length ? <div style={{ padding: 18 }}>{Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton-line" style={{ height: 72, marginBottom: 10 }} />)}</div> : !queue.length ? <EmptyState title="Fila de decisão vazia" description="Não há incidentes ativos, eventos Shield ou alertas aguardando decisão." /> : queue.map((item) => {
+    <section className="decision-queue" aria-label="Decision Queue operacional">
+      <header className="decision-queue-head"><div><h2>Decision Queue</h2><p>Crítico → alto → SLA vencido → SLA próximo → sem responsável → demais itens</p></div><span className="decision-queue-count">{visibleQueue.length} de {queue.length} itens · até 100 por fonte</span></header>
+      <div className="decision-filters" aria-label="Filtros da Decision Queue">
+        <label className="decision-filter"><span>Severidade</span><select value={filters.severity} onChange={(event) => setFilters((current) => ({ ...current, severity: event.target.value as QueueFilters["severity"] }))}><option value="all">Todas</option>{Object.entries(severityLabel).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="decision-filter"><span>Source</span><select value={filters.source} onChange={(event) => setFilters((current) => ({ ...current, source: event.target.value as QueueFilters["source"] }))}><option value="all">Todas as fontes</option><option value="incident">Correlação SIEM</option><option value="shield">EDY Shield</option><option value="alert">Detecção SIEM</option></select></label>
+        <label className="decision-filter"><span>SLA</span><select value={filters.sla} onChange={(event) => setFilters((current) => ({ ...current, sla: event.target.value as QueueFilters["sla"] }))}><option value="all">Todos</option><option value="overdue">Vencido</option><option value="warning">Próximo</option><option value="ok">Dentro do prazo</option><option value="none">Sem SLA</option></select></label>
+        <label className="decision-filter"><span>Responsável</span><select value={filters.ownership} onChange={(event) => setFilters((current) => ({ ...current, ownership: event.target.value as QueueFilters["ownership"] }))}><option value="all">Todos</option><option value="unassigned">Sem responsável</option><option value="assigned">Com responsável</option></select></label>
+        <label className="decision-filter"><span>Estado</span><select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}><option value="all">Todos</option>{statusOptions.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select></label>
+        <button type="button" className="decision-clear" disabled={!activeFilterCount} onClick={() => setFilters(defaultFilters)}>Limpar {activeFilterCount ? `(${activeFilterCount})` : ""}</button>
+      </div>
+      {!!queue.length && <div className="decision-columns" aria-hidden="true"><span>Prioridade / evento</span><span>Ativo</span><span>Evidência</span><span className="decision-column-owner">Responsável</span><span>SLA</span><span className="decision-column-status">Estado</span><span>Ação</span></div>}
+      {loading && !queue.length ? <div style={{ padding: 18 }}>{Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton-line" style={{ height: 62, marginBottom: 8 }} />)}</div> : !queue.length ? dataError ? <EmptyState title="Fila temporariamente indisponível" description="Tente novamente quando a API local estiver acessível. Nenhum item foi classificado como resolvido ou inexistente." action={<button type="button" className="decision-refresh" onClick={retryAll}>Tentar novamente</button>} /> : <EmptyState title="Fila de decisão vazia" description="Não há incidentes ativos, eventos Shield ou alertas aguardando decisão." /> : !visibleQueue.length ? <EmptyState title="Nenhum item corresponde aos filtros" description="Ajuste ou limpe os filtros para voltar à fila operacional completa." action={<button type="button" className="decision-refresh" onClick={() => setFilters(defaultFilters)}>Limpar filtros</button>} /> : visibleQueue.map((item) => {
         const sla = slaPresentation(item);
         const rowTone = item.severity === "critical" ? "var(--severity-critical)" : item.severity === "high" ? "var(--severity-high)" : item.severity === "medium" ? "var(--severity-medium)" : "var(--severity-low)";
         return <article className="decision-row" key={`${item.kind}:${item.id}`} style={{ "--row-tone": rowTone } as React.CSSProperties}>
-          <div className="decision-primary"><div className="decision-primary-top"><SeverityBadge severity={item.severity}>{severityLabel[item.severity]}</SeverityBadge><span className="decision-source">{item.source}</span></div><h3 title={item.title}>{item.title}</h3><span className="decision-id">{item.id} · {formatDate(item.createdAt)}</span></div>
-          <div className="decision-cell"><span className="decision-label">Ativo afetado</span><span className="decision-value mono" title={item.asset}>{item.asset}</span></div>
-          <div className="decision-cell"><span className="decision-label">Evidência</span><span className="decision-value decision-evidence" title={item.evidence}>{item.evidence}</span></div>
-          <div className="decision-cell"><span className="decision-label">Responsável</span><span className={`decision-value decision-owner ${item.owner ? "" : "unassigned"}`}>{item.owner || "Sem responsável"}</span></div>
-          <div className="decision-cell"><span className="decision-label">SLA</span><span className="decision-sla" data-tone={sla.tone}>{sla.label}</span></div>
-          <div className="decision-next"><span className="decision-next-label">Próxima ação</span><button type="button" className={`decision-action ${item.kind === "shield" ? "primary" : ""}`} disabled={assuming === item.id} onClick={() => item.action === "assume" ? assume(item) : openItem(item)}>{assuming === item.id ? "Assumindo…" : item.action === "assume" ? "Assumir" : item.action === "review" ? "Revisar evidência" : "Continuar investigação"}</button></div>
+          <div className="decision-primary"><div className="decision-primary-top"><SeverityBadge severity={item.severity}>{severityLabel[item.severity]}</SeverityBadge><span className="decision-source">{item.source}</span></div><h3 title={item.title}>{item.title}</h3><span className="decision-id">{item.id} · {formatDate(item.createdAt)}</span><span className="decision-compact-meta">{statusLabel(item.status)} · {item.owner || "Sem responsável"}</span></div>
+          <div className="decision-cell decision-cell-asset"><span className="decision-label">Ativo afetado</span><span className="decision-value mono" title={item.asset}>{item.asset}</span></div>
+          <div className="decision-cell decision-cell-evidence"><span className="decision-label">Evidência</span><span className="decision-value decision-evidence" title={item.evidence}>{item.evidence}</span></div>
+          <div className="decision-cell decision-cell-owner"><span className="decision-label">Responsável</span><span className={`decision-value decision-owner ${item.owner ? "" : "unassigned"}`}>{item.owner || "Sem responsável"}</span></div>
+          <div className="decision-cell decision-cell-sla"><span className="decision-label">SLA</span><span className="decision-sla" data-tone={sla.tone}>{sla.label}</span>{sla.detail && <span className="decision-sla-detail">até {sla.detail}</span>}</div>
+          <div className="decision-cell decision-cell-status"><span className="decision-label">Estado</span><span className="decision-value decision-state">{statusLabel(item.status)}</span></div>
+          <div className="decision-next"><span className="decision-label">Próxima ação</span>{item.action === "assume" ? <><button type="button" className="decision-action primary" disabled={assuming === item.id} aria-busy={assuming === item.id} onClick={() => void assume(item)}>{assuming === item.id ? "Assumindo…" : "Assumir"}</button><button type="button" className="decision-action" onClick={() => openItem(item)}>Investigar</button></> : <button type="button" className={`decision-action ${item.kind === "shield" ? "primary" : ""}`} onClick={() => openItem(item)}>{item.kind === "shield" ? "Investigar" : item.action === "review" ? "Revisar evidência" : "Continuar investigação"}</button>}</div>
         </article>;
       })}
     </section>

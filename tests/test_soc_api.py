@@ -189,6 +189,25 @@ def test_soc_api_alerts_and_series(monkeypatch, tmp_path) -> None:
         assert isinstance(series[0]["events"], int)
 
 
+def test_soc_decision_queue_list_limits(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        client.post("/api/v1/soc/pipeline/demo")
+
+        alerts = client.get("/api/v1/soc/alerts", params={"limit": 1})
+        incidents = client.get("/api/v1/soc/incidents", params={"limit": 1})
+        assert alerts.status_code == 200
+        assert incidents.status_code == 200
+        assert len(alerts.json()["items"]) == 1
+        assert len(incidents.json()["items"]) == 1
+        assert alerts.json()["total"] >= len(alerts.json()["items"])
+        assert incidents.json()["total"] >= len(incidents.json()["items"])
+
+        for path in ("alerts", "incidents"):
+            assert client.get(f"/api/v1/soc/{path}", params={"limit": 0}).status_code == 422
+            assert client.get(f"/api/v1/soc/{path}", params={"limit": 101}).status_code == 422
+
+
 def test_soc_api_detection_intel(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
     with TestClient(create_app()) as client:

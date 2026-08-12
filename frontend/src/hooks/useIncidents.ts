@@ -77,11 +77,9 @@ export function useIncidents(limit: number = 50) {
         setIncidents(items);
       } else {
         setError(response.error?.message || "Falha ao carregar incidentes");
-        setIncidents([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar incidentes");
-      setIncidents([]);
     } finally {
       setLoading(false);
     }
