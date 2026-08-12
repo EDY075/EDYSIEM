@@ -80,9 +80,10 @@ O exemplo versionado está em `.env.example`; nenhum segredo real foi adicionado
 
 - Branch: `codex/shield-siem-integration-architecture`.
 - Base: `0137dc4` (`docs: sync Shield SIEM session state`).
-- Commit principal do receptor: pendente no momento desta gravação; consultar
-  `git log -2 --oneline` após o clone.
-- O commit posterior pode sincronizar aqui o hash principal.
+- Commit principal do receptor: `0100a1f`
+  (`feat(ingestion): add durable Shield receiver v1`).
+- O commit imediatamente posterior sincroniza este hash no estado da sessão; consultar
+  `git log -2 --oneline` para obter seu hash completo.
 
 ## Próximo passo EXATO
 
