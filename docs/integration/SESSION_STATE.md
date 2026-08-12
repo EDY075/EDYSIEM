@@ -615,3 +615,15 @@ extensão; não houve erro novo da aplicação.
 
 **FINAL — Release Readiness / final product sign-off.** Não iniciar automaticamente, não
 fazer merge em `main` e não reabrir escopo de produto sem novo prompt.
+
+## RELEASE COMPLETE — v0.3.0 (2026-08-12)
+
+- Produção: merge não destrutivo em `master` no commit `b9e0bdf`, seguido do alinhamento
+  do rodapé no commit `aa48ff9`; remoto confirmado em 0/0.
+- Qualidade: 948 passed, 95,02% coverage; Ruff, MyPy, TypeScript/Vite, wheel/sdist,
+  `npm audit` sem vulnerabilidades e `git diff --check` aprovados.
+- E2E em processos reais: evento FIM do Shield com `event_id` estável, case idempotente,
+  recuperação offline, zero eventos perdidos e zero duplicatas lógicas.
+- Chrome externo: Overview, War Room, Case Center, recuperação de rota e o fluxo Shield
+  foram verificados sem erro da aplicação ou overflow horizontal.
+- Próxima manutenção: partir de `master`; a tag de release é `v0.3.0`.

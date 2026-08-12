@@ -1012,6 +1012,24 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
 
+## HANDOFF — Release complete v0.3.0 (2026-08-12)
+
+### Contexto
+
+O EDY SIEM recebeu o fluxo de investigação e handoff do Shield em produção. O Case Center
+abre o mesmo `event_id`, e a criação concorrente de case é idempotente.
+
+### Evidências finais
+
+- Merge de produção: `b9e0bdf` em `master`; alinhamento do rodapé: `aa48ff9`; remoto 0/0.
+- E2E pós-merge: `event_id` `22bb2bd7-980a-471e-9be7-717ba7f5038b`, case idempotente,
+  recuperação offline e contagens de perda/duplicata iguais a zero.
+- Release: `v0.3.0`; notas em `docs/releases/release-0.3.0.md`.
+
+### Próximo passo
+
+Manutenção corretiva somente a partir de `master`; não iniciar Sprint D sem novo escopo.
+
 ## HANDOFF — Sprint C3 concluída / Sprint C COMPLETE (2026-08-12)
 
 ### Contexto
