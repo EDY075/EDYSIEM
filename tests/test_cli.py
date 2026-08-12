@@ -25,7 +25,7 @@ def _run(*args: str) -> tuple[int, dict]:
 def test_cli_version() -> None:
     code, data = _run("version")
     assert code == 0
-    assert data["version"] == "0.2.0"
+    assert data["version"] == "0.3.0"
 
 
 def test_cli_health() -> None:
