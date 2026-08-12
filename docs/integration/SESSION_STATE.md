@@ -576,3 +576,17 @@ Commits da Sprint C:
 # Sprint D — Shared Design System & Final Product Polish
 
 Não iniciar Sprint D automaticamente. Não fazer merge em main.
+
+## Revalidação de recuperação — Sprint C3 (2026-08-12)
+
+- A retomada confirmou o commit local `ac49355` com worktree limpo; nenhum diff válido foi
+  descartado ou refeito.
+- 43 testes focados da C3 e 947 da suíte completa passaram, com cobertura global de 95,02%.
+- Ruff, MyPy (152 módulos), TypeScript, bundle Vite de produção e build wheel/sdist do
+  backend passaram. O carregamento usual de `vite.config.ts` foi limitado pelo sandbox;
+  a mesma configuração foi validada pela API Vite com `configFile: false`, sem alteração
+  no produto.
+- Chrome externo em ambiente isolado: evento EDY Shield ingerido, clique repetido criou
+  um único case/evidência, Case Center abriu o `case_id` exato com proveniência e retornou
+  ao mesmo `event_id`.
+- War Room, Ingestion Health e Decision Queue foram preservados. Sprint D segue fora de escopo.

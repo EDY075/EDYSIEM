@@ -908,6 +908,25 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
 
+## HANDOFF — Revalidação de recuperação Sprint C3 (2026-08-12)
+
+### Contexto
+
+A recuperação encontrou C3 consolidada no commit local `ac49355` e worktree limpo. Nenhuma
+alteração foi descartada e não houve expansão de escopo.
+
+### Verificação final
+
+- 43 testes focados C3 e 947 na suíte completa, com 95,02% de cobertura: PASS.
+- Ruff, MyPy (152 módulos), `tsc -b`, bundle Vite e wheel/sdist: PASS.
+- Chrome externo confirmou ingestão de evento Shield, clique repetido, case único/evidência
+  única, Case Center exato com proveniência e retorno ao mesmo `event_id`.
+
+### Decisão
+
+O handoff C3 está fechado. Não iniciar Sprint D e não alterar War Room, Ingestion Health ou
+Decision Queue sem regressão comprovada.
+
 ## HANDOFF — Sprint C1 concluída (2026-08-12)
 
 ### Contexto
