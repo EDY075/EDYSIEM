@@ -69,7 +69,7 @@ def test_rbac_on_real_route(monkeypatch, tmp_path) -> None:
 
 
 def test_rate_limit_429() -> None:
-    async def go() -> str:
+    async def go() -> tuple[int, str | None]:
         dep = sec.rate_limit(max_requests=2, window_seconds=60)
 
         class _Req:
@@ -81,10 +81,12 @@ def test_rate_limit_429() -> None:
         try:
             await dep(req)
         except Exception as exc:
-            return f"{type(exc).__name__}:{getattr(exc, 'status_code', '')}"
-        return "no-429"
+            return getattr(exc, "status_code", 0), getattr(exc, "headers", {}).get(
+                "Retry-After"
+            )
+        return 0, None
 
-    assert "429" in asyncio.run(go())
+    assert asyncio.run(go()) == (429, "60")
 
 
 def test_permissions_matrix() -> None:

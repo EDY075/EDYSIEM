@@ -71,13 +71,13 @@ def _case() -> Case:
 
 def test_schema_version_applied(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert runner.current_version(manager) == 4
+    assert runner.current_version(manager) == 5
 
 
 def test_migrations_idempotent(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
     runner.apply(manager)  # segunda aplicacao nao deve quebrar
-    assert runner.current_version(manager) == 4
+    assert runner.current_version(manager) == 5
 
 
 def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
@@ -91,17 +91,32 @@ def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
     runner = MigrationRunner([BadMigration()])
     with pytest.raises(MigrationError):
         runner.apply(manager)
-    # versao nao avancou (continua 2)
-    assert runner.current_version(manager) == 4
+    # versao nao avancou alem do schema atual
+    assert runner.current_version(manager) == 5
 
 
 def test_migrations_property() -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert len(runner.migrations) == 4
+    assert len(runner.migrations) == 5
     assert runner.migrations[0].version == 1
     assert runner.migrations[1].version == 2
     assert runner.migrations[2].version == 3
     assert runner.migrations[3].version == 4
+    assert runner.migrations[4].version == 5
+
+
+def test_shield_inbox_schema_created(manager: ConnectionManager) -> None:
+    tables = {
+        row["name"]
+        for row in manager.connect()
+        .execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name IN ('ingestion_batches', 'ingestion_inbox')"
+        )
+        .fetchall()
+    }
+
+    assert tables == {"ingestion_batches", "ingestion_inbox"}
 
 
 # --- AlertRepository -------------------------------------------------------

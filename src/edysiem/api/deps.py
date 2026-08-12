@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from typing import cast
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from ..container import ApplicationContainer
+from ..persistence import PersistenceError, ShieldInboxRepository
 
 
 def get_container(request: Request) -> ApplicationContainer:
@@ -17,4 +18,14 @@ def get_container(request: Request) -> ApplicationContainer:
     return cast(ApplicationContainer, request.app.state.container)
 
 
-__all__ = ["get_container"]
+def get_shield_inbox(request: Request) -> ShieldInboxRepository:
+    """Return the durable inbox configured for the Shield ingestion route."""
+
+    container = cast(ApplicationContainer, request.app.state.container)
+    try:
+        return container.shield_inbox
+    except PersistenceError as exc:
+        raise HTTPException(status_code=503, detail="ingestion inbox unavailable") from exc
+
+
+__all__ = ["get_container", "get_shield_inbox"]

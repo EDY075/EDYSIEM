@@ -77,6 +77,21 @@ def _serialized_size(value: object) -> int:
     return len(encoded)
 
 
+def canonical_json_bytes(value: object) -> bytes:
+    """Serialize a contract value deterministically for hashing/idempotency."""
+
+    try:
+        return json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("value must contain finite JSON-compatible data") from exc
+
+
 def _validate_uuid(value: str, *, version: int | None = None) -> str:
     try:
         parsed = UUID(value)
@@ -494,6 +509,59 @@ class ShieldEventBatchV1(StrictContractModel):
         return value
 
 
+class ShieldBatchEnvelopeV1(StrictContractModel):
+    """Batch envelope that leaves each event for independent validation."""
+
+    batch_id: str
+    sent_at: str
+    events: list[object] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_batch_size(cls, value: object) -> object:
+        data = _require_mapping(value, name="batch")
+        if _serialized_size(data) > MAX_BATCH_BYTES:
+            raise ValueError(f"batch must be <= {MAX_BATCH_BYTES} bytes")
+        return value
+
+    @field_validator("batch_id")
+    @classmethod
+    def validate_batch_id(cls, value: str) -> str:
+        return _validate_uuid(value, version=4)
+
+    @field_validator("sent_at")
+    @classmethod
+    def validate_sent_at(cls, value: str) -> str:
+        _parse_utc_timestamp(value)
+        return value
+
+
+class ShieldIngestionErrorV1(StrictContractModel):
+    """Safe validation error returned for one rejected item."""
+
+    code: str
+    field: str
+    message: str
+
+
+class ShieldIngestionItemResultV1(StrictContractModel):
+    """Per-item acknowledgement."""
+
+    event_id: str | None
+    status: Literal["accepted", "duplicate", "rejected"]
+    error: ShieldIngestionErrorV1 | None = None
+
+
+class ShieldIngestionBatchResponseV1(StrictContractModel):
+    """Stable response returned after durable batch processing."""
+
+    batch_id: str
+    accepted_count: int = Field(ge=0)
+    duplicate_count: int = Field(ge=0)
+    rejected_count: int = Field(ge=0)
+    results: list[ShieldIngestionItemResultV1]
+
+
 __all__ = [
     "MAX_BATCH_BYTES",
     "MAX_EVENT_BYTES",
@@ -506,10 +574,15 @@ __all__ = [
     "HashAlgorithmV1",
     "SeverityV1",
     "ShieldAssetV1",
+    "ShieldBatchEnvelopeV1",
     "ShieldEventBatchV1",
     "ShieldEventV1",
     "ShieldEvidenceV1",
+    "ShieldIngestionBatchResponseV1",
+    "ShieldIngestionErrorV1",
+    "ShieldIngestionItemResultV1",
     "ShieldMetadataV1",
     "ShieldSourceV1",
     "SourceComponentV1",
+    "canonical_json_bytes",
 ]

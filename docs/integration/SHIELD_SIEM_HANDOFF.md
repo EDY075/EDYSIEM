@@ -1,6 +1,6 @@
 # EDY Shield → EDY SIEM — Handoff de Arquitetura
 
-**Status:** proposta arquitetural concluída; nenhuma implementação funcional foi feita.
+**Status:** contrato v1 e receptor/inbox do EDY SIEM concluídos; produtor do Shield ainda não implementado.
 **Data da análise:** 2026-08-11
 **EDY SIEM analisado:** `master` em `e929982` (v0.2.0)
 **EDY Shield analisado:** `main` em `5fd63bb` (v2.2.0)
@@ -360,17 +360,17 @@ normaliza e aplica suas próprias regras para evitar dupla contagem.
 
 | Shield | CanonicalEvent do SIEM |
 |---|---|
-| `event_id` | `metadata.origin_event_id`; também chave de recibo |
+| `event_id` | `CanonicalEvent.event_id`, `metadata.origin_event_id` e chave de recibo |
 | `source.instance_id` | `metadata.source_instance_id` |
 | `asset.hostname` | `source_host` e `hostname` |
 | `event_type` FIM | `event_category=file`; ação added/modified/deleted/baseline/scan |
 | `severity` | severidade inicial, recalculável por regra SIEM |
-| `evidence.file_path` | `metadata.file.path` e contexto de asset |
-| `evidence.previous_hash/current_hash/hash_algorithm` | `metadata.file.hash.*` |
-| `evidence.baseline_id` / `scan_id` | metadata e correlation keys |
+| `evidence.file_path` | `metadata.evidence.file_path` e contexto de asset |
+| `evidence.previous_hash/current_hash/hash_algorithm` | `metadata.evidence.*` |
+| `evidence.baseline_id` / `scan_id` | `metadata.evidence.*` e correlation keys futuras |
 | `timestamp` | `timestamp` |
 | recebimento | `received_at` gerado pelo SIEM |
-| tags | tags canônicas `edy-shield`, `endpoint`, `fim` |
+| tags | tags de origem preservadas no conjunto canônico |
 
 O payload original validado é preservado no Event Store para investigação e reprocessamento,
 com limites de tamanho e sanitização de secrets.
@@ -495,9 +495,9 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 
 ### Etapa 3 — Inbox e contrato de ingestão no SIEM
 
-- Criar endpoint scoped, schemas strict, autenticação e idempotência.
-- Persistir inbox antes do 202.
-- Testar batch misto accepted/duplicate/rejected e conflitos.
+- [x] Criar endpoint scoped, schemas strict, autenticação e idempotência.
+- [x] Persistir inbox antes do 202.
+- [x] Testar batch misto accepted/duplicate/rejected e conflitos.
 
 **Saída:** SIEM aceita eventos com durabilidade, sem ainda detectar.
 
@@ -614,20 +614,22 @@ Isso evita acoplar o Shield ao WAR_ROOM e mantém o SIEM como ponto de correlaç
 
 ## 10. Pendências
 
-- Implementar receptor/inbox v1 no SIEM usando o schema já congelado.
-- Criar autenticação scoped e idempotência de batch/evento na borda do receptor.
+- Implementar producer/outbox v1 no EDY Shield, sem bloquear scans quando o SIEM estiver offline.
+- Conectar `FimDiff`, baseline, scan, hash e alertas locais ao mapper do contrato congelado.
 - Escolher política inicial de auto-case e regras MITRE para FIM.
 - Definir o mecanismo de cadastro/rotação de tokens por instalação além do laboratório.
 - Confirmar a URL de implantação; fora de loopback, TLS é obrigatório.
 - Definir telemetria/UI para overflow e saúde da fila antes da etapa de UX.
+- Criar o worker posterior da inbox para enrichment, detecção, incidentes e casos; os
+  registros aceitos permanecem em `processing_status=pending` nesta etapa.
 
 ## 11. Próximo passo exato
 
-Iniciar a **Etapa 3 — receptor EDY SIEM**: criar migração/repository da durable inbox,
-autenticação M2M scoped e a rota
-`POST /api/v1/ingestion/sources/edy-shield/events`, reutilizando
-`src/edysiem/api/ingestion_schemas.py`. A rota deve persistir antes do `202` e implementar
-idempotência por batch/evento. Ainda não criar transporte, outbox ou worker no Shield.
+Implementar o **producer/outbox no EDY Shield**: criar o mapper para o Event Contract v1,
+a `telemetry_outbox` transacional e o worker de entrega independente com timeout, retry,
+backoff e recuperação após restart. O caminho de scan/FIM deve continuar local-first e
+nunca aguardar a rede. Não implementar frontend nem processamento downstream da inbox
+do SIEM nessa próxima etapa.
 
 ## 12. Estado do contrato v1
 
@@ -640,4 +642,57 @@ idempotência por batch/evento. Ainda não criar transporte, outbox ou worker no
 - ADR-010, modelo Pydantic e testes de contrato: concluídos.
 - Validação: 85 testes focados (97,00% do modelo); suíte completa 886 testes, 95,17%;
   MyPy e Ruff aprovados.
-- Nenhum endpoint, transporte, outbox, worker ou frontend foi implementado nesta etapa.
+- Receptor/inbox SIEM implementado; transporte/outbox/worker do Shield e frontend não
+  foram implementados.
+
+## 13. Implementação do receptor SIEM concluída
+
+### Endpoint e autenticação
+
+- Rota única: `POST /api/v1/ingestion/sources/edy-shield/events`.
+- Bearer token M2M obrigatório em `EDYSIEM_SHIELD_INGEST_TOKEN`, com mínimo de 32 bytes
+  e comparação em tempo constante.
+- Rotação sem redesign por `EDYSIEM_SHIELD_INGEST_PREVIOUS_TOKEN` durante janela curta.
+- A rota Shield não usa `X-EDY-Role` nem a API key global de operador.
+- HTTPS é exigido fora de `localhost`, `127.0.0.1` e `::1`.
+- Configuração de exemplo sem segredo real em `.env.example`.
+
+### Durabilidade, batch e idempotência
+
+- Migração v5 cria `ingestion_batches` e `ingestion_inbox` com índices operacionais.
+- O recibo do lote e todos os eventos aceitos são persistidos na mesma transação
+  `BEGIN IMMEDIATE` antes de qualquer `202`.
+- Chave de evento: `(source_instance_id, event_id)`; o hash é SHA-256 do JSON canônico.
+- Mesmo evento/hash retorna `duplicate`; mesmo identificador/conteúdo diferente retorna
+  `409` sem sobrescrever o original.
+- Mesmo `batch_id`/corpo reproduz a resposta persistida; corpo diferente retorna `409`.
+- Lotes mistos retornam reconhecimento individual e persistem somente itens válidos.
+- Lotes totalmente inválidos persistem o recibo e repetem deterministicamente o `422`.
+
+### Normalização e limites
+
+- `shield_normalizer.py` concentra o adapter do contrato Shield para `CanonicalEvent`.
+- Payload original, asset, hostname, origem, severidade, timestamps, evidências, hashes,
+  path, baseline e metadata são preservados na inbox.
+- Limites aplicados antes do processamento: 1 MiB por corpo, 100 eventos por lote e
+  64 KiB por evento; compressão v1 e JSON com chaves duplicadas/NaN/Infinity são rejeitados.
+- Paths, UUIDs, timestamps, enums, hashes, campos extras e `null` reutilizam a validação
+  central do contrato, sem validação divergente na rota.
+
+### Arquivos principais
+
+- `src/edysiem/api/routes/shield_ingestion.py`
+- `src/edysiem/api/shield_normalizer.py`
+- `src/edysiem/api/ingestion_schemas.py`
+- `src/edysiem/api/security.py`
+- `src/edysiem/persistence/inbox.py`
+- `src/edysiem/persistence/schema.py`
+- `tests/test_shield_ingestion_api.py`
+
+### Validação da etapa
+
+- Testes focados de receptor/contrato/persistência/segurança: 151 aprovados.
+- Cobertura focada dos componentes críticos: 95,20%.
+- Suíte completa: 928 testes aprovados; cobertura global 95,15%.
+- Ruff integral, MyPy em 151 arquivos e `git diff --check`: aprovados.
+- Permanecem apenas dois warnings de depreciação preexistentes de Starlette/FastAPI.

@@ -11,13 +11,17 @@ Nenhuma funcionalidade nova de negócio; apenas camadas de proteção.
 from __future__ import annotations
 
 import os
+import secrets
 import threading
 import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from ipaddress import ip_address
 
 from fastapi import HTTPException, Request
+
+SHIELD_INGEST_PATH = "/api/v1/ingestion/sources/edy-shield/events"
 
 # --- Autenticação (API Key) -------------------------------------------------
 
@@ -30,12 +34,64 @@ def api_key_expected() -> str | None:
 
 async def require_api_key(request: Request) -> None:
     """Exige ``X-API-Key`` quando ``EDYSIEM_API_KEY`` estiver definida."""
+    # The Shield route has its own scoped M2M credential and must not depend on
+    # the operator-facing API key used by the remaining API.
+    if request.url.path == SHIELD_INGEST_PATH:
+        return
     expected = api_key_expected()
     if expected is None:
         return
     provided = request.headers.get("x-api-key")
     if provided != expected:
         raise HTTPException(status_code=401, detail="API key inválida")
+
+
+def _shield_tokens() -> tuple[str, ...]:
+    current = os.environ.get("EDYSIEM_SHIELD_INGEST_TOKEN", "")
+    previous = os.environ.get("EDYSIEM_SHIELD_INGEST_PREVIOUS_TOKEN", "")
+    if not current:
+        raise HTTPException(status_code=503, detail="Shield ingestion is not configured")
+    configured = tuple(token for token in (current, previous) if token)
+    if any(len(token.encode("utf-8")) < 32 for token in configured):
+        raise HTTPException(status_code=503, detail="Shield ingestion configuration is invalid")
+    return configured
+
+
+def _is_loopback(host: str | None) -> bool:
+    if host is None:
+        return False
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+async def require_shield_ingest_token(request: Request) -> None:
+    """Authenticate the Shield producer with a scoped, rotatable Bearer token."""
+
+    if request.url.scheme != "https" and not _is_loopback(request.url.hostname):
+        raise HTTPException(status_code=400, detail="HTTPS is required for Shield ingestion")
+
+    expected_tokens = _shield_tokens()
+    authorization = request.headers.get("authorization", "")
+    scheme, separator, provided = authorization.partition(" ")
+    if separator != " " or scheme.lower() != "bearer" or not provided:
+        raise HTTPException(
+            status_code=401,
+            detail="Bearer token required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    authenticated = False
+    for expected in expected_tokens:
+        authenticated = secrets.compare_digest(provided, expected) or authenticated
+    if not authenticated:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid Shield ingestion credential",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # --- RBAC -------------------------------------------------------------------
@@ -100,7 +156,11 @@ def rate_limit(max_requests: int = 300, window_seconds: int = 60) -> Callable[..
             while bucket.hits and now - bucket.hits[0] > window_seconds:
                 bucket.hits.popleft()
             if len(bucket.hits) >= max_requests:
-                raise HTTPException(status_code=429, detail="rate limit excedido")
+                raise HTTPException(
+                    status_code=429,
+                    detail="rate limit excedido",
+                    headers={"Retry-After": str(window_seconds)},
+                )
             bucket.hits.append(now)
 
     return dependency
@@ -111,8 +171,10 @@ __all__ = [
     "ROLE_ADMIN",
     "ROLE_ANALYST",
     "ROLE_VIEWER",
+    "SHIELD_INGEST_PATH",
     "api_key_expected",
     "rate_limit",
     "require_api_key",
     "require_permission",
+    "require_shield_ingest_token",
 ]
