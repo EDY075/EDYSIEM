@@ -36,10 +36,10 @@ function InvestigationGlyph({ type }: { type: "trace" | "evidence" | "link" | "m
 }
 
 export function InvestigationPage() {
-  const { cases, loading: casesLoading, error: casesError } = useCases(60);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedCaseId = searchParams.get("case") || "";
+  const { cases, loading: casesLoading, error: casesError } = useCases(60, requestedCaseId);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [investigation, setInvestigation] = useState<InvestigationData | null>(null);
   const [loading, setLoading] = useState(false);

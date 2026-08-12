@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { colors, radii, spacing, typography } from "../design-system/tokens";
 import { Button } from "../design-system";
@@ -27,15 +27,32 @@ const toSeverity = (value: string): SeverityColor => value === "critical" ? "cri
 const statusTone = (value: string) => value === "closed" || value === "resolved" ? "online" as const : value === "on_hold" ? "degraded" as const : "neutral" as const;
 const formatDate = (value: string) => value ? new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—";
 
+function shieldEvidenceContext(details: CaseInvestigation | null) {
+  const sourceEvidence = details?.evidence.find((item) => item.source === "edy-shield" && item.kind === "json");
+  if (!sourceEvidence || sourceEvidence.value.length > 250_000) return { asset: "", filePath: "" };
+  try {
+    const payload = JSON.parse(sourceEvidence.value) as Record<string, unknown>;
+    const asset = payload.asset && typeof payload.asset === "object" ? payload.asset as Record<string, unknown> : {};
+    const evidence = payload.evidence && typeof payload.evidence === "object" ? payload.evidence as Record<string, unknown> : {};
+    return {
+      asset: typeof asset.hostname === "string" ? asset.hostname.slice(0, 255) : "",
+      filePath: typeof evidence.file_path === "string" ? evidence.file_path.slice(0, 4096) : "",
+    };
+  } catch {
+    return { asset: "", filePath: "" };
+  }
+}
+
 export function CaseCenterPage() {
-  const { cases, loading, error, refetch } = useCases(100);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedCaseId = searchParams.get("case") || "";
+  const { cases, loading, error, refetch } = useCases(100, requestedCaseId);
   const [selected, setSelected] = useState<Case | null>(null);
   const [details, setDetails] = useState<CaseInvestigation | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [comment, setComment] = useState("");
@@ -53,13 +70,19 @@ export function CaseCenterPage() {
     if (!selected) setSelected(cases[0]);
   }, [cases, requestedCaseId, selected]);
   useEffect(() => { setOwner(selected?.owner ?? ""); }, [selected]);
+  const loadDetails = useCallback(async (caseId: string) => {
+    setDetailsLoading(true);
+    setDetailsError("");
+    const response = await apiClient.get<CaseInvestigation>(`/soc/cases/${encodeURIComponent(caseId)}/investigate`);
+    if (response.success && response.data) setDetails(response.data);
+    else setDetailsError("O contexto do caso está temporariamente indisponível. A fila foi preservada; tente novamente antes de decidir.");
+    setDetailsLoading(false);
+  }, []);
   useEffect(() => {
     if (!selected) return;
-    let alive = true;
-    setDetailsLoading(true); setDetails(null);
-    apiClient.get<CaseInvestigation>(`/soc/cases/${selected.id}/investigate`).then((response) => { if (alive && response.success && response.data) setDetails(response.data); if (alive) setDetailsLoading(false); });
-    return () => { alive = false; };
-  }, [selected]);
+    setDetails(null);
+    void loadDetails(selected.id);
+  }, [loadDetails, selected]);
 
   const filteredCases = useMemo(() => cases.filter((item) => {
     const matchesQuery = `${item.id} ${item.title} ${item.owner} ${item.priority}`.toLowerCase().includes(query.toLowerCase().trim());
@@ -72,12 +95,13 @@ export function CaseCenterPage() {
     ? selected.incidentId.slice("shield-event:".length)
     : "";
   const hasSafeShieldLink = UUID4.test(linkedShieldEventId);
+  const shieldContext = shieldEvidenceContext(details);
 
   const post = async (path: string, params: Record<string, string>) => {
     if (!selected) return;
     setBusy(true);
     const result = await apiClient.post(`${path}?${new URLSearchParams(params).toString()}`);
-    if (result.success) { toast("Atualização registrada", "success"); refetch(); const updated = await apiClient.get<CaseInvestigation>(`/soc/cases/${selected.id}/investigate`); if (updated.success && updated.data) setDetails(updated.data); }
+    if (result.success) { toast("Atualização registrada", "success"); refetch(); await loadDetails(selected.id); }
     else toast(result.error?.message || "Não foi possível concluir a ação", "error");
     setBusy(false);
   };
@@ -98,16 +122,17 @@ export function CaseCenterPage() {
       </section>
       <section className="case-detail" style={{ minWidth: 0, display: "flex", flexDirection: "column", background: `linear-gradient(180deg, ${colors.surface} 0%, color-mix(in srgb, ${colors.background} 42%, ${colors.surface}) 100%)` }}>
         {!selected ? <EmptyState title="Selecione um case" description="Escolha um item na fila para abrir o contexto operacional." /> : <>
-          <header style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.borderSubtle}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: spacing["3"] }}><div><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selected.id}</span><h2 style={{ margin: "5px 0", color: colors.textPrimary, fontSize: typography.size.lg }}>{selected.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>{selected.statusLabel} · criado {formatDate(selected.createdAt)}</span></div><SeverityBadge severity={toSeverity(selected.severity)}>{selected.severity}</SeverityBadge></div><div className="case-actions" style={{ display: "flex", gap: 8, marginTop: spacing["3"], flexWrap: "wrap" }}>{hasSafeShieldLink && <Button variant="ghost" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(linkedShieldEventId)}`)}>Abrir evento Shield</Button>}<Button variant="secondary" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button><Button variant="danger" disabled={busy} onClick={() => post(`/soc/cases/${selected.id}/close`, { resolution: "encerrado pelo SOC" })}>Encerrar</Button></div></header>
-          {detailsLoading ? <div style={{ padding: spacing["4"] }}><LoadingSkeleton rows={8} /></div> : <div style={{ padding: spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: spacing["4"] }}>
-            <section style={detailPanel}><PanelHeader title="Ownership" subtitle="Responsável e prioridade operacional" /><div style={{ display: "flex", gap: 8 }}><input aria-label="Responsável do case" value={owner} onChange={(event) => setOwner(event.target.value)} placeholder="analyst@edy" style={inputStyle} /><Button variant="secondary" disabled={busy || !owner.trim()} onClick={() => post(`/soc/cases/${selected.id}/assign`, { owner: owner.trim() })}>Atribuir</Button></div></section>
-            <section style={detailPanel}><PanelHeader title="Registrar atividade" subtitle="Comentários e evidências entram na timeline do case" /><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 8 }}><input aria-label="Comentário do case" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Adicionar comentário operacional…" style={inputStyle} /><Button variant="primary" disabled={busy || !comment.trim()} onClick={() => { post(`/soc/cases/${selected.id}/comment`, { body: comment.trim(), author: "analyst@edy" }); setComment(""); }}>Comentar</Button></div><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><input aria-label="Evidência do case" value={evidence} onChange={(event) => setEvidence(event.target.value)} placeholder="IOC, IP ou artefato…" style={inputStyle} /><Button variant="secondary" disabled={busy || !evidence.trim()} onClick={() => { post(`/soc/cases/${selected.id}/evidence`, { kind: "ioc", value: evidence.trim() }); setEvidence(""); }}>Anexar</Button></div></section>
+          <header style={{ padding: spacing["4"], borderBottom: `1px solid ${colors.borderSubtle}` }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: spacing["3"] }}><div><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{selected.id}</span><h2 style={{ margin: "5px 0", color: colors.textPrimary, fontSize: typography.size.lg }}>{selected.title}</h2><span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>{selected.statusLabel} · criado {formatDate(selected.createdAt)}</span></div><SeverityBadge severity={toSeverity(selected.severity)}>{selected.severity}</SeverityBadge></div><div className="case-actions" style={{ display: "flex", gap: 8, marginTop: spacing["3"], flexWrap: "wrap" }}>{hasSafeShieldLink && <Button variant="ghost" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(linkedShieldEventId)}`)}>Voltar à investigação</Button>}<Button variant="secondary" disabled={busy} onClick={() => post(`/soc/cases/${encodeURIComponent(selected.id)}/resolve`, { resolution: "incidente confirmado e tratado" })}>Resolver</Button><Button variant="danger" disabled={busy} onClick={() => post(`/soc/cases/${encodeURIComponent(selected.id)}/close`, { resolution: "encerrado pelo SOC" })}>Encerrar</Button></div></header>
+          {detailsLoading ? <div style={{ padding: spacing["4"] }}><LoadingSkeleton rows={8} /></div> : detailsError ? <div style={{ padding: spacing["4"] }}><EmptyState title="Contexto indisponível" description={detailsError} onRetry={() => void loadDetails(selected.id)} /></div> : <div style={{ padding: spacing["4"], overflowY: "auto", display: "flex", flexDirection: "column", gap: spacing["4"] }}>
+            {hasSafeShieldLink && <section className="case-shield-context" aria-label="Origem EDY Shield"><div><span>ORIGEM EDY SHIELD</span><strong>Evento preservado no caso</strong></div><dl><div><dt>event_id</dt><dd><code>{linkedShieldEventId}</code></dd></div>{shieldContext.asset && <div><dt>Ativo</dt><dd>{shieldContext.asset}</dd></div>}{shieldContext.filePath && <div><dt>Arquivo</dt><dd><code>{shieldContext.filePath}</code></dd></div>}</dl><Button variant="secondary" onClick={() => navigate(`/investigate/shield/${encodeURIComponent(linkedShieldEventId)}`)}>Revisar evento original</Button></section>}
+            <section style={detailPanel}><PanelHeader title="Ownership" subtitle="Responsável e prioridade operacional" /><div style={{ display: "flex", gap: 8 }}><input aria-label="Responsável do case" value={owner} onChange={(event) => setOwner(event.target.value)} placeholder="analyst@edy" style={inputStyle} /><Button variant="secondary" disabled={busy || !owner.trim()} onClick={() => post(`/soc/cases/${encodeURIComponent(selected.id)}/assign`, { owner: owner.trim() })}>Atribuir</Button></div></section>
+            <section style={detailPanel}><PanelHeader title="Registrar atividade" subtitle="Comentários e evidências entram na timeline do case" /><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, marginBottom: 8 }}><input aria-label="Comentário do case" value={comment} onChange={(event) => setComment(event.target.value)} placeholder="Adicionar comentário operacional…" style={inputStyle} /><Button variant="primary" disabled={busy || !comment.trim()} onClick={() => { post(`/soc/cases/${encodeURIComponent(selected.id)}/comment`, { body: comment.trim(), author: "analyst@edy" }); setComment(""); }}>Comentar</Button></div><div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}><input aria-label="Evidência do case" value={evidence} onChange={(event) => setEvidence(event.target.value)} placeholder="IOC, IP ou artefato…" style={inputStyle} /><Button variant="secondary" disabled={busy || !evidence.trim()} onClick={() => { post(`/soc/cases/${encodeURIComponent(selected.id)}/evidence`, { kind: "ioc", value: evidence.trim() }); setEvidence(""); }}>Anexar</Button></div></section>
             <div className="case-context-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(180px,.7fr)", gap: spacing["3"] }}><section style={detailPanel}><PanelHeader title="Timeline" subtitle={`${details?.timeline.length ?? 0} eventos registrados`} />{details?.timeline?.length ? <div>{details.timeline.map((item, index) => <div key={`${item.created_at}-${index}`} style={{ display: "grid", gridTemplateColumns: "70px 1fr", gap: 8, padding: "8px 0", borderBottom: index < details.timeline.length - 1 ? `1px solid ${colors.borderSubtle}` : "none" }}><span style={{ color: colors.textMuted, fontFamily: typography.family.mono, fontSize: 10 }}>{formatDate(item.created_at)}</span><span><strong style={{ display: "block", color: colors.textPrimary, fontSize: typography.size.xs }}>{item.action}</strong><span style={{ display: "block", marginTop: 2, color: colors.textSecondary, fontSize: typography.size.xs }}>{item.detail || item.actor}</span></span></div>)}</div> : <EmptyState compact title="Sem atividade" description="Comentários e ações aparecerão aqui." />}</section><section style={detailPanel}><PanelHeader title="Artefatos" subtitle={`${details?.evidence.length ?? 0} evidências`} />{details?.evidence?.length ? details.evidence.map((item, index) => <div key={`${item.label}-${index}`} className="case-evidence-item"><span>{item.source === "edy-shield" ? "EDY Shield" : item.kind}</span><strong>{item.label || "Evidência sem rótulo"}</strong>{item.kind === "json" ? <details><summary>Revisar payload validado</summary><pre>{item.value}</pre></details> : <code>{item.value}</code>}</div>) : <span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Nenhuma evidência.</span>}</section></div>
           </div>}
         </>}
       </section>
     </div>
-    <style>{`.case-row:hover { background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important; }.case-context-warning{padding:10px 12px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:7px;background:color-mix(in srgb,var(--severity-medium) 7%,var(--color-surface));color:var(--color-text-secondary);font-size:12px}.case-evidence-item{margin-bottom:10px;padding:9px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.case-evidence-item>span{display:block;color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.case-evidence-item>strong{display:block;margin-top:4px;color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.case-evidence-item summary{margin-top:7px;color:var(--color-text-secondary);font-size:10px;cursor:pointer}.case-evidence-item pre,.case-evidence-item code{display:block;max-height:220px;margin:8px 0 0;padding:8px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:5px;background:var(--color-background);color:var(--color-text-secondary);font-size:9px}@media (max-width: 1120px) { .cases-workspace { grid-template-columns:1fr !important; } .cases-workspace > section:first-child { border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } } @media (max-width: 680px) { .case-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .case-context-grid { grid-template-columns:1fr !important; } .case-actions > button { flex:1; } }`}</style>
+    <style>{`.case-row:hover { background: color-mix(in srgb, var(--color-accent) 5%, transparent) !important; }.case-context-warning{padding:10px 12px;border:1px solid color-mix(in srgb,var(--severity-medium) 36%,var(--color-border));border-radius:7px;background:color-mix(in srgb,var(--severity-medium) 7%,var(--color-surface));color:var(--color-text-secondary);font-size:12px}.case-shield-context{display:grid;grid-template-columns:minmax(150px,.55fr) minmax(0,1fr) auto;align-items:center;gap:14px;padding:13px;border:1px solid color-mix(in srgb,var(--color-accent) 32%,var(--color-border));border-radius:8px;background:color-mix(in srgb,var(--color-accent) 6%,var(--color-surface))}.case-shield-context>div>span{display:block;color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.1em}.case-shield-context>div>strong{display:block;margin-top:4px;color:var(--color-text-primary);font-size:12px}.case-shield-context dl{min-width:0;margin:0}.case-shield-context dl>div{display:grid;grid-template-columns:65px minmax(0,1fr);gap:8px;padding:3px 0}.case-shield-context dt{color:var(--color-text-muted);font-size:10px}.case-shield-context dd{min-width:0;margin:0;color:var(--color-text-secondary);font-size:10px;overflow-wrap:anywhere}.case-shield-context code{font-size:9px}.case-evidence-item{margin-bottom:10px;padding:9px;border:1px solid var(--color-border-subtle);border-radius:7px;background:var(--color-surface-alt)}.case-evidence-item>span{display:block;color:var(--color-accent);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.case-evidence-item>strong{display:block;margin-top:4px;color:var(--color-text-primary);font-size:11px;overflow-wrap:anywhere}.case-evidence-item summary{margin-top:7px;color:var(--color-text-secondary);font-size:10px;cursor:pointer}.case-evidence-item pre,.case-evidence-item code{display:block;max-height:220px;margin:8px 0 0;padding:8px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:5px;background:var(--color-background);color:var(--color-text-secondary);font-size:9px}@media (max-width: 1120px) { .cases-workspace { grid-template-columns:1fr !important; } .cases-workspace > section:first-child { border-right:0 !important; border-bottom:1px solid var(--color-border) !important; } } @media (max-width: 980px) { .case-shield-context { grid-template-columns:1fr !important; align-items:start; } .case-shield-context > button { justify-self:start; } } @media (max-width: 680px) { .case-summary { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } .case-context-grid { grid-template-columns:1fr !important; } .case-actions > button { flex:1; } }`}</style>
   </div>;
 }
 

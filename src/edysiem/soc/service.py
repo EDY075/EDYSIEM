@@ -14,7 +14,9 @@ operações operacionais do SOC:
 
 from __future__ import annotations
 
+import asyncio
 import sqlite3
+import threading
 
 # ruff: noqa: E501
 from collections.abc import Callable
@@ -37,6 +39,15 @@ from ..persistence import (
 )
 from ..persistence.repos import AlertRepository, CaseRepository, IncidentRepository
 from .sla import SlaPolicy, SlaSnapshot, compute_sla
+
+
+class CaseClaimConflictError(ValueError):
+    """O case foi assumido por outro responsavel antes desta solicitacao."""
+
+    def __init__(self, case_id: str, owner: str) -> None:
+        self.case_id = case_id
+        self.owner = owner
+        super().__init__(f"case {case_id} already assigned")
 
 
 class SocService:
@@ -64,6 +75,8 @@ class SocService:
         self._incidents = IncidentRepository(self._manager)
         self._cases = CaseRepository(self._manager)
         self._event_store = EventStore(EventRepository(self._manager), version=version)
+        self._case_creation_lock = asyncio.Lock()
+        self._case_claim_lock = threading.RLock()
 
     # --- Engines -----------------------------------------------------------
 
@@ -442,11 +455,64 @@ class SocService:
         owner: str | None = None,
     ) -> Case:
         """Cria um caso a partir de um incidente via Case Engine e persiste."""
-        existing = self._cases.by_incident(incident.id, limit=1).items
-        if existing:
-            return existing[0]
-        result = await self._case_engine.create_from_incident(incident, title=title, owner=owner)
-        return self.persist_case(result.case)
+        case, _ = await self.create_case_from_incident_idempotent(
+            incident,
+            title=title,
+            owner=owner,
+        )
+        return case
+
+    async def create_case_from_incident_idempotent(
+        self,
+        incident: Incident,
+        *,
+        title: str | None = None,
+        owner: str | None = None,
+        evidence_kind: CaseEvidenceKind | None = None,
+        evidence_value: str = "",
+        evidence_label: str = "",
+        evidence_source: str = "analyst",
+    ) -> tuple[Case, bool]:
+        """Cria ou recupera o unico case do incidente e preserva evidencia uma vez."""
+        async with self._case_creation_lock:
+            existing = self._cases.by_incident(incident.id, limit=1).items
+            if existing:
+                case = existing[0]
+                if (
+                    evidence_kind is not None
+                    and evidence_label
+                    and not any(item.label == evidence_label for item in case.evidences)
+                ):
+                    case = self.add_case_evidence(
+                        case.id,
+                        evidence_kind,
+                        evidence_value,
+                        label=evidence_label,
+                        source=evidence_source,
+                    )
+                return case, False
+
+            result = await self._case_engine.create_from_incident(
+                incident, title=title, owner=owner
+            )
+            case = result.case
+            if evidence_kind is not None and evidence_label:
+                case = self._case_engine.evidence.add(
+                    case,
+                    evidence_kind,
+                    evidence_value,
+                    label=evidence_label,
+                    source=evidence_source,
+                )
+                self._case_engine.context.save(case)
+            try:
+                return self.persist_case(case), True
+            except sqlite3.IntegrityError:
+                self._case_engine.context.discard(result.case.id)
+                concurrent = self._cases.by_incident(incident.id, limit=1).items
+                if not concurrent:
+                    raise
+                return concurrent[0], False
 
     # --- Consulta ----------------------------------------------------------
 
@@ -554,6 +620,23 @@ class SocService:
             case_id, lambda c: self._case_engine.owners.transfer(c, owner, assigned_by=assigned_by)
         )
         return self.persist_case(case)
+
+    def claim_case_owner(self, case_id: str, owner: str, *, assigned_by: str = "system") -> Case:
+        """Assume um case somente se ele ainda estiver sem responsavel."""
+        with self._case_claim_lock:
+            with Transaction(self._manager.connect(), immediate=True):
+                case = self._require_case(case_id)
+                if case.owner:
+                    raise CaseClaimConflictError(case.id, case.owner)
+                claimed = self._case_engine.owners.transfer(case, owner, assigned_by=assigned_by)
+                self._cases.update(claimed)
+                self._event_store.record_event(
+                    PipelineStage.CASE,
+                    claimed,
+                    correlation_id=claimed.incident_id or claimed.id,
+                )
+            self._case_engine.context.save(claimed)
+            return claimed
 
     def resolve_case(self, case_id: str, resolution: str, *, actor: str = "system") -> Case:
         """Resolve um caso registrando a resolução."""

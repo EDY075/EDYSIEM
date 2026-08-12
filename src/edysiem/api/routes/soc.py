@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from typing import Any, cast
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -17,7 +18,8 @@ from ...container import ApplicationContainer
 from ...domain import RawEvent
 from ...incidents import Incident
 from ...incidents.models import IncidentStatus
-from ...soc import SocPipeline, SocService
+from ...persistence import RecordNotFoundError
+from ...soc import CaseClaimConflictError, SocPipeline, SocService
 from ..deps import get_container
 from ..security import rate_limit, require_permission
 
@@ -31,6 +33,22 @@ _CASE_STATUS_LABELS = {
     "closed": "Encerrado",
     "reopened": "Reaberto",
 }
+
+
+def _canonical_uuid4(value: str) -> bool:
+    try:
+        parsed = UUID(value)
+    except ValueError:
+        return False
+    return parsed.version == 4 and str(parsed) == value
+
+
+def _require_case_id(case_id: str) -> None:
+    if not _canonical_uuid4(case_id):
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "invalid_case_id", "message": "case_id must be a canonical UUIDv4"},
+        )
 
 
 # --- Serializadores ---------------------------------------------------------
@@ -180,11 +198,14 @@ def transition_incident(
 
 
 @router.get("/soc/cases", summary="Lista cases persistidos")
-def list_cases(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
+def list_cases(
+    limit: int = Query(100, ge=1, le=100),
+    container: ApplicationContainer = Depends(get_container),
+) -> dict[str, Any]:
     svc = _service(container)
     return {
         "total": len(svc.list_cases(limit=10000)),
-        "items": [{**_c(c), "sla": asdict(svc.sla_of(c))} for c in svc.list_cases(limit=100)],
+        "items": [{**_c(c), "sla": asdict(svc.sla_of(c))} for c in svc.list_cases(limit=limit)],
     }
 
 
@@ -192,6 +213,7 @@ def list_cases(container: ApplicationContainer = Depends(get_container)) -> dict
 def get_case(
     case_id: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     case = svc.get_case(case_id)
     if case is None:
@@ -203,22 +225,40 @@ def get_case(
 def investigate(
     case_id: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return svc.investigate(case_id)
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={"code": "investigation_unavailable", "message": "investigation unavailable"},
+        ) from exc
 
 
 @router.post("/soc/cases/{case_id}/comment", summary="Adiciona comentário")
 def add_comment(
     case_id: str, body: str, author: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return _c(svc.add_case_comment(case_id, body, author))
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "case_update_rejected", "message": "case update rejected"},
+        ) from exc
 
 
 @router.post("/soc/cases/{case_id}/evidence", summary="Anexa evidência")
@@ -229,33 +269,92 @@ def add_evidence(
     label: str = "",
     container: ApplicationContainer = Depends(get_container),
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return _c(svc.add_case_evidence(case_id, CaseEvidenceKind(kind), value, label=label))
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "case_evidence_rejected", "message": "case evidence rejected"},
+        ) from exc
 
 
-@router.post("/soc/cases/{case_id}/assign", summary="Atribui responsável")
+@router.post(
+    "/soc/cases/{case_id}/assign",
+    summary="Atribui responsável",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 def assign_case(
     case_id: str, owner: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return _c(svc.assign_case_owner(case_id, owner))
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "case_assignment_rejected", "message": "case assignment rejected"},
+        ) from exc
+
+
+@router.post(
+    "/soc/cases/{case_id}/claim",
+    summary="Assume case ainda sem responsável",
+    dependencies=[Depends(require_permission("case:write"))],
+)
+def claim_case(
+    case_id: str, owner: str, container: ApplicationContainer = Depends(get_container)
+) -> dict[str, Any]:
+    _require_case_id(case_id)
+    svc = _service(container)
+    try:
+        return _c(svc.claim_case_owner(case_id, owner, assigned_by=owner))
+    except CaseClaimConflictError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "case_already_assigned",
+                "message": "case already assigned",
+                "owner": exc.owner,
+            },
+        ) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
 
 
 @router.post("/soc/cases/{case_id}/resolve", summary="Resolve um case")
 def resolve_case(
     case_id: str, resolution: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return _c(svc.resolve_case(case_id, resolution))
-    except Exception as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "case_resolution_rejected", "message": "case resolution rejected"},
+        ) from exc
 
 
 @router.post(
@@ -268,11 +367,20 @@ def close_case(
     resolution: str | None = None,
     container: ApplicationContainer = Depends(get_container),
 ) -> dict[str, Any]:
+    _require_case_id(case_id)
     svc = _service(container)
     try:
         return _c(svc.close_case(case_id, resolution))
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "case_not_found", "message": "case not found"},
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "case_transition_rejected", "message": "case transition rejected"},
+        ) from exc
 
 
 # --- Pipeline E2E ---------------------------------------------------------------------

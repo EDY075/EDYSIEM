@@ -217,10 +217,13 @@ export function ShieldEventInvestigationPage() {
     setAssigningCase(true);
     setErrorMessage("");
     const response = await apiClient.post(
-      `/soc/cases/${encodeURIComponent(data.case.case_id)}/assign?${new URLSearchParams({ owner: CURRENT_ANALYST }).toString()}`,
+      `/soc/cases/${encodeURIComponent(data.case.case_id)}/claim?${new URLSearchParams({ owner: CURRENT_ANALYST }).toString()}`,
     );
     if (response.success) await load();
-    else setErrorMessage("Não foi possível assumir o caso. Tente novamente.");
+    else if (response.error?.status === 409) {
+      await load();
+      setErrorMessage("O caso foi assumido por outro analista. O responsável atual foi atualizado.");
+    } else setErrorMessage("Não foi possível assumir o caso. Tente novamente.");
     setAssigningCase(false);
   };
 
@@ -338,7 +341,7 @@ export function ShieldEventInvestigationPage() {
           {mitre.length ? <div className="shield-mitre-list">{mitre.map((mapping) => <article key={mapping.technique_id}><code>{mapping.technique_id}</code>{mapping.name && <strong>{mapping.name}</strong>}{mapping.tactic && <span>Tática · {mapping.tactic}</span>}<small>Origem · {mapping.source}</small></article>)}</div> : <p className="shield-muted">Técnica MITRE ainda não associada a este evento.</p>}
         </Panel>
         <Panel eyebrow="DECISÃO" title="Próxima decisão">
-          {data.case ? <div className="shield-case-linked"><span>CASO VINCULADO</span><strong>{data.case.title}</strong><code>{data.case.case_id}</code><div className="shield-decision-status"><div><span>Responsável</span><strong>{data.case.owner || "Sem responsável"}</strong></div><div className={`sla-${data.case.sla?.state || "none"}`}><span>{slaLabel(data.case.sla)}</span><strong>{slaDetail(data.case.sla)}</strong></div></div><div className="shield-case-facts"><DataRow label="Status" value={caseStatusLabel(data.case.status)} /><DataRow label="Prazo" value={data.case.sla?.deadline ? formatTime(data.case.sla.deadline) : null} /><DataRow label="Evidências" value={data.case.evidence_count} /></div><div className="shield-decision-actions">{!data.case.owner && <Button disabled={assigningCase} onClick={() => void assumeCase()}>{assigningCase ? "Assumindo…" : "Assumir"}</Button>}<Button variant={data.case.owner ? "primary" : "secondary"} onClick={() => navigate(`/investigate?case=${encodeURIComponent(data.case!.case_id)}`)}>Continuar investigação</Button><Button variant="ghost" onClick={() => navigate(`/cases?case=${encodeURIComponent(data.case!.case_id)}`)}>Abrir caso existente</Button></div></div> : <div className="shield-decision-copy"><p>Revise a evidência acima e crie um caso rastreável quando a mudança exigir tratamento operacional.</p><div className="shield-decision-actions"><Button disabled={creatingCase} onClick={() => void createCase()}>{creatingCase ? "Criando caso…" : "Criar caso"}</Button><Button variant="ghost" onClick={() => document.querySelector(".shield-investigation-main")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Revisar evidência</Button></div></div>}
+          {data.case ? <div className="shield-case-linked"><span>CASO VINCULADO</span><strong>{data.case.title}</strong><code>{data.case.case_id}</code><div className="shield-decision-status"><div><span>Responsável</span><strong>{data.case.owner || "Sem responsável"}</strong></div><div className={`sla-${data.case.sla?.state || "none"}`}><span>{slaLabel(data.case.sla)}</span><strong>{slaDetail(data.case.sla)}</strong></div></div><div className="shield-case-facts"><DataRow label="Status" value={caseStatusLabel(data.case.status)} /><DataRow label="Prazo" value={data.case.sla?.deadline ? formatTime(data.case.sla.deadline) : null} /><DataRow label="Evidências" value={data.case.evidence_count} /></div><div className="shield-decision-actions">{!data.case.owner && <Button disabled={assigningCase} onClick={() => void assumeCase()}>{assigningCase ? "Assumindo…" : "Assumir"}</Button>}<Button variant={data.case.owner ? "primary" : "secondary"} onClick={() => navigate(`/investigate?case=${encodeURIComponent(data.case!.case_id)}`)}>Continuar investigação</Button><Button variant="ghost" onClick={() => navigate(`/cases?case=${encodeURIComponent(data.case!.case_id)}`)}>Abrir caso</Button></div></div> : <div className="shield-decision-copy"><p>Revise a evidência acima e crie um caso rastreável quando a mudança exigir tratamento operacional.</p><div className="shield-decision-actions"><Button disabled={creatingCase} onClick={() => void createCase()}>{creatingCase ? "Criando caso…" : "Criar caso"}</Button><Button variant="ghost" onClick={() => document.querySelector(".shield-investigation-main")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Revisar evidência</Button></div></div>}
           {errorMessage && <p role="alert" className="shield-inline-error">{errorMessage}</p>}
         </Panel>
       </aside>

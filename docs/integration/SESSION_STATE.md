@@ -500,3 +500,79 @@ Limitações preservadas:
 # Sprint C3 — Case Handoff & Investigation Workflow Closure
 
 Não iniciar Sprint C3 automaticamente. Não fazer merge em main.
+
+## Sprint C — Investigation Workflow: COMPLETE (2026-08-12)
+
+A C3 fechou o fluxo completo **Alerta → Evidência → Entidade → MITRE → Decisão → Caso**
+reutilizando o Case Center e preservando tudo o que foi entregue nas C1/C2:
+
+- criar caso a partir do evento Shield usa o vínculo real `shield-event:{event_id}` e
+  preserva source, ativo, severidade, evidência original validada, MITRE e contexto;
+- um índice parcial único em `cases.incident_id` e a criação idempotente garantem um
+  único `case_id`; a evidência Shield entra no mesmo persist inicial do caso;
+- requests concorrentes e duplo clique retornam o mesmo caso, sem evidência duplicada;
+- quando o caso já existe, a UI remove a criação e oferece **Abrir caso**/
+  **Continuar investigação** para o `case_id` exato;
+- `useCases` resolve `?case=` por GET exato quando o item está fora da página da fila;
+  ID inválido ou 404 real nunca seleciona outro caso por inferência;
+- o Case Center mostra proveniência compacta EDY Shield com `event_id`, ativo, arquivo e
+  retorno seguro à investigação original;
+- falha no detalhe do caso possui loading, erro e retry próprios e não é apresentada
+  como timeline/evidência vazia;
+- **Assumir** usa claim condicional em transação SQLite `BEGIN IMMEDIATE`; o primeiro
+  owner vence e concorrentes recebem conflito 409 estruturado;
+- IDs de evento/caso são UUIDv4 canônicos, rotas usam `encodeURIComponent` e a API de
+  investigação devolve erros bounded sem exceções internas.
+
+### C1, C2 e C3
+
+- C1: evidência, hashes, baseline/scan, timeline real e estados de consulta.
+- C2: entidade/inventário read-only, MITRE confiável, decisão, owner e SLA.
+- C3: criação/abertura idempotente, handoff exato, proveniência no caso e retorno ao
+  mesmo `event_id`.
+
+### Quality Gate
+
+- 43 testes focados aprovados.
+- 947 testes completos aprovados; cobertura global **95,02%**.
+- Ruff, MyPy (152 arquivos), TypeScript e `git diff --check`: PASS.
+- Vite production build: 676 módulos transformados. O carregador TS do `npm run build`
+  encontrou a restrição de leitura do sandbox; a mesma configuração foi executada pela
+  API Vite com `configFile: false` e concluiu sem erro.
+- Backend: wheel e sdist gerados (`edy_siem-0.2.0-py3-none-any.whl` e
+  `edy_siem-0.2.0.tar.gz`). O wheel foi construído diretamente sem isolamento para
+  evitar o limite de path do Windows ao reextrair o sdist com `frontend/node_modules`.
+- Google Chrome externo validado em 1920x1080, 1366x768 e 820x900: sem caso, criação,
+  duplo clique, caso existente, investigação genérica, Case Center exato, ownership,
+  retorno, 404 de case e API indisponível/recuperação.
+- Network: create produziu um único POST no duplo clique; health, fila, investigação,
+  case e claim responderam 200, com 409 esperado no teste de claim concorrente.
+- Console: nenhum erro React/JavaScript da sprint. Permanece o warning conhecido de
+  future flag do React Router; o Chrome registrou também ruído de canal assíncrono da
+  extensão, sem stack no bundle ou impacto na UI.
+- Screenshots finais em `outputs/sprint-c3-siem/`: `06-case-handoff-final-1920.png`,
+  `02-investigation-linked-1366.png`, `03-investigation-linked-820.png` e
+  `05-case-handoff-820-corrected.png`.
+
+### Limitações restantes
+
+- A identidade `analista.soc` continua sendo a identidade fixa do ambiente de
+  desenvolvimento; autenticação/RBAC real permanece fora do escopo.
+- O frontend ainda não possui runner de testes de componentes; contratos, tipos,
+  concorrência e segurança são cobertos por pytest/TypeScript, e UX pelo Chrome real.
+- O sdist atual inclui o frontend completo e `node_modules`, produzindo artefato grande;
+  excluir dependências do sdist é hardening de empacotamento futuro.
+- O Error Boundary próprio do React Router segue registrado como melhoria futura.
+
+Commits da Sprint C:
+
+- C1: `e3f83e6` (`feat(ui): redesign investigation evidence flow`).
+- Hotfix: `1abecef` (`fix(ui): prevent structured health render in war room`).
+- C2: `60180a8` (`feat(ui): complete entity mitre decision flow`).
+- C3: commit identificado pela mensagem `feat(ui): close investigation case handoff`.
+
+## Próximo passo EXATO
+
+# Sprint D — Shared Design System & Final Product Polish
+
+Não iniciar Sprint D automaticamente. Não fazer merge em main.

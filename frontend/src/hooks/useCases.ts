@@ -65,7 +65,9 @@ function toCase(c: SocCaseDto): Case {
   };
 }
 
-export function useCases(limit: number = 50) {
+const UUID4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+export function useCases(limit: number = 50, requestedCaseId: string = "") {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +81,12 @@ export function useCases(limit: number = 50) {
       );
       if (response.success && response.data) {
         const items = (response.data.items || []).map((i) => toCase(i as SocCaseDto));
+        if (requestedCaseId && UUID4.test(requestedCaseId) && !items.some((item) => item.id === requestedCaseId)) {
+          const exact = await apiClient.get<SocCaseDto>(
+            `/soc/cases/${encodeURIComponent(requestedCaseId)}`,
+          );
+          if (exact.success && exact.data) items.unshift(toCase(exact.data));
+        }
         setCases(items);
       } else {
         setError(response.error?.message || "Falha ao carregar cases");
@@ -90,7 +98,7 @@ export function useCases(limit: number = 50) {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, requestedCaseId]);
 
   useEffect(() => {
     fetchCases();

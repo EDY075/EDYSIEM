@@ -963,6 +963,68 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 
 Não iniciar automaticamente e não fazer merge em `main`.
 
+## HANDOFF — Sprint C3 concluída / Sprint C COMPLETE (2026-08-12)
+
+### Contexto
+
+O fluxo **Alerta → Evidência → Entidade → MITRE → Decisão → Caso** está completo. A C3
+reutiliza o sistema de cases, mantém o mesmo `event_id` Shield e impede criação ou
+seleção duplicada/incorreta.
+
+### Artefatos
+
+- `src/edysiem/persistence/schema.py`: migração V6 com vínculo único por `incident_id`.
+- `src/edysiem/soc/service.py`: create-or-fetch idempotente com evidência no persist
+  inicial e claim transacional condicional.
+- `src/edysiem/api/routes/shield_investigation.py`: criação idempotente autorizada.
+- `src/edysiem/api/routes/soc.py`: case ID UUIDv4, GET exato, erro bounded, limit real e
+  endpoint de claim com conflito 409.
+- `frontend/src/hooks/useCases.ts`: resolução do case solicitado fora da página atual.
+- `frontend/src/pages/ShieldEventInvestigationPage.tsx`: criar/abrir caso e claim seguro.
+- `frontend/src/pages/InvestigationPage.tsx`: handoff para o case exato.
+- `frontend/src/pages/CaseCenterPage.tsx`: proveniência Shield, retorno ao evento e erro
+  de contexto com retry sem falso empty state.
+- `tests/test_persistence.py`, `tests/test_shield_investigation_api.py` e
+  `tests/test_soc_api.py`: unicidade, concorrência, claim, IDs, erro seguro e marcadores
+  do handoff frontend.
+- Screenshots finais em `outputs/sprint-c3-siem/` no workspace da sessão.
+
+### Decisões
+
+- `incident_id` é a chave arquitetural do vínculo único caso/incidente/evento.
+- A evidência original Shield é anexada antes do primeiro persist do case, eliminando a
+  janela entre criação e provenance.
+- Claim usa transação imediata e não sobrescreve owner existente; assignment explícito
+  do Case Center continua sendo uma ação diferente.
+- `?case=` nunca cai no primeiro item. O GET exato decide existência e todos os links
+  locais usam UUID validado/codificado.
+- O Case Center extrai somente hostname e file path do JSON validado para resumo; o
+  payload bruto continua colapsado e renderizado como texto inerte.
+
+### Quality Gate
+
+- 43 testes focados; 947 completos; cobertura 95,02%.
+- Ruff, MyPy, TypeScript, Vite production build, wheel/sdist e diff-check aprovados.
+- Google Chrome externo em 1920x1080, 1366x768 e 820x900; criação, duplo clique,
+  ownership, caso existente, case inexistente, falha/recuperação de API e retorno ao
+  mesmo evento.
+- Console sem erro da aplicação; warning React Router e ruído da extensão documentados.
+- Screenshots: `06-case-handoff-final-1920.png`, `02-investigation-linked-1366.png`,
+  `03-investigation-linked-820.png` e `05-case-handoff-820-corrected.png`.
+
+### Limitações
+
+- identidade fixa de desenvolvimento sem auth/RBAC de produção;
+- sem runner frontend de componentes;
+- sdist inclui `frontend/node_modules` e deve ser reduzido em hardening futuro;
+- Error Boundary próprio permanece backlog de resiliência.
+
+### Próximo passo
+
+# Sprint D — Shared Design System & Final Product Polish
+
+Não iniciar automaticamente e não fazer merge em `main`.
+
 ## HANDOFF — Sprint C2 concluída (2026-08-12)
 
 ### Contexto

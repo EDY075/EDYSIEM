@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from edysiem.api.app import create_app
@@ -160,9 +162,63 @@ def test_soc_api_details_transition_and_400(monkeypatch, tmp_path) -> None:
         assert r.status_code == 400
 
         r = client.get("/api/v1/soc/cases/nao-existe")
-        assert r.status_code == 404
+        assert r.status_code == 422
+        assert r.json()["detail"]["code"] == "invalid_case_id"
+
+
+def test_case_investigation_errors_are_bounded(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        missing = client.get(f"/api/v1/soc/cases/{uuid4()}/investigate")
+        assert missing.status_code == 404
+        assert missing.json()["detail"] == {
+            "code": "case_not_found",
+            "message": "case not found",
+        }
+
+        case_id = client.post("/api/v1/soc/pipeline/demo").json()["case_id"]
+
+        def unavailable(_: str):
+            raise RuntimeError("database password and internal path")
+
+        monkeypatch.setattr(client.app.state.container.soc_service, "investigate", unavailable)
+        response = client.get(f"/api/v1/soc/cases/{case_id}/investigate")
+
+        assert response.status_code == 500
+        assert response.json()["detail"] == {
+            "code": "investigation_unavailable",
+            "message": "investigation unavailable",
+        }
+        assert "password" not in response.text
         r = client.get("/api/v1/soc/cases/nao-existe/investigate")
-        assert r.status_code == 404
+        assert r.status_code == 422
+        assert r.json()["detail"]["code"] == "invalid_case_id"
+
+
+def test_case_mutations_validate_ids_and_bound_not_found(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "soc.db"))
+    with TestClient(create_app()) as client:
+        mutations = (
+            ("comment", {"body": "triagem", "author": "analyst"}),
+            ("evidence", {"kind": "ioc", "value": "10.0.0.1"}),
+            ("assign", {"owner": "analyst"}),
+            ("claim", {"owner": "analyst"}),
+            ("resolve", {"resolution": "tratado"}),
+            ("close", {"resolution": "encerrado"}),
+        )
+        for action, params in mutations:
+            invalid = client.post(f"/api/v1/soc/cases/not-a-uuid/{action}", params=params)
+            assert invalid.status_code == 422
+            assert invalid.json()["detail"]["code"] == "invalid_case_id"
+
+        missing_id = uuid4()
+        for action, params in mutations:
+            missing = client.post(f"/api/v1/soc/cases/{missing_id}/{action}", params=params)
+            assert missing.status_code == 404
+            assert missing.json()["detail"] == {
+                "code": "case_not_found",
+                "message": "case not found",
+            }
 
 
 def test_soc_api_alerts_and_series(monkeypatch, tmp_path) -> None:

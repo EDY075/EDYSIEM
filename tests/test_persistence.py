@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from edysiem.alerts import Alert, AlertFingerprint, AlertSeverity
@@ -71,13 +73,13 @@ def _case() -> Case:
 
 def test_schema_version_applied(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert runner.current_version(manager) == 5
+    assert runner.current_version(manager) == 6
 
 
 def test_migrations_idempotent(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
     runner.apply(manager)  # segunda aplicacao nao deve quebrar
-    assert runner.current_version(manager) == 5
+    assert runner.current_version(manager) == 6
 
 
 def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
@@ -92,17 +94,32 @@ def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
     with pytest.raises(MigrationError):
         runner.apply(manager)
     # versao nao avancou alem do schema atual
-    assert runner.current_version(manager) == 5
+    assert runner.current_version(manager) == 6
 
 
 def test_migrations_property() -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert len(runner.migrations) == 5
+    assert len(runner.migrations) == 6
     assert runner.migrations[0].version == 1
     assert runner.migrations[1].version == 2
     assert runner.migrations[2].version == 3
     assert runner.migrations[3].version == 4
     assert runner.migrations[4].version == 5
+    assert runner.migrations[5].version == 6
+
+
+def test_case_incident_link_is_unique(manager: ConnectionManager) -> None:
+    first = _case()
+    second = Case(
+        title="Tentativa duplicada",
+        severity=CaseSeverity.HIGH,
+        priority=CasePriority.P2,
+        status=CaseStatus.OPEN,
+        incident_id=first.incident_id,
+    )
+    UnitOfWork(manager).cases.add(first)
+    with pytest.raises(sqlite3.IntegrityError, match="UNIQUE constraint failed"):
+        UnitOfWork(manager).cases.add(second)
 
 
 def test_shield_inbox_schema_created(manager: ConnectionManager) -> None:

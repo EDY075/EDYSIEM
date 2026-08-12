@@ -8,10 +8,11 @@
 from __future__ import annotations
 
 from .pipeline import SocFlowResult, SocPipeline
-from .service import SocService
+from .service import CaseClaimConflictError, SocService
 from .sla import SlaPolicy, SlaSnapshot, compute_sla
 
 __all__ = [
+    "CaseClaimConflictError",
     "SlaPolicy",
     "SlaSnapshot",
     "SocFlowResult",

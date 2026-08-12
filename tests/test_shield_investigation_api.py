@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from uuid import uuid4
 
@@ -216,6 +217,46 @@ def test_case_creation_is_idempotent_and_preserves_original_event(client: TestCl
     assert investigated.json()["evidence"][0]["label"] == f"EDY Shield event {event['event_id']}"
 
 
+def test_concurrent_case_creation_returns_one_link_and_one_evidence(client: TestClient) -> None:
+    event = _event()
+    event["event_id"] = str(uuid4())
+    _ingest(client, event)
+    endpoint = f"{INVESTIGATE}/{event['event_id']}/cases"
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: client.post(endpoint), range(2)))
+
+    assert [response.status_code for response in responses] == [200, 200]
+    payloads = [response.json() for response in responses]
+    assert sorted(payload["case_created"] for payload in payloads) == [False, True]
+    assert len({payload["case"]["case_id"] for payload in payloads}) == 1
+    cases = client.app.state.container.soc_service.list_cases(limit=100)
+    linked = [case for case in cases if case.incident_id == f"shield-event:{event['event_id']}"]
+    assert len(linked) == 1
+    assert len(linked[0].evidences) == 1
+
+
+def test_claim_is_conditional_and_preserves_first_owner(client: TestClient) -> None:
+    event = _event()
+    event["event_id"] = str(uuid4())
+    _ingest(client, event)
+    created = client.post(f"{INVESTIGATE}/{event['event_id']}/cases").json()
+    case_id = created["case"]["case_id"]
+
+    first = client.post(f"/api/v1/soc/cases/{case_id}/claim", params={"owner": "analyst.one"})
+    second = client.post(f"/api/v1/soc/cases/{case_id}/claim", params={"owner": "analyst.two"})
+
+    assert first.status_code == 200
+    assert first.json()["owner"] == "analyst.one"
+    assert second.status_code == 409
+    assert second.json()["detail"] == {
+        "code": "case_already_assigned",
+        "message": "case already assigned",
+        "owner": "analyst.one",
+    }
+    assert client.get(f"/api/v1/soc/cases/{case_id}").json()["owner"] == "analyst.one"
+
+
 def test_frontend_contains_all_required_resolution_states() -> None:
     source = (
         ROOT / "frontend" / "src" / "pages" / "ShieldEventInvestigationPage.tsx"
@@ -229,11 +270,31 @@ def test_frontend_contains_all_required_resolution_states() -> None:
         "Criar caso",
         "Técnica MITRE ainda não associada",
         "HASH ANTERIOR",
-        "Abrir caso existente",
+        "Abrir caso",
         "Próxima decisão",
         "Assumir",
         "Continuar investigação",
         "ENTIDADE · ENDPOINT",
         "/cases?case=",
+        "/claim?",
     ):
         assert marker in source
+
+
+def test_frontend_case_handoff_preserves_exact_context_and_errors() -> None:
+    hook = (ROOT / "frontend" / "src" / "hooks" / "useCases.ts").read_text(encoding="utf-8")
+    case_center = (ROOT / "frontend" / "src" / "pages" / "CaseCenterPage.tsx").read_text(
+        encoding="utf-8"
+    )
+    investigation = (
+        ROOT / "frontend" / "src" / "pages" / "InvestigationPage.tsx"
+    ).read_text(encoding="utf-8")
+
+    assert "requestedCaseId" in hook
+    assert "/soc/cases/${encodeURIComponent(requestedCaseId)}" in hook
+    assert "Origem EDY Shield" in case_center
+    assert "event_id" in case_center
+    assert "detailsError" in case_center
+    assert 'title="Contexto indisponível"' in case_center
+    assert "Voltar à investigação" in case_center
+    assert "useCases(60, requestedCaseId)" in investigation

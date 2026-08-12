@@ -18,6 +18,7 @@ from ...incidents import Incident, IncidentPriority, IncidentSeverity
 from ...persistence import PersistenceError, ShieldInboxRepository
 from ...soc import SocService
 from ..deps import get_container, get_shield_inbox
+from ..security import require_permission
 
 router = APIRouter(tags=["shield-investigation"])
 _ROUTE = "/investigation/sources/edy-shield/events/{event_id}"
@@ -218,7 +219,11 @@ def get_shield_event_investigation(
     return _response(row, _linked_case(service, event_id), service)
 
 
-@router.post(f"{_ROUTE}/cases", summary="Create an idempotent case from one Shield event")
+@router.post(
+    f"{_ROUTE}/cases",
+    summary="Create an idempotent case from one Shield event",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 async def create_case_from_shield_event(
     event_id: str,
     repository: ShieldInboxRepository = Depends(get_shield_inbox),
@@ -267,20 +272,18 @@ async def create_case_from_shield_event(
     )
 
     service = cast(SocService, container.soc_service)
-    existing = _linked_case(service, event_id)
-    case = await service.create_case_from_incident(incident, owner=None)
     evidence_label = f"EDY Shield event {event_id}"
-    if not any(item.label == evidence_label for item in case.evidences):
-        evidence_value = json.dumps(payload, ensure_ascii=False, sort_keys=True, allow_nan=False)
-        case = service.add_case_evidence(
-            case.id,
-            CaseEvidenceKind.JSON,
-            evidence_value,
-            label=evidence_label,
-            source="edy-shield",
-        )
+    evidence_value = json.dumps(payload, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    case, created = await service.create_case_from_incident_idempotent(
+        incident,
+        owner=None,
+        evidence_kind=CaseEvidenceKind.JSON,
+        evidence_value=evidence_value,
+        evidence_label=evidence_label,
+        evidence_source="edy-shield",
+    )
     result = _response(row, case, service)
-    result["case_created"] = existing is None
+    result["case_created"] = created
     return result
 
 

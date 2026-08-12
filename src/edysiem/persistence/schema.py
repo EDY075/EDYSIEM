@@ -286,12 +286,34 @@ class SchemaV5(Migration):
         conn.executescript(_CREATE_SHIELD_INGESTION)
 
 
+class SchemaV6(Migration):
+    """Versao 6: um unico case por incidente/evento de origem."""
+
+    version = 6
+    description = "unique case linkage by incident_id"
+
+    def up(self, conn: sqlite3.Connection) -> None:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cases_incident_unique "
+            "ON cases(incident_id) WHERE incident_id IS NOT NULL"
+        )
+
+
 ALL_MIGRATIONS: list[Migration] = [
     SchemaV1(),
     SchemaV2(),
     SchemaV3(),
     SchemaV4(),
     SchemaV5(),
+    SchemaV6(),
 ]
 
-__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3", "SchemaV4", "SchemaV5"]
+__all__ = [
+    "ALL_MIGRATIONS",
+    "SchemaV1",
+    "SchemaV2",
+    "SchemaV3",
+    "SchemaV4",
+    "SchemaV5",
+    "SchemaV6",
+]
