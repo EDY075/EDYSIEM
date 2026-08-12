@@ -29,6 +29,7 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    environment: str
     components: dict[str, HealthComponent] = Field(default_factory=dict)
 
 

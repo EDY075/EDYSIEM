@@ -5,6 +5,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
+import type { SlaSnapshotDto } from "./useShieldEvents";
 
 export interface RecentAlert {
   id: string;
@@ -18,6 +19,7 @@ export interface RecentAlert {
   firstSeen: string;
   riskScore: number;
   mitre: string[];
+  sla?: SlaSnapshotDto;
 }
 
 interface SocAlertDto {
@@ -32,7 +34,7 @@ interface SocAlertDto {
   iocs: string[];
   mitre: string[];
   created_at: string;
-  sla: { state: string };
+  sla?: SlaSnapshotDto;
 }
 
 function toRecentAlert(a: SocAlertDto): RecentAlert {
@@ -47,6 +49,7 @@ function toRecentAlert(a: SocAlertDto): RecentAlert {
     firstSeen: a.created_at,
     riskScore: a.risk_score,
     mitre: a.mitre,
+    sla: a.sla,
   };
 }
 
@@ -67,11 +70,9 @@ export function useAlerts(limit: number = 50) {
         setAlerts(items);
       } else {
         setError(response.error?.message || "Falha ao carregar alertas");
-        setAlerts([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar alertas");
-      setAlerts([]);
     } finally {
       setLoading(false);
     }

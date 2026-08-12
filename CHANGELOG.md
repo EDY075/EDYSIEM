@@ -1,4 +1,29 @@
 # Changelog
+## [0.3.0] - 2026-08-12
+
+### Added
+
+- **Shield → SIEM Event Contract v1**: authenticated receiver, durable inbox,
+  normalization and safe operator investigation for delivered Shield events.
+- **SOC Decision Center**: Decision Queue with real SLA, ownership, asset, evidence and
+  supported next action, plus bounded Ingestion Health.
+- **Investigation Workflow**: Shield provenance, entity context, supplied MITRE context,
+  idempotent case creation/opening and return to the same `event_id` from Case Center.
+- **Route recovery**: a dedicated React Router error boundary with retry and safe return
+  to Overview replaces the raw framework error screen.
+
+### Changed
+
+- Shared final polish preserves the SIEM blue/cyan SOC identity while aligning accessible
+  focus, typography, spacing and responsive behavior with the Shield ecosystem.
+
+### Quality
+
+- Real-process E2E validated Shield FIM event delivery, outbox/inbox recovery, stable
+  `event_id`, idempotent case handoff, zero lost events and zero logical duplicates.
+- Release suite: 948 passed, 95.02% coverage; Ruff, MyPy, TypeScript/Vite, wheel/sdist,
+  security checks and browser QA passed.
+
 ## [0.2.0] - 2026-08-06
 
 ### Finalização de release

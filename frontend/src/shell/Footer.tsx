@@ -18,8 +18,8 @@ export function Footer() {
         fontFamily: typography.family.mono,
       }}
     >
-      <span>EDY SIEM v0.1.0</span>
-      <span>Uptime: 99.97% · EPS: 1.2k · Storage: 42%</span>
+      <span>EDY SIEM v0.2.0</span>
+      <span>Dados operacionais via API local · horários no fuso do workspace</span>
     </footer>
   );
 }

@@ -2,7 +2,8 @@
  * Incident UI (Sprint 2.16 WP2) — dados reais do backend.
  * Lista incidentes com severidade/status/SLA/owner, assumir, transição e drawer.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { colors, spacing, typography } from "../design-system/tokens";
 import { Card, Button } from "../design-system";
 import { SeverityBadge, StatusBadge } from "../design-system/components/badges";
@@ -38,9 +39,15 @@ type Row = {
 
 export function IncidentCenterPage() {
   const { incidents, loading, error, refetch } = useIncidents(100);
+  const [searchParams] = useSearchParams();
   const [detail, setDetail] = useState<Incident | null>(null);
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const requested = searchParams.get("incident");
+    if (requested) setDetail(detailById(incidents, requested));
+  }, [incidents, searchParams]);
 
   const rows: Row[] = incidents.map((r) => ({
     id: r.id,

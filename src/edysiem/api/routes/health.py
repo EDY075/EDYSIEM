@@ -17,6 +17,26 @@ router = APIRouter(tags=["system"])
 async def health(container: ApplicationContainer = Depends(get_container)) -> HealthResponse:
     """Estado agregado dos engines da plataforma."""
     components: dict[str, HealthComponent] = {}
+    environment = load().unwrap().environment.value
+
+    try:
+        ingestion = container.shield_inbox.health_snapshot()
+        components["ingestion"] = HealthComponent(
+            status="online",
+            details={
+                "receiver": "edy-shield",
+                "receiver_state": "ready",
+                **ingestion,
+            },
+        )
+    except Exception:
+        components["ingestion"] = HealthComponent(status="error")
+
+    try:
+        container.shield_inbox.manager.connect().execute("SELECT 1").fetchone()
+        components["storage"] = HealthComponent(status="online")
+    except Exception:
+        components["storage"] = HealthComponent(status="error")
 
     try:
         components["enrichment"] = HealthComponent(
@@ -42,12 +62,18 @@ async def health(container: ApplicationContainer = Depends(get_container)) -> He
     components["alerts"] = HealthComponent(status="online")
     components["incidents"] = HealthComponent(status="online")
     components["cases"] = HealthComponent(status="online")
+    components["api"] = HealthComponent(status="online")
 
     healthy_statuses = {"healthy", "online"}
     overall = (
         "healthy" if all(c.status in healthy_statuses for c in components.values()) else "degraded"
     )
-    return HealthResponse(status=overall, version=version(), components=components)
+    return HealthResponse(
+        status=overall,
+        version=version(),
+        environment=environment,
+        components=components,
+    )
 
 
 @router.get("/version", response_model=VersionResponse, summary="Versao da plataforma")

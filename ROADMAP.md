@@ -2,14 +2,15 @@
 
 > Planejamento por sprints. **Regra Nº 1: arquitetura aprovada antes de funcionalidade.**
 > Toda sprint de feature exige: docs → ADR (se preciso) → contrato → código → testes → docs.
-## Release 0.2.0
+## Release 0.3.0
 
 | Frente | Estado | Observação |
 |---|---|---|
-| Shell, design system e telas SOC | Concluído | Identidade Echelon e responsividade revisadas. |
-| Qualidade de código | Concluído | TypeScript, Ruff, MyPy e 801 testes com cobertura mínima de 95%. |
-| Publicação no Git | Concluído localmente | Commit e tag `release-0.2.0`; o push depende de um remoto configurado. |
-| Evolução de contratos | Pendente | Triage, Playbooks e detalhes enriquecidos de alerta aguardam endpoints próprios. |
+| Shield → SIEM Event Contract v1 | Concluído | Outbox/inbox, idempotência, E2E e recuperação offline validados. |
+| SOC Decision Center | Concluído | Decision Queue, SLA/ownership e Ingestion Health usam dados persistidos. |
+| Investigation Workflow | Concluído | Evidência, entidade, MITRE fornecido, decisão e Case Handoff fechados. |
+| Qualidade de código | Concluído | 948 testes, cobertura 95,02%, TypeScript, Ruff, MyPy e builds aprovados. |
+| Escala e produção | Pendente | Kafka, PostgreSQL, autenticação/SSO, retenção e integrações adicionais permanecem futuras. |
 
 ## Fase 0 — Fundação (atual)
 

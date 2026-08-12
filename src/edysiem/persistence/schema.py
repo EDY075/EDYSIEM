@@ -228,7 +228,92 @@ class SchemaV4(Migration):
         conn.executescript(_CREATE_INTEL)
 
 
-ALL_MIGRATIONS: list[Migration] = [SchemaV1(), SchemaV2(), SchemaV3(), SchemaV4()]
+_CREATE_SHIELD_INGESTION = """
+CREATE TABLE IF NOT EXISTS ingestion_batches (
+    batch_id TEXT PRIMARY KEY,
+    source TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    response_payload TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ingestion_batches_received
+    ON ingestion_batches(received_at);
 
-__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3", "SchemaV4"]
-__all__ = ["ALL_MIGRATIONS", "SchemaV1", "SchemaV2", "SchemaV3"]
+CREATE TABLE IF NOT EXISTS ingestion_inbox (
+    source_instance_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    batch_id TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    source_product TEXT NOT NULL,
+    source_product_version TEXT NOT NULL,
+    source_component TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    severity TEXT NOT NULL,
+    event_timestamp TEXT NOT NULL,
+    received_at TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    asset_id TEXT NOT NULL,
+    hostname TEXT NOT NULL,
+    ip TEXT,
+    os TEXT,
+    payload TEXT NOT NULL,
+    normalized_payload TEXT NOT NULL,
+    processing_status TEXT NOT NULL DEFAULT 'pending',
+    processed_at TEXT,
+    processing_error TEXT,
+    PRIMARY KEY (source_instance_id, event_id),
+    FOREIGN KEY (batch_id) REFERENCES ingestion_batches(batch_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ingestion_inbox_status_received
+    ON ingestion_inbox(processing_status, received_at);
+CREATE INDEX IF NOT EXISTS idx_ingestion_inbox_event_type
+    ON ingestion_inbox(event_type);
+CREATE INDEX IF NOT EXISTS idx_ingestion_inbox_hostname
+    ON ingestion_inbox(hostname);
+CREATE INDEX IF NOT EXISTS idx_ingestion_inbox_asset
+    ON ingestion_inbox(asset_id);
+"""
+
+
+class SchemaV5(Migration):
+    """Versao 5: inbox duravel e recibos idempotentes do EDY Shield."""
+
+    version = 5
+    description = "EDY Shield ingestion batches and durable inbox"
+
+    def up(self, conn: sqlite3.Connection) -> None:
+        conn.executescript(_CREATE_SHIELD_INGESTION)
+
+
+class SchemaV6(Migration):
+    """Versao 6: um unico case por incidente/evento de origem."""
+
+    version = 6
+    description = "unique case linkage by incident_id"
+
+    def up(self, conn: sqlite3.Connection) -> None:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cases_incident_unique "
+            "ON cases(incident_id) WHERE incident_id IS NOT NULL"
+        )
+
+
+ALL_MIGRATIONS: list[Migration] = [
+    SchemaV1(),
+    SchemaV2(),
+    SchemaV3(),
+    SchemaV4(),
+    SchemaV5(),
+    SchemaV6(),
+]
+
+__all__ = [
+    "ALL_MIGRATIONS",
+    "SchemaV1",
+    "SchemaV2",
+    "SchemaV3",
+    "SchemaV4",
+    "SchemaV5",
+    "SchemaV6",
+]

@@ -1,0 +1,12 @@
+{
+  "event_id": "d0a4c738-91c7-44f2-a568-81f02473ab07",
+  "schema_version": "2.0",
+  "timestamp": "2026-08-11T18:40:00.000Z",
+  "sequence": 183,
+  "source": {"product": "edy-shield", "product_version": "2.2.0", "instance_id": "9df3e3b7-f905-49f8-b6a7-3da64227e3d1", "component": "fim"},
+  "event_type": "shield.fim.baseline.created",
+  "severity": "info",
+  "asset": {"asset_id": "shield:9df3e3b7-f905-49f8-b6a7-3da64227e3d1:ws-fin-01", "hostname": "ws-fin-01"},
+  "evidence": {"hash_algorithm": "sha256", "baseline_id": "fim-sha256-20260811-001", "baseline_status": "created", "details": {"file_count": 1243}},
+  "metadata": {}
+}

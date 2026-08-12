@@ -41,7 +41,7 @@ def test_container_di_resolve() -> None:
 
 def test_container_version() -> None:
     c = ApplicationContainer()
-    assert c.version() == "0.2.0"
+    assert c.version() == "0.3.0"
 
 
 def test_container_engines_share_metrics() -> None:

@@ -53,6 +53,11 @@ class CaseContext:
         with self._lock:
             self._cases.clear()
 
+    def discard(self, case_id: str) -> None:
+        """Remove somente um case transiente que nao chegou a ser persistido."""
+        with self._lock:
+            self._cases.pop(case_id, None)
+
     def snapshot(self) -> dict[str, Any]:
         """Snapshot do estado."""
         with self._lock:

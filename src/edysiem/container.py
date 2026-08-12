@@ -49,6 +49,7 @@ from .normalization import Registry as NormalizationRegistry
 from .normalization import StrategyNormalizer, register_default_normalizers
 
 if TYPE_CHECKING:
+    from .persistence import ShieldInboxRepository
     from .soc import SocPipeline, SocService
 
 
@@ -66,6 +67,7 @@ class ApplicationContainer:
         self._metrics = MetricsRegistry()
         self._soc_service: SocService | None = None
         self._soc_pipeline: SocPipeline | None = None
+        self._shield_inbox: ShieldInboxRepository | None = None
         self._build()
 
     def _build(self) -> None:
@@ -230,6 +232,25 @@ class ApplicationContainer:
 
             self._soc_pipeline = SocPipeline(self.soc_service, container=self)
         return self._soc_pipeline
+
+    @property
+    def shield_inbox(self) -> ShieldInboxRepository:
+        """Durable EDY Shield inbox, built lazily on the configured SIEM database."""
+
+        if self._shield_inbox is None:
+            import os
+
+            from .persistence import (
+                ALL_MIGRATIONS,
+                ConnectionManager,
+                MigrationRunner,
+                ShieldInboxRepository,
+            )
+
+            manager = ConnectionManager(os.environ.get("EDYSIEM_DB") or "edysiem.db")
+            MigrationRunner(ALL_MIGRATIONS).apply(manager)
+            self._shield_inbox = ShieldInboxRepository(manager)
+        return self._shield_inbox
 
     # --- Utilitarios -------------------------------------------------------
 

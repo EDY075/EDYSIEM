@@ -23,9 +23,10 @@ class Transaction:
     """
 
     conn: sqlite3.Connection
+    immediate: bool = False
 
     def __enter__(self) -> Transaction:
-        self.conn.execute("BEGIN")
+        self.conn.execute("BEGIN IMMEDIATE" if self.immediate else "BEGIN")
         return self
 
     def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:

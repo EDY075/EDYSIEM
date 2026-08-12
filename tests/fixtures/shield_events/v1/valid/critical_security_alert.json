@@ -1,0 +1,12 @@
+{
+  "event_id": "cf93b627-80b6-43e1-9457-70ef13629a06",
+  "schema_version": "1.0",
+  "timestamp": "2026-08-11T18:47:05.250Z",
+  "sequence": 189,
+  "source": {"product": "edy-shield", "product_version": "2.2.0", "instance_id": "9df3e3b7-f905-49f8-b6a7-3da64227e3d1", "component": "alert_engine"},
+  "event_type": "shield.alert.created",
+  "severity": "critical",
+  "asset": {"asset_id": "shield:9df3e3b7-f905-49f8-b6a7-3da64227e3d1:ws-fin-01", "hostname": "ws-fin-01", "ip": "192.168.10.25", "os": "Windows 11 Pro 24H2"},
+  "evidence": {"file_path": "Windows/System32/drivers/etc/hosts", "hash_algorithm": "sha256", "previous_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "current_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "baseline_id": "fim-sha256-20260811-001", "baseline_status": "modified", "scan_id": "scan-20260811-1842", "details": {"title": "Critical system file changed", "description": "Integrity mismatch detected in a protected operating-system file."}},
+  "metadata": {"correlation_id": "scan-20260811-1842", "shield_alert_id": "alert-20260811-0007", "rule_id": "fim-critical-path-change", "dedup_fingerprint": "fim:ws-fin-01:hosts:modified", "tags": ["fim", "critical-file", "local-alert"]}
+}

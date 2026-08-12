@@ -21,7 +21,7 @@ def test_version_endpoint(client: TestClient) -> None:
     r = client.get("/api/v1/version")
     assert r.status_code == 200
     body = r.json()
-    assert body["version"] == "0.2.0"
+    assert body["version"] == "0.3.0"
     assert body["name"] == "EDY SIEM"
 
 
@@ -33,6 +33,21 @@ def test_health_endpoint(client: TestClient) -> None:
     assert "components" in body
     assert "alerts" in body["components"]
     assert "cases" in body["components"]
+    assert body["components"]["ingestion"]["status"] == "online"
+    ingestion = body["components"]["ingestion"]["details"]
+    assert ingestion["receiver"] == "edy-shield"
+    assert ingestion["receiver_state"] == "ready"
+    assert ingestion["accepted_events"] >= 0
+    assert ingestion["pending_events"] >= 0
+    assert "last_received_at" in ingestion
+    assert "oldest_pending_at" in ingestion
+    assert body["environment"] in {"development", "staging", "production"}
+    serialized = str(body).lower()
+    assert "token" not in serialized
+    assert "database" not in serialized
+    assert "traceback" not in serialized
+    assert body["components"]["storage"]["status"] == "online"
+    assert body["components"]["api"]["status"] == "online"
     assert body["status"] == "healthy"
 
 
@@ -51,9 +66,49 @@ async def test_health_marks_components_as_error_when_checks_fail() -> None:
         detection = type("Detection", (), {"rule_engine": FailingEngine()})()
 
     response = await health(FailingContainer())  # type: ignore[arg-type]
+    assert response.components["ingestion"].status == "error"
+    assert response.components["storage"].status == "error"
+    assert response.components["ingestion"].details == {}
     assert response.components["enrichment"].status == "error"
     assert response.components["correlation"].status == "error"
     assert response.components["detection"].status == "error"
+    assert response.status == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_health_separates_shield_receiver_failure_from_storage() -> None:
+    """Uma falha do receptor não pode declarar o banco inteiro indisponível."""
+    from edysiem.api.routes.health import health
+
+    class HealthyEngine:
+        async def health_check(self) -> dict[str, str]:
+            return {"engine": "healthy"}
+
+    class ReadyStorage:
+        def connect(self) -> ReadyStorage:
+            return self
+
+        def execute(self, _query: str) -> ReadyStorage:
+            return self
+
+        def fetchone(self) -> tuple[int]:
+            return (1,)
+
+    class BrokenReceiver:
+        manager = ReadyStorage()
+
+        def health_snapshot(self) -> dict[str, object]:
+            raise RuntimeError("receiver unavailable")
+
+    class PartiallyDegradedContainer:
+        shield_inbox = BrokenReceiver()
+        enrichment = HealthyEngine()
+        correlation = HealthyEngine()
+        detection = type("Detection", (), {"rule_engine": HealthyEngine()})()
+
+    response = await health(PartiallyDegradedContainer())  # type: ignore[arg-type]
+    assert response.components["ingestion"].status == "error"
+    assert response.components["storage"].status == "online"
     assert response.status == "degraded"
 
 

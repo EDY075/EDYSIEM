@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { colors, motion, spacing, typography, radii } from "../design-system";
 import { BrandMark } from "../design-system/components/BrandMark";
+import { useIncidents, useMetrics } from "../hooks";
 
 type IconName = "overview" | "warroom" | "triage" | "alerts" | "incidents" | "investigate" | "cases" | "playbooks" | "rules" | "intel" | "settings";
 
@@ -35,8 +36,8 @@ const sections: NavSection[] = [
       { to: "/", label: "Overview", icon: "overview", end: true },
       { to: "/war-room", label: "War Room", icon: "warroom", badge: "LIVE", tone: "online" },
       { to: "/triage", label: "Triage", icon: "triage" },
-      { to: "/alerts", label: "Alertas", icon: "alerts", badge: "12", tone: "critical" },
-      { to: "/incidents", label: "Incidentes", icon: "incidents", badge: "4", tone: "critical" },
+      { to: "/alerts", label: "Alertas", icon: "alerts", tone: "critical" },
+      { to: "/incidents", label: "Incidentes", icon: "incidents", tone: "critical" },
       { to: "/investigate", label: "Investigar", icon: "investigate" },
     ],
   },
@@ -129,6 +130,9 @@ const sidebarCss = `
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { metrics } = useMetrics();
+  const { incidents } = useIncidents(100);
+  const activeIncidents = incidents.filter((item) => !["resolved", "closed"].includes(item.status)).length;
 
   return (
     <aside
@@ -203,7 +207,9 @@ export function Sidebar() {
                 {section.label}
               </div>
             )}
-            {section.items.map((item) => (
+            {section.items.map((item) => {
+              const badge = item.icon === "alerts" ? String(metrics.activeAlerts) : item.icon === "incidents" ? String(activeIncidents) : item.badge;
+              return (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -260,7 +266,7 @@ export function Sidebar() {
                         {item.label}
                       </span>
                     )}
-                    {item.badge && !collapsed && (
+                    {badge && !collapsed && (
                       <span
                         className="lumina-side-badge"
                         style={{
@@ -287,13 +293,14 @@ export function Sidebar() {
                           fontFamily: typography.family.mono,
                         }}
                       >
-                        {item.badge}
+                        {badge}
                       </span>
                     )}
                   </span>
                 )}
               </NavLink>
-            ))}
+              );
+            })}
           </div>
         ))}
       </nav>

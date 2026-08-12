@@ -17,6 +17,7 @@
 | 007 | Plugin System e DI | ✅ Aceito | Registries por tipo + contêiner DI leve; plugins isolados |
 | 008 | Pipeline Oficial de Eventos | ✅ Aceito | RawEvent → ParsedEvent → CanonicalEvent → EnrichedEvent; estágios puros e imutáveis |
 | 009 | Infraestrutura de Ingestão Enterprise | ✅ Aceito | Pacote `ingestion` desacoplado: CollectorPlugin, RawEventQueue, backpressure, retry, dead letter, rate limit, health, metrics |
+| 010 | Integração de Eventos EDY Shield → EDY SIEM | ✅ Aceito | Contrato v1, outbox/inbox idempotente, HTTPS M2M e normalização central no SIEM |
 
 ## Regras para novos ADRs
 

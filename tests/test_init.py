@@ -6,7 +6,7 @@ import edysiem
 
 
 def test_version() -> None:
-    assert edysiem.__version__ == "0.2.0"
+    assert edysiem.__version__ == "0.3.0"
 
 
 def test_public_api_present() -> None:

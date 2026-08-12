@@ -28,6 +28,7 @@ export interface HealthComponent {
 export interface HealthResponse {
   status: HealthStatus;
   version: string;
+  environment: string;
   components: Record<string, HealthComponent>;
 }
 
@@ -129,6 +130,24 @@ interface RequestOptions {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+function parseHttpError(
+  json: unknown,
+  status: number,
+  statusText: string,
+): { code: string; message: string; status: number } {
+  if (json && typeof json === "object" && "detail" in json) {
+    const detail = (json as { detail?: unknown }).detail;
+    if (detail && typeof detail === "object") {
+      const record = detail as Record<string, unknown>;
+      const code = typeof record.code === "string" ? record.code : String(status);
+      const message = typeof record.message === "string" ? record.message : statusText || `HTTP ${status}`;
+      return { code, message, status };
+    }
+    if (typeof detail === "string") return { code: String(status), message: detail, status };
+  }
+  return { code: String(status), message: statusText || `HTTP ${status}`, status };
+}
+
 async function request<T = unknown>(
   method: string,
   path: string,
@@ -162,19 +181,9 @@ async function request<T = unknown>(
           : null;
 
       if (!res.ok) {
-        // Erro HTTP — extrair mensagem do backend
-        const message =
-          json && typeof json === "object" && "detail" in json
-            ? String(json.detail)
-            : res.statusText || `HTTP ${res.status}`;
-
         return {
           success: false,
-          error: {
-            code: String(res.status),
-            message,
-            status: res.status,
-          },
+          error: parseHttpError(json, res.status, res.statusText),
         };
       }
 

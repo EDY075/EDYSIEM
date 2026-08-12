@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "../api/client";
+import type { SlaSnapshotDto } from "./useShieldEvents";
 
 export interface Incident {
   id: string;
@@ -20,7 +21,7 @@ export interface Incident {
   riskScore: number;
   created_at: string;
   closed_at?: string | null;
-  sla?: { state: string };
+  sla?: SlaSnapshotDto;
 }
 
 interface SocIncidentDto {
@@ -37,7 +38,7 @@ interface SocIncidentDto {
   mitre: string[];
   created_at: string;
   closed_at: string | null;
-  sla?: { state: string };
+  sla?: SlaSnapshotDto;
 }
 
 function toIncident(i: SocIncidentDto): Incident {
@@ -76,11 +77,9 @@ export function useIncidents(limit: number = 50) {
         setIncidents(items);
       } else {
         setError(response.error?.message || "Falha ao carregar incidentes");
-        setIncidents([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar incidentes");
-      setIncidents([]);
     } finally {
       setLoading(false);
     }

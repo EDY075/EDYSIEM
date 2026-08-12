@@ -19,6 +19,14 @@ from .exceptions import (
     RecordNotFoundError,
     TransactionError,
 )
+from .inbox import (
+    IdempotencyConflictError,
+    InboxBatchResult,
+    InboxEvent,
+    InboxItemError,
+    InboxItemResult,
+    ShieldInboxRepository,
+)
 from .migrations import Migration, MigrationRunner
 from .query import Page, QueryFilter, QueryOp, SortOrder
 from .repository import GenericRepository, Repository
@@ -37,6 +45,11 @@ __all__ = [
     "EventRepository",
     "EventStore",
     "GenericRepository",
+    "IdempotencyConflictError",
+    "InboxBatchResult",
+    "InboxEvent",
+    "InboxItemError",
+    "InboxItemResult",
     "Migration",
     "MigrationError",
     "MigrationRunner",
@@ -49,6 +62,7 @@ __all__ = [
     "Repository",
     "SearchEngine",
     "SearchResults",
+    "ShieldInboxRepository",
     "SortOrder",
     "StoredEvent",
     "Transaction",

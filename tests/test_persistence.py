@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+
 import pytest
 
 from edysiem.alerts import Alert, AlertFingerprint, AlertSeverity
@@ -71,13 +73,13 @@ def _case() -> Case:
 
 def test_schema_version_applied(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert runner.current_version(manager) == 4
+    assert runner.current_version(manager) == 6
 
 
 def test_migrations_idempotent(manager: ConnectionManager) -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
     runner.apply(manager)  # segunda aplicacao nao deve quebrar
-    assert runner.current_version(manager) == 4
+    assert runner.current_version(manager) == 6
 
 
 def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
@@ -91,17 +93,100 @@ def test_failing_migration_rolls_back(manager: ConnectionManager) -> None:
     runner = MigrationRunner([BadMigration()])
     with pytest.raises(MigrationError):
         runner.apply(manager)
-    # versao nao avancou (continua 2)
-    assert runner.current_version(manager) == 4
+    # versao nao avancou alem do schema atual
+    assert runner.current_version(manager) == 6
 
 
 def test_migrations_property() -> None:
     runner = MigrationRunner(ALL_MIGRATIONS)
-    assert len(runner.migrations) == 4
+    assert len(runner.migrations) == 6
     assert runner.migrations[0].version == 1
     assert runner.migrations[1].version == 2
     assert runner.migrations[2].version == 3
     assert runner.migrations[3].version == 4
+    assert runner.migrations[4].version == 5
+    assert runner.migrations[5].version == 6
+
+
+def test_case_incident_link_is_unique(manager: ConnectionManager) -> None:
+    first = _case()
+    second = Case(
+        title="Tentativa duplicada",
+        severity=CaseSeverity.HIGH,
+        priority=CasePriority.P2,
+        status=CaseStatus.OPEN,
+        incident_id=first.incident_id,
+    )
+    UnitOfWork(manager).cases.add(first)
+    with pytest.raises(sqlite3.IntegrityError, match="UNIQUE constraint failed"):
+        UnitOfWork(manager).cases.add(second)
+
+
+def test_shield_inbox_schema_created(manager: ConnectionManager) -> None:
+    tables = {
+        row["name"]
+        for row in manager.connect()
+        .execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name IN ('ingestion_batches', 'ingestion_inbox')"
+        )
+        .fetchall()
+    }
+
+    assert tables == {"ingestion_batches", "ingestion_inbox"}
+
+
+def test_shield_inbox_health_snapshot_uses_bounded_aggregates(
+    manager: ConnectionManager,
+) -> None:
+    from edysiem.persistence.inbox import InboxEvent, ShieldInboxRepository
+
+    repo = ShieldInboxRepository(manager)
+    assert repo.health_snapshot() == {
+        "accepted_events": 0,
+        "pending_events": 0,
+        "last_received_at": None,
+        "oldest_pending_at": None,
+    }
+
+    received_at = "2026-08-12T12:34:56.000Z"
+    repo.accept(
+        batch_id="00000000-0000-4000-8000-000000000001",
+        batch_hash="a" * 64,
+        received_at=received_at,
+        events=[
+            InboxEvent(
+                index=0,
+                source_instance_id="00000000-0000-4000-8000-000000000002",
+                event_id="00000000-0000-4000-8000-000000000003",
+                batch_id="00000000-0000-4000-8000-000000000001",
+                content_hash="b" * 64,
+                schema_version="1.0",
+                source_product="edy-shield",
+                source_product_version="2.2.0",
+                source_component="fim",
+                event_type="shield.fim.file_modified",
+                severity="high",
+                event_timestamp="2026-08-12T12:34:55.000Z",
+                received_at=received_at,
+                sequence=1,
+                asset_id="asset-1",
+                hostname="host-1",
+                ip=None,
+                os=None,
+                payload={"safe": True},
+                normalized_payload={"safe": True},
+            )
+        ],
+        rejected=[],
+    )
+
+    assert repo.health_snapshot() == {
+        "accepted_events": 1,
+        "pending_events": 1,
+        "last_received_at": received_at,
+        "oldest_pending_at": received_at,
+    }
 
 
 # --- AlertRepository -------------------------------------------------------

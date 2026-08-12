@@ -20,7 +20,16 @@ from ..config import load
 from ..container import ApplicationContainer
 from .errors import register_error_handlers
 from .middleware import HTTPLoggingMiddleware, RequestIDMiddleware
-from .routes import alerts, cases, health, incidents, pipeline, soc
+from .routes import (
+    alerts,
+    cases,
+    health,
+    incidents,
+    pipeline,
+    shield_ingestion,
+    shield_investigation,
+    soc,
+)
 from .security import require_api_key
 
 
@@ -80,6 +89,8 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     app.include_router(incidents.router, prefix="/api/v1")
     app.include_router(cases.router, prefix="/api/v1")
     app.include_router(soc.router, prefix="/api/v1")
+    app.include_router(shield_ingestion.router, prefix="/api/v1")
+    app.include_router(shield_investigation.router, prefix="/api/v1")
 
     return app
 
