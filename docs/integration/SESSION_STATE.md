@@ -398,3 +398,40 @@ Limitações preservadas:
 # Sprint C2 — Entity, MITRE & Decision
 
 Não iniciar Sprint C2 sem novo prompt. Não fazer merge em main.
+
+## Hotfix — War Room / Ingestion Health: COMPLETE (2026-08-12)
+
+Regressão entre B3 e o War Room corrigida antes da Sprint C2:
+
+- Causa raiz: `WarRoomPage` enumerava o objeto heterogêneo `SystemHealth` com
+  `Object.entries(health)`. A B3 adicionou `ingestionDetails` como objeto estruturado e
+  o cast `as string` permitia que `healthLabel` o devolvesse como React child.
+- Correção: a grade de pipeline agora usa uma lista explícita e tipada dos oito
+  `ComponentStatus` (`ingestion`, `correlation`, `enrichment`, `detection`, `alerts`,
+  `cases`, `storage`, `api`). `overall`, `environment` e `ingestionDetails` permanecem
+  metadados e não são renderizados genericamente.
+- `healthTone` e `healthLabel` aceitam somente `ComponentStatus`; os casts inseguros
+  foram removidos. Os consumidores B3 da Home e barra global permanecem inalterados.
+- Teste de regressão impede `Object.entries(health)`, `as string` e inclusão de
+  `ingestionDetails` na lista renderizável.
+- Não existe Error Boundary próprio no router atual. Uma boundary de rota foi registrada
+  como melhoria futura de resiliência; não foi incluída neste hotfix cirúrgico.
+
+Validação:
+
+- 15 testes focados aprovados.
+- 939 testes completos aprovados; cobertura global 95,09%.
+- Ruff, MyPy (152 arquivos), Vite build, wheel/sdist e `git diff --check`: PASS.
+- Google Chrome externo: Overview → War Room → Overview → War Room, investigação Shield,
+  Decision Queue, Ingestion Health e status global; 1920x1080 e 1366x768.
+- Console final: zero erros; permanece somente o warning conhecido de future flag do
+  React Router em desenvolvimento.
+- Network/proxy: health, metrics e alertas SOC retornaram HTTP 200.
+- Screenshots: `outputs/hotfix-war-room-health/01-war-room-fixed-1920x1080.jpg` e
+  `02-war-room-fixed-1366x768.jpg` no workspace da sessão.
+
+## Próximo passo EXATO
+
+# Sprint C2 — Entity, MITRE & Decision
+
+Não iniciar Sprint C2 automaticamente. Não fazer merge em main.

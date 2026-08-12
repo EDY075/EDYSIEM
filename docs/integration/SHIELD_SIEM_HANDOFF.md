@@ -962,3 +962,41 @@ Alerta → Evidência → Entidade → MITRE → Decisão → Caso.
 # Sprint C2 — Entity, MITRE & Decision
 
 Não iniciar automaticamente e não fazer merge em `main`.
+
+## HANDOFF — Hotfix War Room concluído (2026-08-12)
+
+### Contexto
+
+Antes da Sprint C2 foi corrigida a regressão de render do War Room introduzida quando a
+B3 adicionou `ingestionDetails` ao modelo compartilhado de health.
+
+### Causa e correção
+
+- `frontend/src/pages/WarRoomPage.tsx` usava `Object.entries(health)` e convertia cada
+  valor com `as string`. O objeto de receiver health atravessava o cast e era devolvido
+  por `healthLabel` como React child.
+- A grade agora declara explicitamente oito chaves de pipeline tipadas por
+  `keyof Pick<SystemHealth, ...>`; helpers aceitam somente `ComponentStatus`.
+- Metadados `overall`, `environment` e `ingestionDetails` não participam da grade.
+- `tests/test_war_room_health_regression.py` bloqueia a enumeração genérica, casts e
+  inclusão do objeto estruturado.
+
+### Quality Gate
+
+- 15 testes focados; 939 completos; cobertura 95,09%.
+- Ruff, MyPy (152 módulos), Vite, wheel/sdist e diff-check aprovados.
+- Chrome externo: Overview → War Room → voltar → War Room, mais Decision Queue,
+  Ingestion Health, investigação Shield e status global em 1920x1080 e 1366x768.
+- Console final sem erros da aplicação; endpoints health, metrics e alerts retornaram 200.
+- Screenshots finais em `outputs/hotfix-war-room-health/` no workspace da sessão.
+
+### Limitação registrada
+
+O router ainda usa a tela padrão de erro porque não existe `errorElement`/Error Boundary
+próprio. A melhoria foi registrada para trabalho futuro e não ampliou este hotfix.
+
+### Próximo passo
+
+# Sprint C2 — Entity, MITRE & Decision
+
+Não iniciar automaticamente e não fazer merge em `main`.

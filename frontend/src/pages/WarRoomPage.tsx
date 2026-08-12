@@ -11,21 +11,39 @@ import { ActivityFeed, ActivityItem } from "../design-system/components/Timeline
 import { SecurityDonutChart } from "../charts";
 import { Breadcrumb } from "../shell/Breadcrumb";
 import { useMetrics, useHealth, useAlerts } from "../hooks";
+import type { ComponentStatus } from "../api/client";
+import type { SystemHealth } from "../hooks/useHealth";
 
-function healthTone(status: string): "online" | "degraded" | "offline" | "neutral" {
+type PipelineHealthKey = keyof Pick<
+  SystemHealth,
+  "ingestion" | "correlation" | "enrichment" | "detection" | "alerts" | "cases" | "storage" | "api"
+>;
+
+const PIPELINE_COMPONENTS = [
+  { key: "ingestion", label: "Ingestão" },
+  { key: "correlation", label: "Correlação" },
+  { key: "enrichment", label: "Enriquecimento" },
+  { key: "detection", label: "Detecção" },
+  { key: "alerts", label: "Alertas" },
+  { key: "cases", label: "Casos" },
+  { key: "storage", label: "Storage" },
+  { key: "api", label: "API" },
+] as const satisfies ReadonlyArray<{ key: PipelineHealthKey; label: string }>;
+
+function healthTone(status: ComponentStatus): "online" | "degraded" | "offline" | "neutral" {
   if (status === "online") return "online";
   if (status === "degraded") return "degraded";
   if (status === "offline" || status === "error") return "offline";
   return "neutral";
 }
 
-function healthLabel(status: string): string {
+function healthLabel(status: ComponentStatus): string {
   switch (status) {
     case "online": return "Online";
     case "degraded": return "Degradado";
     case "offline": return "Offline";
     case "error": return "Erro";
-    default: return status || "—";
+    default: return "—";
   }
 }
 
@@ -142,14 +160,15 @@ export function WarRoomPage() {
 
             <MetricCard title="Saúde da Pipeline" footer={<span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>health do container</span>}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: spacing["3"] }}>
-                {Object.entries(health).map(([k, s]) => (
-                  <div key={k} style={{ padding: spacing["3"], background: colors.surfaceAlt, borderRadius: radii.md, border: `1px solid ${colors.border}` }}>
+                {PIPELINE_COMPONENTS.map((component) => {
+                  const status = health[component.key];
+                  return <div key={component.key} style={{ padding: spacing["3"], background: colors.surfaceAlt, borderRadius: radii.md, border: `1px solid ${colors.border}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: typography.size.xs, color: colors.textMuted, textTransform: "capitalize" }}>{k}</span>
-                      <StatusBadge tone={healthTone(s as string)}>{healthLabel(s as string)}</StatusBadge>
+                      <span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>{component.label}</span>
+                      <StatusBadge tone={healthTone(status)}>{healthLabel(status)}</StatusBadge>
                     </div>
-                  </div>
-                ))}
+                  </div>;
+                })}
               </div>
             </MetricCard>
           </div>
