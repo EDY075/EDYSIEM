@@ -25,7 +25,7 @@ def test_load_defaults() -> None:
     assert isinstance(result, Success)
     config = result.value
     assert config.project_name == "EDY SIEM"
-    assert config.version == "0.2.0"
+    assert config.version == "0.3.0"
     assert config.environment is Environment.DEVELOPMENT
     assert config.app.port == 8080
     assert config.logging.level == "INFO"
@@ -40,7 +40,7 @@ def test_load_with_overrides() -> None:
     overrides: dict[str, Any] = {
         "environment": "production",
         "version": "9.9.9",
-        "app": {"port": 9090, "host": "0.0.0.0"},
+        "app": {"port": 9090, "host": "127.0.0.1"},
         "logging": {"level": "DEBUG", "json": False},
         "event_bus": {"max_queue": 5},
         "security": {"secret_key_len": 64},
@@ -49,7 +49,7 @@ def test_load_with_overrides() -> None:
     assert config.environment is Environment.PRODUCTION
     assert config.version == "9.9.9"
     assert config.app.port == 9090
-    assert config.app.host == "0.0.0.0"
+    assert config.app.host == "127.0.0.1"
     assert config.logging.level == "DEBUG"
     assert config.logging.json is False
     assert config.event_bus.max_queue == 5
@@ -76,6 +76,13 @@ def test_load_invalid_port_fails() -> None:
     result = load(overrides={"app": {"port": 70000}})
     assert isinstance(result, Failure)
     assert result.error.code is ErrorCode.CONFIGURATION_ERROR
+
+
+def test_load_non_loopback_host_fails_closed() -> None:
+    result = load(overrides={"app": {"host": "0.0.0.0"}})
+    assert isinstance(result, Failure)
+    assert result.error.code is ErrorCode.CONFIGURATION_ERROR
+    assert "localhost-only" in result.error.message
 
 
 def test_load_invalid_log_level_fails() -> None:

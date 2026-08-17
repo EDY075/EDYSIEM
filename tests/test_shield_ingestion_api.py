@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -9,10 +10,12 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
 from edysiem.api.app import create_app
 from edysiem.api.deps import get_shield_inbox
+from edysiem.api.security import require_shield_ingest_token
 from edysiem.persistence import PersistenceError, ShieldInboxRepository
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +61,7 @@ def headers(batch_id: str, token: str = TOKEN) -> dict[str, str]:
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
+    monkeypatch.setenv("EDYSIEM_ENABLE_DEV_DOCS", "true")
     monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "shield-inbox.db"))
     monkeypatch.setenv("EDYSIEM_SHIELD_INGEST_TOKEN", TOKEN)
     monkeypatch.delenv("EDYSIEM_SHIELD_INGEST_PREVIOUS_TOKEN", raising=False)
@@ -220,26 +224,34 @@ def test_receiver_uses_scoped_auth_not_global_api_key(
             headers=headers(str(payload["batch_id"])),
         )
         health = test_client.get("/api/v1/health")
+        metrics = test_client.get("/api/v1/metrics")
 
     assert ingest.status_code == 202
-    assert health.status_code == 401
+    assert health.status_code == 200
+    assert metrics.status_code == 503
 
 
-def test_https_is_required_outside_loopback(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "https.db"))
-    monkeypatch.setenv("EDYSIEM_SHIELD_INGEST_TOKEN", TOKEN)
-    with TestClient(create_app(), base_url="http://siem.example") as test_client:
-        payload = batch([load_event(VALID, "baseline_created.json")])
-        response = test_client.post(
-            ENDPOINT,
-            json=payload,
-            headers=headers(str(payload["batch_id"])),
-        )
+def test_https_is_required_outside_loopback() -> None:
+    request = Request(
+        {
+            "type": "http",
+            "http_version": "1.1",
+            "method": "POST",
+            "scheme": "http",
+            "path": ENDPOINT,
+            "raw_path": ENDPOINT.encode(),
+            "query_string": b"",
+            "headers": [(b"host", b"localhost")],
+            "client": ("203.0.113.10", 45123),
+            "server": ("127.0.0.1", 80),
+        }
+    )
 
-    assert response.status_code == 400
-    assert "HTTPS" in response.text
+    with pytest.raises(HTTPException) as raised:
+        asyncio.run(require_shield_ingest_token(request))
+
+    assert raised.value.status_code == 400
+    assert raised.value.detail == "HTTPS is required for Shield ingestion"
 
 
 def test_same_batch_retry_returns_identical_receipt(client: TestClient) -> None:

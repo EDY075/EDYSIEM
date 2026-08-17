@@ -54,10 +54,10 @@ class MetricsResponse(BaseModel):
 class PipelineRunRequest(BaseModel):
     """Payload para executar a pipeline ponta a ponta."""
 
-    source_type: str
-    source_host: str
-    raw_payload: str
-    trace_id: str | None = None
+    source_type: str = Field(min_length=1, max_length=64)
+    source_host: str = Field(min_length=1, max_length=255)
+    raw_payload: str = Field(min_length=1, max_length=262_144)
+    trace_id: str | None = Field(default=None, max_length=128)
 
 
 class PipelineRunResponse(BaseModel):
@@ -78,13 +78,13 @@ class PipelineRunResponse(BaseModel):
 class AlertCreateRequest(BaseModel):
     """Payload para criar um alerta a partir de um finding."""
 
-    rule_id: str
-    title: str
-    event_ids: list[str] = Field(default_factory=list)
-    severity: str = "medium"
-    confidence: float = 1.0
-    risk_score: int = 50
-    tags: list[str] = Field(default_factory=list)
+    rule_id: str = Field(min_length=1, max_length=255)
+    title: str = Field(min_length=1, max_length=512)
+    event_ids: list[str] = Field(default_factory=list, max_length=1000)
+    severity: str = Field(default="medium", max_length=16)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    risk_score: int = Field(default=50, ge=0, le=100)
+    tags: list[str] = Field(default_factory=list, max_length=100)
 
 
 class AlertCreateResponse(BaseModel):
@@ -103,24 +103,24 @@ class AlertCreateResponse(BaseModel):
 class AlertPayload(BaseModel):
     """Definicao minima de um alerta para criacao de incidente."""
 
-    alert_id: str
-    rule_id: str = "rule"
-    title: str = "Alerta"
-    severity: str = "medium"
-    risk_score: int = 50
-    confidence: float = 1.0
-    asset_id: str | None = None
-    user: str | None = None
-    fingerprint_hash: str = ""
-    mitre: list[str] = Field(default_factory=list)
-    ioc_ids: list[str] = Field(default_factory=list)
+    alert_id: str = Field(min_length=1, max_length=255)
+    rule_id: str = Field(default="rule", max_length=255)
+    title: str = Field(default="Alerta", max_length=512)
+    severity: str = Field(default="medium", max_length=16)
+    risk_score: int = Field(default=50, ge=0, le=100)
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    asset_id: str | None = Field(default=None, max_length=255)
+    user: str | None = Field(default=None, max_length=255)
+    fingerprint_hash: str = Field(default="", max_length=255)
+    mitre: list[str] = Field(default_factory=list, max_length=100)
+    ioc_ids: list[str] = Field(default_factory=list, max_length=1000)
 
 
 class IncidentCreateRequest(BaseModel):
     """Payload para criar um incidente a partir de alertas."""
 
-    alerts: list[AlertPayload]
-    title: str | None = None
+    alerts: list[AlertPayload] = Field(min_length=1, max_length=100)
+    title: str | None = Field(default=None, max_length=512)
 
 
 class IncidentCreateResponse(BaseModel):
@@ -137,9 +137,9 @@ class IncidentCreateResponse(BaseModel):
 class CaseCreateRequest(BaseModel):
     """Payload para criar um case a partir de um incidente."""
 
-    incident_id: str
-    title: str | None = None
-    owner: str | None = None
+    incident_id: str = Field(min_length=1, max_length=255)
+    title: str | None = Field(default=None, max_length=512)
+    owner: str | None = Field(default=None, max_length=128)
 
 
 class CaseCreateResponse(BaseModel):

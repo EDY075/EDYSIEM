@@ -9,6 +9,7 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 import { router } from "./routing/routes";
 import { colors } from "./design-system";
 import { cardMotionCss } from "./design-system/components/cards";
+import { AuthGate } from "./auth/AuthGate";
 
 /** Estilos globais de acessibilidade + scrollbar enterprise (Sprint 2.14 / WP9). */
 const globalStyle = `
@@ -32,11 +33,13 @@ export default function App() {
       <AppStateProvider>
         <style>{globalStyle}</style>
         <style>{cardMotionCss}</style>
-        <div style={{ background: colors.background, minHeight: "100vh" }}>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </div>
+        <AuthGate>
+          <div style={{ background: colors.background, minHeight: "100vh" }}>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </div>
+        </AuthGate>
       </AppStateProvider>
     </ThemeProvider>
   );

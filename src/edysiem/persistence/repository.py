@@ -12,7 +12,7 @@ from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 
 from .connection import ConnectionManager
 from .exceptions import RecordNotFoundError
-from .query import Page, QueryFilter, SortOrder
+from .query import Page, QueryFilter, SortOrder, validate_sql_identifier
 
 T = TypeVar("T")
 
@@ -106,6 +106,8 @@ class GenericRepository(Generic[T]):
             ``Page[T]`` com os itens e o total.
         """
         conn = self._manager.connect()
+        allowed_fields = self._query_fields()
+        sort_by = validate_sql_identifier(sort_by, allowed_fields)
         where, params = self._build_where(filters or [])
         direction = "ASC" if order is SortOrder.ASC else "DESC"
         limit = max(1, min(limit, 1000))
@@ -158,6 +160,7 @@ class GenericRepository(Generic[T]):
         clauses: list[str] = []
         params: list[Any] = []
         for i, f in enumerate(filters):
+            validate_sql_identifier(f.field, self._query_fields())
             sql, p = f.to_sql(i)
             clauses.append(sql)
             params.extend(p)
@@ -166,6 +169,11 @@ class GenericRepository(Generic[T]):
     def _row_fields(self) -> list[str]:
         """Retorna as colunas na ordem de ``_to_row``."""
         raise NotImplementedError
+
+    def _query_fields(self) -> frozenset[str]:
+        """Return the only columns accepted in dynamic filters and ordering."""
+
+        return frozenset({"id", *self._row_fields()})
 
     def _to_row(self, entity: T) -> tuple[Any, ...]:
         """Converte entidade em tupla de valores (ordem de ``_row_fields``)."""

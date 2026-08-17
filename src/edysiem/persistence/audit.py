@@ -36,6 +36,7 @@ class AuditAction(StrEnum):
     TASK = "task"
     RESOLUTION = "resolution"
     REOPEN = "reopen"
+    API_REQUEST = "api_request"
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,6 +103,7 @@ class AuditRepository:
                 entry.correlation_id,
             ),
         )
+        conn.commit()
         return entry
 
     def get(self, entry_id: str) -> AuditEntry | None:

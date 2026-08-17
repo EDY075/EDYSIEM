@@ -9,6 +9,7 @@ from ...detection import DetectionFinding, DetectionReason
 from ...domain import RiskScore, Severity
 from ..deps import get_container
 from ..schemas import AlertCreateRequest, AlertCreateResponse
+from ..security import require_permission
 
 router = APIRouter(tags=["alerts"])
 
@@ -17,6 +18,7 @@ router = APIRouter(tags=["alerts"])
     "/alerts",
     response_model=AlertCreateResponse,
     summary="Cria (ou deduplica) um alerta a partir de um finding",
+    dependencies=[Depends(require_permission("alert:write"))],
 )
 async def create_alert(
     body: AlertCreateRequest,

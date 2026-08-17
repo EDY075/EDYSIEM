@@ -9,11 +9,17 @@ from edysiem.api import create_app
 from edysiem.config import load
 from edysiem.container import ApplicationContainer
 
+AUTH_KEY = "test-operator-api-key-with-at-least-32-bytes"
+
 
 @pytest.fixture
-def client() -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    monkeypatch.setenv("EDYSIEM_ENABLE_DEV_DOCS", "true")
+    monkeypatch.setenv("EDYSIEM_API_KEY", AUTH_KEY)
+    monkeypatch.setenv("EDYSIEM_API_IDENTITY", "api-test-analyst")
+    monkeypatch.setenv("EDYSIEM_API_ROLE", "analyst")
     app = create_app(ApplicationContainer(load().unwrap()))
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-API-Key": AUTH_KEY}) as c:
         yield c
 
 

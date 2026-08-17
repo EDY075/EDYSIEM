@@ -196,6 +196,10 @@ class ConfigLoader:
     @staticmethod
     def _validate(config: SiemConfig) -> None:
         """Valida invariantes numéricos e de enum da configuração."""
+        if config.app.host != "127.0.0.1":
+            raise ConfigurationException(
+                "EDYSIEM 0.3.0 aceita somente o host 127.0.0.1 (localhost-only)"
+            )
         if not 1 <= config.app.port <= 65535:
             raise ConfigurationException(f"porta inválida: {config.app.port}; esperado 1..65535")
         if config.event_bus.max_queue <= 0:

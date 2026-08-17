@@ -21,7 +21,12 @@ from ...incidents.models import IncidentStatus
 from ...persistence import RecordNotFoundError
 from ...soc import CaseClaimConflictError, SocPipeline, SocService
 from ..deps import get_container
-from ..security import rate_limit, require_permission
+from ..security import (
+    AuthenticatedIdentity,
+    get_authenticated_identity,
+    rate_limit,
+    require_permission,
+)
 
 router = APIRouter(tags=["soc"])
 
@@ -165,7 +170,11 @@ def get_incident(
     return {**_i(incident), "sla": asdict(svc.sla_of(incident))}
 
 
-@router.post("/soc/incidents/{incident_id}/assign", summary="Atribui analista a um incidente")
+@router.post(
+    "/soc/incidents/{incident_id}/assign",
+    summary="Atribui analista a um incidente",
+    dependencies=[Depends(require_permission("incident:write"))],
+)
 def assign_incident(
     incident_id: str, analyst: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -177,7 +186,9 @@ def assign_incident(
 
 
 @router.post(
-    "/soc/incidents/{incident_id}/transition", summary="Transiciona o status de um incidente"
+    "/soc/incidents/{incident_id}/transition",
+    summary="Transiciona o status de um incidente",
+    dependencies=[Depends(require_permission("incident:write"))],
 )
 def transition_incident(
     incident_id: str, target: str, container: ApplicationContainer = Depends(get_container)
@@ -236,14 +247,25 @@ def investigate(
         ) from exc
 
 
-@router.post("/soc/cases/{case_id}/comment", summary="Adiciona comentário")
+@router.post(
+    "/soc/cases/{case_id}/comment",
+    summary="Adiciona comentário",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 def add_comment(
-    case_id: str, body: str, author: str, container: ApplicationContainer = Depends(get_container)
+    case_id: str,
+    body: str = Query(min_length=1, max_length=16_384),
+    author: str | None = Query(default=None, max_length=128, deprecated=True),
+    identity: AuthenticatedIdentity = Depends(get_authenticated_identity),
+    container: ApplicationContainer = Depends(get_container),
 ) -> dict[str, Any]:
+    """Add a comment; the legacy author parameter is ignored for security."""
+
+    del author
     _require_case_id(case_id)
     svc = _service(container)
     try:
-        return _c(svc.add_case_comment(case_id, body, author))
+        return _c(svc.add_case_comment(case_id, body, identity.identity_id))
     except RecordNotFoundError as exc:
         raise HTTPException(
             status_code=404,
@@ -256,12 +278,16 @@ def add_comment(
         ) from exc
 
 
-@router.post("/soc/cases/{case_id}/evidence", summary="Anexa evidência")
+@router.post(
+    "/soc/cases/{case_id}/evidence",
+    summary="Anexa evidência",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 def add_evidence(
     case_id: str,
-    kind: str,
-    value: str,
-    label: str = "",
+    kind: str = Query(min_length=1, max_length=64),
+    value: str = Query(min_length=1, max_length=262_144),
+    label: str = Query(default="", max_length=512),
     container: ApplicationContainer = Depends(get_container),
 ) -> dict[str, Any]:
     _require_case_id(case_id)
@@ -332,7 +358,11 @@ def claim_case(
         ) from exc
 
 
-@router.post("/soc/cases/{case_id}/resolve", summary="Resolve um case")
+@router.post(
+    "/soc/cases/{case_id}/resolve",
+    summary="Resolve um case",
+    dependencies=[Depends(require_permission("case:write"))],
+)
 def resolve_case(
     case_id: str, resolution: str, container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -382,7 +412,9 @@ def close_case(
 
 
 @router.post(
-    "/soc/pipeline/demo", summary="Executa o fluxo E2E de demonstração (alerta → incidente → caso)"
+    "/soc/pipeline/demo",
+    summary="Executa o fluxo E2E de demonstração (alerta → incidente → caso)",
+    dependencies=[Depends(require_permission("pipeline:write"))],
 )
 async def demo_flow(container: ApplicationContainer = Depends(get_container)) -> dict[str, Any]:
     """Gera um fluxo SOC de teste (4 alertas → 1 incidente → 1 caso) e persiste."""
@@ -394,7 +426,7 @@ async def demo_flow(container: ApplicationContainer = Depends(get_container)) ->
 @router.post(
     "/soc/pipeline/run",
     summary="Executa um evento bruto pela pipeline de engines",
-    dependencies=[Depends(rate_limit(120, 60))],
+    dependencies=[Depends(rate_limit(120, 60)), Depends(require_permission("pipeline:write"))],
 )
 async def run_event(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
@@ -414,7 +446,11 @@ async def run_event(
 # --- Detection Engineering + Threat Intel (Sprint 2.17) ------------------------------
 
 
-@router.post("/soc/rules", summary="Registra uma regra no catálogo")
+@router.post(
+    "/soc/rules",
+    summary="Registra uma regra no catálogo",
+    dependencies=[Depends(require_permission("rule:write"))],
+)
 def create_rule(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -467,7 +503,7 @@ def disable_rule(
 @router.post(
     "/soc/simulator",
     summary="Simula aplicação de regras sobre um evento JSON",
-    dependencies=[Depends(rate_limit(120, 60))],
+    dependencies=[Depends(rate_limit(120, 60)), Depends(require_permission("pipeline:write"))],
 )
 def simulate(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
@@ -485,7 +521,11 @@ def list_iocs(
     return {"total": len(items), "items": items}
 
 
-@router.post("/soc/iocs", summary="Registra um IOC")
+@router.post(
+    "/soc/iocs",
+    summary="Registra um IOC",
+    dependencies=[Depends(require_permission("intel:write"))],
+)
 def register_ioc(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:
@@ -513,7 +553,11 @@ def list_assets(
     return {"total": len(items), "items": items}
 
 
-@router.post("/soc/assets", summary="Registra um asset")
+@router.post(
+    "/soc/assets",
+    summary="Registra um asset",
+    dependencies=[Depends(require_permission("asset:write"))],
+)
 def register_asset(
     body: dict[str, Any], container: ApplicationContainer = Depends(get_container)
 ) -> dict[str, Any]:

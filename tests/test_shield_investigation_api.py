@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EVENT_FILE = ROOT / "tests" / "fixtures" / "shield_events" / "v1" / "valid" / "hash_changed.json"
 FILE_ADDED = ROOT / "tests" / "fixtures" / "shield_events" / "v1" / "valid" / "file_created.json"
 TOKEN = "test-shield-token-with-at-least-32-bytes"
+AUTH_KEY = "test-investigation-key-with-at-least-32-bytes"
 INGEST = "/api/v1/ingestion/sources/edy-shield/events"
 INVESTIGATE = "/api/v1/investigation/sources/edy-shield/events"
 
@@ -24,8 +25,14 @@ INVESTIGATE = "/api/v1/investigation/sources/edy-shield/events"
 def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> TestClient:
     monkeypatch.setenv("EDYSIEM_DB", str(tmp_path / "investigation.db"))
     monkeypatch.setenv("EDYSIEM_SHIELD_INGEST_TOKEN", TOKEN)
-    monkeypatch.delenv("EDYSIEM_API_KEY", raising=False)
-    with TestClient(create_app(), base_url="http://127.0.0.1") as test_client:
+    monkeypatch.setenv("EDYSIEM_API_KEY", AUTH_KEY)
+    monkeypatch.setenv("EDYSIEM_API_IDENTITY", "shield-investigator")
+    monkeypatch.setenv("EDYSIEM_API_ROLE", "analyst")
+    with TestClient(
+        create_app(),
+        base_url="http://127.0.0.1",
+        headers={"X-API-Key": AUTH_KEY},
+    ) as test_client:
         yield test_client
 
 
