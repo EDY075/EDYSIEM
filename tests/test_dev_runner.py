@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shlex
 from pathlib import Path
 
 import pytest
@@ -106,17 +107,26 @@ def test_dotenv_loader_rejects_invalid_syntax(tmp_path) -> None:
     assert dev._load_dotenv(dotenv) is False
 
 
-def test_frontend_bind_is_always_loopback(monkeypatch) -> None:
+@pytest.mark.parametrize("platform_name", ["nt", "posix"])
+def test_frontend_bind_is_always_loopback(monkeypatch, platform_name: str) -> None:
     calls: list[list[str]] = []
 
     def fake_popen(cmd, **_kwargs):
         calls.append(cmd)
         return _FakeProc()
 
+    monkeypatch.setattr(dev.os, "name", platform_name)
     monkeypatch.setattr(dev.subprocess, "Popen", fake_popen)
     dev._start_frontend()
-    assert "127.0.0.1" in calls[0][-1]
-    assert "--strictPort" in calls[0][-1]
+
+    tokens = [token for argument in calls[0] for token in shlex.split(argument, posix=False)]
+    host_flags = [position for position, token in enumerate(tokens) if token == "--host"]
+
+    assert len(host_flags) == 1
+    host_position = host_flags[0]
+    assert tokens[host_position + 1] == "127.0.0.1"
+    assert "--strictPort" in tokens
+    assert "0.0.0.0" not in tokens
 
 
 def test_run_dev_fails_closed_without_operator_configuration(monkeypatch) -> None:
