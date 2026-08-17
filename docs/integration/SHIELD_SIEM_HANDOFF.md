@@ -177,10 +177,11 @@ Lacunas confirmadas para a integração:
 
 #### Autenticação e segurança
 
-- API key global opt-in por `EDYSIEM_API_KEY` e header `X-API-Key`.
-- Se a variável não existir, a API fica aberta em modo de desenvolvimento.
-- RBAC atual depende de `X-EDY-Role`; o default é `admin`, portanto não representa uma
-  identidade confiável de produtor.
+- As rotas protegidas usam autenticação fail-closed por `EDYSIEM_API_KEY` e header
+  `X-API-Key`; configuração ausente ou inválida nunca abre a API.
+- A identidade e o papel (`viewer`, `analyst` ou `admin`) são vinculados à credencial
+  no servidor. `X-EDY-Role` informado pelo cliente é ignorado.
+- A ingestão EDY Shield usa token M2M independente, que não autentica um operador.
 - Rate limit HTTP é em memória e por IP.
 - A arquitetura documenta JWT/SSO futuro, mas isso ainda não é implementação atual.
 

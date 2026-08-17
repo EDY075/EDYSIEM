@@ -61,7 +61,7 @@ def register_error_handlers(app: FastAPI) -> None:
         ]
         logger.warning("validation error trace=%s", getattr(request.state, "request_id", "-"))
         return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=_error_payload(
                 request, "validation_error", "payload invalido", 422, {"errors": details}
             ),

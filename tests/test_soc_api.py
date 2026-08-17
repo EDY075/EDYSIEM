@@ -4,9 +4,29 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from edysiem.api.app import create_app
+
+AUTH_KEY = "test-soc-api-key-with-at-least-32-bytes"
+
+
+class AuthenticatedTestClient(TestClient):
+    def __init__(self, *args, **kwargs) -> None:
+        headers = dict(kwargs.pop("headers", {}))
+        headers.setdefault("X-API-Key", AUTH_KEY)
+        super().__init__(*args, headers=headers, **kwargs)
+
+
+TestClient = AuthenticatedTestClient
+
+
+@pytest.fixture(autouse=True)
+def operator_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EDYSIEM_API_KEY", AUTH_KEY)
+    monkeypatch.setenv("EDYSIEM_API_IDENTITY", "soc-test-analyst")
+    monkeypatch.setenv("EDYSIEM_API_ROLE", "analyst")
 
 
 def test_soc_api_full_flow(monkeypatch, tmp_path) -> None:

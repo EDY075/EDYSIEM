@@ -72,6 +72,16 @@ cd frontend && npm ci && cd ..
 python run.py
 ```
 
+Na primeira execução, copie `.env.example` para `.env`, substitua os tokens de
+exemplo por segredos aleatórios de pelo menos 32 bytes e escolha explicitamente
+o papel do operador (`viewer`, `analyst` ou `admin`). O runner carrega apenas
+`.env` local, sem executar comandos nem sobrescrever variáveis já exportadas.
+
+Backend e frontend aceitam conexões somente da própria máquina. O runner 0.3.0
+não oferece modo LAN: não altere o bind de loopback nem publique essas portas.
+Uma implantação remota exige uma arquitetura separada, com TLS, proxy reverso e
+controles de acesso revisados antes do uso.
+
 The single command applies migrations, starts backend and frontend, seeds safe
 demonstration data, and opens the UI. Use `--no-seed` or `--no-open` when needed.
 

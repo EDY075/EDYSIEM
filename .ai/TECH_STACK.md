@@ -15,7 +15,7 @@
 ## Frontend (`frontend/`)
 - **Node 18+**, Vite 5, React 18, TypeScript 5, `react-router-dom` 6, `recharts 3`.
 - Scripts: `dev` (vite), `build` (`tsc -b && vite build`), `preview`.
-- Proxy dev: `/api` → `http://localhost:8080` (configurável via `VITE_API_URL`).
+- Proxy dev: `/api` → `http://127.0.0.1:8080` (fixo em loopback na versão 0.3.0).
 
 ## Comandos de qualidade (obrigatórios antes de "pronto")
 

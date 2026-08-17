@@ -230,7 +230,7 @@ def cmd_soc_run(_args: argparse.Namespace) -> int:
 
 def cmd_dev(args: argparse.Namespace) -> int:
     """Inicia o ambiente de desenvolvimento (backend + frontend) com um comando."""
-    return run_dev(seed=not args.no_seed, open_browser=not args.no_open)
+    return run_dev(seed=not args.no_seed, open_browser=not args.no_open, lan=args.lan)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -249,6 +249,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_dev.add_argument("--no-seed", action="store_true", help="não popula dados de demonstração")
     p_dev.add_argument(
         "--no-open", action="store_true", help="não abre o navegador automaticamente"
+    )
+    p_dev.add_argument(
+        "--lan",
+        action="store_true",
+        help="indisponível no EDYSIEM 0.3.0; esta versão é localhost-only",
     )
 
     p_pipe = sub.add_parser("run-pipeline", help="executa a pipeline ponta a ponta")

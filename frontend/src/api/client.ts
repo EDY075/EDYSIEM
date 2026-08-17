@@ -106,6 +106,12 @@ export interface ApiResponse<T = unknown> {
   error?: { code: string; message: string; status: number };
 }
 
+export interface AuthIdentity {
+  identity: string;
+  role: "viewer" | "analyst" | "admin";
+  auth_type: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuração (vars de ambiente via .env.local)
 //
@@ -117,6 +123,28 @@ export interface ApiResponse<T = unknown> {
 const BASE_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/+$/, "");
 const TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT) || 10000;
 const MAX_RETRIES = Number(import.meta.env.VITE_API_RETRIES) || 2;
+const API_KEY_STORAGE = "edysiem-api-key";
+let operatorApiKey = "";
+
+try {
+  operatorApiKey = sessionStorage.getItem(API_KEY_STORAGE) ?? "";
+} catch {
+  operatorApiKey = "";
+}
+
+export function setOperatorApiKey(value: string): void {
+  operatorApiKey = value.trim();
+  try {
+    if (operatorApiKey) sessionStorage.setItem(API_KEY_STORAGE, operatorApiKey);
+    else sessionStorage.removeItem(API_KEY_STORAGE);
+  } catch {
+    // The in-memory key still supports privacy modes that disable storage.
+  }
+}
+
+export function hasOperatorApiKey(): boolean {
+  return operatorApiKey.length > 0;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cliente HTTP
@@ -167,6 +195,7 @@ async function request<T = unknown>(
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...(operatorApiKey ? { "X-API-Key": operatorApiKey } : {}),
         },
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: options.signal ?? controller.signal,
@@ -251,4 +280,5 @@ export const apiClient = {
   put: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>("PUT", path, { ...options, body }),
   delete: <T = unknown>(path: string, options?: RequestOptions) => request<T>("DELETE", path, options),
+  authenticate: () => request<AuthIdentity>("GET", "/auth/me"),
 };

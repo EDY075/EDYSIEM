@@ -107,7 +107,7 @@ edysiem demo             # demo da pipeline com exemplo syslog
 
 ```bash
 # API
-uvicorn edysiem.api.app:create_app --factory --host 0.0.0.0 --port 8080
+uvicorn edysiem.api.app:create_app --factory --host 127.0.0.1 --port 8080
 # ou via python
 python -c "from edysiem.api import create_app; import uvicorn; uvicorn.run(create_app())"
 

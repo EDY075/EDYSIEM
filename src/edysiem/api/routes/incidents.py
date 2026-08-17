@@ -11,6 +11,7 @@ from ...container import ApplicationContainer
 from ...domain import RiskScore
 from ..deps import get_container
 from ..schemas import AlertPayload, IncidentCreateRequest, IncidentCreateResponse
+from ..security import require_permission
 
 router = APIRouter(tags=["incidents"])
 
@@ -42,6 +43,7 @@ def _to_alert(payload: AlertPayload) -> Alert:
     "/incidents",
     response_model=IncidentCreateResponse,
     summary="Cria um incidente a partir de alertas",
+    dependencies=[Depends(require_permission("incident:write"))],
 )
 async def create_incident(
     body: IncidentCreateRequest,

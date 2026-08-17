@@ -7,11 +7,23 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
+_SQL_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def validate_sql_identifier(identifier: str, allowed: frozenset[str] | None = None) -> str:
+    """Validate a SQL identifier and optionally enforce a repository allowlist."""
+
+    if _SQL_IDENTIFIER.fullmatch(identifier) is None or (
+        allowed is not None and identifier not in allowed
+    ):
+        raise ValueError(f"invalid query field: {identifier}")
+    return identifier
 
 
 class QueryOp(Enum):
@@ -53,6 +65,8 @@ class QueryFilter:
         Returns:
             (clausula WHERE, params).
         """
+        del index
+        field = validate_sql_identifier(self.field)
         ops: dict[QueryOp, str] = {
             QueryOp.EQ: "=",
             QueryOp.NEQ: "!=",
@@ -62,8 +76,8 @@ class QueryFilter:
             QueryOp.LTE: "<=",
         }
         if self.op is QueryOp.CONTAINS:
-            return f"{self.field} LIKE ?", [f"%{self.value}%"]
-        return f"{self.field} {ops[self.op]} ?", [self.value]
+            return f"{field} LIKE ?", [f"%{self.value}%"]
+        return f"{field} {ops[self.op]} ?", [self.value]
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,4 +102,4 @@ class Page(Generic[T]):
         return self.offset + len(self.items) < self.total
 
 
-__all__ = ["Page", "QueryFilter", "QueryOp", "SortOrder"]
+__all__ = ["Page", "QueryFilter", "QueryOp", "SortOrder", "validate_sql_identifier"]

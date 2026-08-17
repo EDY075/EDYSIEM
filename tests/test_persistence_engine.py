@@ -128,6 +128,20 @@ def test_query_filter_ops(manager: ConnectionManager) -> None:
     assert page.total == 0
 
 
+def test_dynamic_query_identifiers_are_allowlisted(manager: ConnectionManager) -> None:
+    repo = AlertRepository(manager)
+    repo.add(_alert("a1", "r", AlertSeverity.HIGH, 1))
+
+    with pytest.raises(ValueError, match="invalid query field"):
+        repo.query(sort_by="created_at DESC; DROP TABLE alerts")
+    with pytest.raises(ValueError, match="invalid query field"):
+        repo.query([QueryFilter(field="not_a_column", value="x")])
+    with pytest.raises(ValueError, match="invalid query field"):
+        repo.search(field="severity OR 1=1", value="high")
+
+    assert repo.count() == 1
+
+
 # --- Event Store ------------------------------------------------------------
 
 

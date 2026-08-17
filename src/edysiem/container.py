@@ -49,7 +49,7 @@ from .normalization import Registry as NormalizationRegistry
 from .normalization import StrategyNormalizer, register_default_normalizers
 
 if TYPE_CHECKING:
-    from .persistence import ShieldInboxRepository
+    from .persistence import AuditEngine, ConnectionManager, ShieldInboxRepository
     from .soc import SocPipeline, SocService
 
 
@@ -68,6 +68,9 @@ class ApplicationContainer:
         self._soc_service: SocService | None = None
         self._soc_pipeline: SocPipeline | None = None
         self._shield_inbox: ShieldInboxRepository | None = None
+        self._audit_engine: AuditEngine | None = None
+        self._shield_inbox_manager: ConnectionManager | None = None
+        self._audit_manager: ConnectionManager | None = None
         self._build()
 
     def _build(self) -> None:
@@ -249,8 +252,50 @@ class ApplicationContainer:
 
             manager = ConnectionManager(os.environ.get("EDYSIEM_DB") or "edysiem.db")
             MigrationRunner(ALL_MIGRATIONS).apply(manager)
+            self._shield_inbox_manager = manager
             self._shield_inbox = ShieldInboxRepository(manager)
         return self._shield_inbox
+
+    @property
+    def audit_engine(self) -> AuditEngine:
+        """Append-only audit trail over the configured SIEM database."""
+
+        if self._audit_engine is None:
+            import os
+            from pathlib import Path
+
+            from .persistence import (
+                ALL_MIGRATIONS,
+                AuditEngine,
+                AuditRepository,
+                ConnectionManager,
+                MigrationRunner,
+            )
+
+            primary_path = os.environ.get("EDYSIEM_DB") or "edysiem.db"
+            configured_audit_path = os.environ.get("EDYSIEM_AUDIT_DB", "").strip()
+            if configured_audit_path:
+                audit_path = configured_audit_path
+            elif primary_path == ":memory:":
+                audit_path = ":memory:"
+            else:
+                primary = Path(primary_path)
+                audit_path = str(
+                    primary.with_name(f"{primary.stem}.audit{primary.suffix or '.db'}")
+                )
+            manager = ConnectionManager(audit_path)
+            MigrationRunner(ALL_MIGRATIONS).apply(manager)
+            self._audit_manager = manager
+            self._audit_engine = AuditEngine(AuditRepository(manager))
+        return self._audit_engine
+
+    def close_persistence(self) -> None:
+        """Close lazy inbox/audit connections; safe to call repeatedly."""
+
+        if self._shield_inbox_manager is not None:
+            self._shield_inbox_manager.close_all()
+        if self._audit_manager is not None:
+            self._audit_manager.close_all()
 
     # --- Utilitarios -------------------------------------------------------
 

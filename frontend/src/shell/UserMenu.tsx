@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { colors, elevation, motion, radii, spacing, typography } from "../design-system/tokens";
 import { useAlerts } from "../hooks";
 import { useTheme } from "../theme/ThemeProvider";
+import { getAuthIdentityPresentation, useAuth } from "../auth/AuthContext";
 
 const readNotificationsKey = "edysiem-read-notifications";
 
@@ -28,8 +29,10 @@ const tone = (severity: string) => severity === "critical" ? colors.severity.cri
 export function UserMenu() {
   const navigate = useNavigate();
   const { mode, toggle } = useTheme();
+  const { identity, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const { avatarLabel, identityLabel, roleLabel } = getAuthIdentityPresentation(identity);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => { if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false); };
@@ -39,20 +42,20 @@ export function UserMenu() {
 
   return <div ref={rootRef} style={{ position: "relative" }}>
     <button type="button" onClick={() => setOpen((value) => !value)} aria-haspopup="menu" aria-expanded={open} aria-label="Abrir menu do usuário" className="user-trigger" style={{ display: "flex", alignItems: "center", gap: spacing["2"], padding: "3px 7px 3px 3px", border: `1px solid ${open ? colors.accent : colors.border}`, borderRadius: radii.full, background: open ? colors.surfaceAlt : "transparent", color: colors.textSecondary, cursor: "pointer", transition: `border-color ${motion.transition.fast}, background ${motion.transition.fast}, box-shadow ${motion.transition.fast}` }}>
-      <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 30, height: 30, clipPath: "polygon(25% 6.7%,75% 6.7%,93.3% 25%,93.3% 75%,75% 93.3%,25% 93.3%,6.7% 75%,6.7% 25%)", background: `linear-gradient(135deg, ${colors.accentHover}, ${colors.accent})`, color: colors.textOnAccent, fontWeight: typography.weight.bold, fontSize: typography.size.xs }}>A</span>
-      <span data-user-label style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.12, minWidth: 0 }}><span style={{ color: colors.textPrimary, fontSize: typography.size.xs, fontWeight: typography.weight.semibold }}>Analyst SOC</span><span style={{ color: colors.textMuted, fontSize: 10 }}>analyst@edy</span></span>
+      <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 30, height: 30, clipPath: "polygon(25% 6.7%,75% 6.7%,93.3% 25%,93.3% 75%,75% 93.3%,25% 93.3%,6.7% 75%,6.7% 25%)", background: `linear-gradient(135deg, ${colors.accentHover}, ${colors.accent})`, color: colors.textOnAccent, fontWeight: typography.weight.bold, fontSize: typography.size.xs }}>{avatarLabel}</span>
+      <span data-user-label style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.12, minWidth: 0 }}><span style={{ color: colors.textPrimary, fontSize: typography.size.xs, fontWeight: typography.weight.semibold }}>{identityLabel}</span><span style={{ color: colors.textMuted, fontSize: 10 }}>{roleLabel}</span></span>
       <span style={{ color: colors.textMuted, display: "inline-flex" }}><Chevron up={open} /></span>
     </button>
     {open && <div role="menu" aria-label="Menu do usuário" className="header-popover" style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", width: 272, padding: spacing["2"], zIndex: 500, border: `1px solid ${colors.border}`, borderRadius: radii.lg, background: colors.surface, boxShadow: elevation.overlay, animation: "headerPopoverIn 150ms cubic-bezier(.2,0,0,1) both" }}>
       <div style={{ display: "flex", alignItems: "center", gap: spacing["3"], padding: spacing["2"], borderBottom: `1px solid ${colors.borderSubtle}` }}>
-        <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 38, height: 38, clipPath: "polygon(25% 6.7%,75% 6.7%,93.3% 25%,93.3% 75%,75% 93.3%,25% 93.3%,6.7% 75%,6.7% 25%)", background: `linear-gradient(135deg, ${colors.accentHover}, ${colors.accent})`, color: colors.textOnAccent, fontWeight: typography.weight.bold }}>A</span>
-        <span><span style={{ display: "block", color: colors.textPrimary, fontWeight: typography.weight.semibold, fontSize: typography.size.sm }}>Analyst SOC</span><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>analyst@edy · SOC Operations</span></span>
+        <span aria-hidden="true" style={{ display: "grid", placeItems: "center", width: 38, height: 38, clipPath: "polygon(25% 6.7%,75% 6.7%,93.3% 25%,93.3% 75%,75% 93.3%,25% 93.3%,6.7% 75%,6.7% 25%)", background: `linear-gradient(135deg, ${colors.accentHover}, ${colors.accent})`, color: colors.textOnAccent, fontWeight: typography.weight.bold }}>{avatarLabel}</span>
+        <span><span style={{ display: "block", color: colors.textPrimary, fontWeight: typography.weight.semibold, fontSize: typography.size.sm }}>{identityLabel}</span><span style={{ display: "block", marginTop: 2, color: colors.textMuted, fontSize: typography.size.xs }}>{roleLabel}</span></span>
       </div>
       <div style={{ padding: `${spacing["2"]} ${spacing["2"]} 0`, color: colors.textMuted, fontSize: 10, fontWeight: typography.weight.semibold, letterSpacing: "0.1em" }}>SESSÃO</div>
       <div style={{ display: "flex", alignItems: "center", gap: 7, padding: `${spacing["2"]} ${spacing["2"]}`, color: colors.textSecondary, fontSize: typography.size.xs }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: colors.status.online, boxShadow: `0 0 0 3px color-mix(in srgb, ${colors.status.online} 15%, transparent)` }} />Sessão operacional ativa</div>
       <button type="button" role="menuitem" onClick={() => { navigate("/settings"); setOpen(false); }} className="header-menu-item" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, padding: `${spacing["2"]} ${spacing["2"]}`, border: 0, borderRadius: radii.md, background: "transparent", color: colors.textPrimary, cursor: "pointer", textAlign: "left", fontSize: typography.size.sm }}>Perfil e preferências<span style={{ color: colors.textMuted, display: "inline-flex" }}><Chevron /></span></button>
       <button type="button" role="menuitem" onClick={toggle} className="header-menu-item" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, padding: `${spacing["2"]} ${spacing["2"]}`, border: 0, borderRadius: radii.md, background: "transparent", color: colors.textPrimary, cursor: "pointer", textAlign: "left", fontSize: typography.size.sm }}>Tema {mode === "dark" ? "claro" : "escuro"}<span style={{ color: colors.textMuted, fontSize: typography.size.xs }}>Aplicar</span></button>
-      <button type="button" role="menuitem" disabled title="Autenticação local ainda não configurada" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, padding: `${spacing["2"]} ${spacing["2"]}`, border: 0, borderRadius: radii.md, background: "transparent", color: colors.textMuted, cursor: "not-allowed", textAlign: "left", fontSize: typography.size.sm }}>Encerrar sessão<span style={{ fontSize: typography.size.xs }}>Integração pendente</span></button>
+      <button type="button" role="menuitem" onClick={() => { signOut(); setOpen(false); }} className="header-menu-item" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, padding: `${spacing["2"]} ${spacing["2"]}`, border: 0, borderRadius: radii.md, background: "transparent", color: colors.textPrimary, cursor: "pointer", textAlign: "left", fontSize: typography.size.sm }}>Encerrar sessão<span style={{ fontSize: typography.size.xs, color: colors.textMuted }}>Sair</span></button>
     </div>}
   </div>;
 }

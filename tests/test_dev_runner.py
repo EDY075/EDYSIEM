@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 from pathlib import Path
 
+import pytest
+
 import edysiem.cli.dev as dev
+
+DEV_API_KEY = "dev-runner-test-key-with-at-least-32-bytes"
+
+
+@pytest.fixture(autouse=True)
+def operator_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EDYSIEM_API_KEY", DEV_API_KEY)
+    monkeypatch.setenv("EDYSIEM_API_IDENTITY", "dev-runner")
+    monkeypatch.setenv("EDYSIEM_API_ROLE", "analyst")
 
 
 class _FakeProc:
@@ -47,20 +59,77 @@ def test_ensure_frontend_deps_install(monkeypatch) -> None:
     import tempfile
 
     d = Path(tempfile.mkdtemp())  # sem node_modules
-    calls = {"n": 0}
+    calls: list[list[str]] = []
 
-    def fake_run(_cmd, **_kw):
-        calls["n"] += 1
+    def fake_run(cmd, **_kw):
+        calls.append(cmd)
         return type("_R", (), {"returncode": 0})()
 
     monkeypatch.setattr(dev, "FRONTEND", d)
     monkeypatch.setattr(dev.subprocess, "run", fake_run)
     assert dev._ensure_frontend_deps() is True
-    assert calls["n"] == 1
+    assert len(calls) == 1
+    assert "ci" in " ".join(calls[0])
 
 
 def test_ensure_backend_deps_present() -> None:
     assert dev._ensure_backend_deps() is True  # edysiem importável
+
+
+def test_backend_dependency_check_fails_without_runtime(monkeypatch, capsys) -> None:
+    real_find_spec = dev.importlib.util.find_spec
+
+    def fake_find_spec(name: str):
+        return None if name == "uvicorn" else real_find_spec(name)
+
+    monkeypatch.setattr(dev.importlib.util, "find_spec", fake_find_spec)
+    assert dev._ensure_backend_deps() is False
+    assert "edy-siem[api]" in capsys.readouterr().out
+
+
+def test_dotenv_loader_is_non_executable_and_does_not_override(monkeypatch, tmp_path) -> None:
+    dotenv = tmp_path / ".env"
+    dotenv.write_text(
+        "EDYSIEM_API_KEY='safe literal $(whoami)'\nEDYSIEM_API_ROLE=analyst\n",
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("EDYSIEM_API_KEY", raising=False)
+    monkeypatch.setenv("EDYSIEM_API_ROLE", "viewer")
+    assert dev._load_dotenv(dotenv) is True
+    assert os.environ["EDYSIEM_API_KEY"] == "safe literal $(whoami)"
+    assert os.environ["EDYSIEM_API_ROLE"] == "viewer"
+
+
+def test_dotenv_loader_rejects_invalid_syntax(tmp_path) -> None:
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("NOT VALID\n", encoding="utf-8")
+    assert dev._load_dotenv(dotenv) is False
+
+
+def test_frontend_bind_is_always_loopback(monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_popen(cmd, **_kwargs):
+        calls.append(cmd)
+        return _FakeProc()
+
+    monkeypatch.setattr(dev.subprocess, "Popen", fake_popen)
+    dev._start_frontend()
+    assert "127.0.0.1" in calls[0][-1]
+    assert "--strictPort" in calls[0][-1]
+
+
+def test_run_dev_fails_closed_without_operator_configuration(monkeypatch) -> None:
+    for name in ("EDYSIEM_API_KEY", "EDYSIEM_API_IDENTITY", "EDYSIEM_API_ROLE"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(dev, "_load_dotenv", lambda path=None: True)
+    assert dev.run_dev(seed=False, open_browser=False) == 1
+
+
+def test_run_dev_rejects_lan_before_startup(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(dev, "_load_dotenv", lambda path=None: pytest.fail("must not load env"))
+    assert dev.run_dev(seed=False, open_browser=False, lan=True) == 1
+    assert "localhost" in capsys.readouterr().out
 
 
 def test_wait_url_false_fast() -> None:
@@ -153,16 +222,19 @@ def test_cli_dev_command(monkeypatch) -> None:
 
     calls: dict = {}
 
-    def fake_run_dev(*, seed: bool, open_browser: bool) -> int:
+    def fake_run_dev(*, seed: bool, open_browser: bool, lan: bool) -> int:
         calls["seed"] = seed
         calls["open"] = open_browser
-        return 0
+        calls["lan"] = lan
+        return 1 if lan else 0
 
     monkeypatch.setattr(main, "run_dev", fake_run_dev)
     assert main.main(["dev"]) == 0
-    assert calls == {"seed": True, "open": True}
+    assert calls == {"seed": True, "open": True, "lan": False}
     assert main.main(["dev", "--no-seed", "--no-open"]) == 0
-    assert calls == {"seed": False, "open": False}
+    assert calls == {"seed": False, "open": False, "lan": False}
+    assert main.main(["dev", "--lan"]) == 1
+    assert calls == {"seed": True, "open": True, "lan": True}
 
 
 def test_run_py_importable() -> None:
@@ -170,6 +242,57 @@ def test_run_py_importable() -> None:
     assert os.path.isfile(os.path.join(root, "run.py"))
     assert os.path.isfile(os.path.join(root, "scripts", "dev.ps1"))
     assert os.path.isfile(os.path.join(root, "scripts", "dev.sh"))
+
+
+def _load_run_module():
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("edysiem_checkout_runner", root / "run.py")
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_run_py_has_no_sys_path_bootstrap() -> None:
+    source = (Path(__file__).resolve().parents[1] / "run.py").read_text(encoding="utf-8")
+    assert "sys.path.insert" not in source
+    assert 'pip", "install", "-e", ".[api]' in source
+
+
+def test_run_py_installs_checkout_then_runs_fresh_interpreter(monkeypatch) -> None:
+    runner = _load_run_module()
+    calls: list[tuple[list[str], Path]] = []
+
+    def fake_run(command, *, cwd, check):
+        calls.append((command, cwd))
+        return type("_Result", (), {"returncode": 0})()
+
+    monkeypatch.setattr(runner, "_current_checkout_ready", lambda: False)
+    monkeypatch.setattr(runner.subprocess, "run", fake_run)
+    monkeypatch.setattr(runner.sys, "argv", ["run.py", "--no-seed", "--no-open"])
+    assert runner.main() == 0
+    assert calls[0][0][-3:] == ["install", "-e", ".[api]"]
+    assert calls[1][0][-3:] == ["dev", "--no-seed", "--no-open"]
+    assert all(cwd == runner._ROOT for _, cwd in calls)
+
+
+def test_run_py_rejects_lan_without_installing(monkeypatch, capsys) -> None:
+    runner = _load_run_module()
+    monkeypatch.setattr(
+        runner, "_install_current_checkout", lambda: pytest.fail("must not install")
+    )
+    monkeypatch.setattr(runner.sys, "argv", ["run.py", "--lan"])
+    assert runner.main() == 2
+    assert "localhost" in capsys.readouterr().out
+
+
+def test_frontend_installer_is_repo_relative_and_reproducible() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "scripts" / "install-frontend.ps1").read_text(encoding="utf-8")
+    assert "$PSScriptRoot" in script
+    assert "npm ci" in script
+    assert "C:\\Users\\user" not in script
 
 
 def test_dev_log_prints(capsys) -> None:

@@ -34,7 +34,7 @@ unit (muitos, por módulo)
 - Nomes: `test_<unidade>_<comportamento>`.
 - Fixtures por escopo (funcion, module, session) — sem acoplamento entre testes.
 - Cada regra (detection/correlation) possui fixtures de exemplo positivas e negativas.
-- Cobertura alvo: ≥ 85% (gate CI realista, sem testes artificiais).
+- Cobertura alvo: ≥ 95% (gate configurado em `pyproject.toml`).
 
 ## 4. Ferramentas (gate obrigatório)
 

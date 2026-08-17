@@ -8,6 +8,7 @@ from ...container import ApplicationContainer
 from ...incidents import Incident
 from ..deps import get_container
 from ..schemas import CaseCreateRequest, CaseCreateResponse
+from ..security import require_permission
 
 router = APIRouter(tags=["cases"])
 
@@ -16,6 +17,7 @@ router = APIRouter(tags=["cases"])
     "/cases",
     response_model=CaseCreateResponse,
     summary="Cria um case de investigacao a partir de um incidente",
+    dependencies=[Depends(require_permission("case:write"))],
 )
 async def create_case(
     body: CaseCreateRequest,

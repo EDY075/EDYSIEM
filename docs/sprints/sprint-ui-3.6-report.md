@@ -126,7 +126,7 @@ Implementação de dois componentes críticos para a operação em tempo real do
 cd frontend && npm run dev
 
 # Backend API
-uvicorn edysiem.api.app:create_app --factory --host 0.0.0.0 --port 8080
+uvicorn edysiem.api.app:create_app --factory --host 127.0.0.1 --port 8080
 
 # Testes
 python -m pytest -q
