@@ -37,12 +37,37 @@ jobs:
           import asyncio
           import os
 
-          from fastapi import HTTPException
+          from fastapi import FastAPI, HTTPException
           from starlette.requests import Request
+          from starlette.routing import BaseRoute
 
           from edysiem.api.app import create_app
           from edysiem.api.security import require_api_key
           from edysiem.exceptions import ConfigurationException
+
+          HTTP_METHODS = frozenset({"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"})
+
+
+          def http_route_inventory(app: FastAPI) -> set[tuple[str, str]]:
+              assert app.routes, "application route registry is empty"
+              unexpected = [
+                  f"{type(route).__module__}.{type(route).__qualname__}"
+                  for route in app.routes
+                  if not isinstance(route, BaseRoute)
+              ]
+              assert not unexpected, f"unexpected non-route objects: {unexpected}"
+
+              paths = app.openapi().get("paths", {})
+              assert isinstance(paths, dict), "OpenAPI paths must be an object"
+              inventory = {
+                  (path, method.upper())
+                  for path, operations in paths.items()
+                  if isinstance(path, str) and isinstance(operations, dict)
+                  for method, operation in operations.items()
+                  if method.upper() in HTTP_METHODS and isinstance(operation, dict)
+              }
+              assert inventory, "HTTP route inventory is empty"
+              return inventory
 
 
           def request(path: str, api_key: str | None = None) -> Request:
@@ -84,7 +109,15 @@ jobs:
               os.environ.pop(name, None)
 
           app = create_app()
-          assert any(route.path == "/api/v1/auth/me" for route in app.routes)
+          assert isinstance(app, FastAPI)
+          assert app.state.container is not None
+          routes = http_route_inventory(app)
+          public_routes = {("/api/v1/health", "GET"), ("/api/v1/version", "GET")}
+          protected_routes = {("/api/v1/auth/me", "GET")}
+          assert public_routes <= routes
+          assert protected_routes <= routes
+          for path, _method in public_routes:
+              asyncio.run(require_api_key(request(path)))
           asyncio.run(expect_rejected(503))
 
           shared_secret = "ci-shared-secret-must-be-rejected-000000000000"
