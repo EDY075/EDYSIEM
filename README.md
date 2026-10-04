@@ -25,6 +25,10 @@
   <a href="docs/README.md">Documentation</a>
 </p>
 
+## Video presentation
+
+https://github.com/user-attachments/assets/5eb8dff0-8fee-465b-bcb6-ed108630ee48
+
 ## Product tour
 
 <table>
